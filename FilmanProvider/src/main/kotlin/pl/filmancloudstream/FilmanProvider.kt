@@ -144,7 +144,7 @@ class FilmanProvider(private val session: FilmanSession) : MainAPI() {
                 if (FilmanParser.isSiteUrl(target)) { unavailable++; continue }
                 loadExtractor(target, "$mainUrl/", subtitleCallback) { link ->
                     found = true
-                    callback(link)
+                    callback(FilmanLinkLabels.apply(link, player))
                 }
             } catch (error: CancellationException) {
                 throw error

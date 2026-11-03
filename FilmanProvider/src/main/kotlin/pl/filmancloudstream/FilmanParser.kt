@@ -11,7 +11,11 @@ object FilmanParser {
     data class Card(val title: String, val url: String, val poster: String?, val year: Int?, val series: Boolean)
     data class EpisodeData(val title: String, val url: String, val season: Int?, val episode: Int?)
     data class Details(val title: String, val poster: String?, val plot: String?, val year: Int?, val episodes: List<EpisodeData>)
-    data class Player(val url: String, val label: String)
+    data class Player(val url: String, val label: String, val version: String = "", val quality: String = "") {
+        fun displayName(extractorName: String): String = listOf(
+            extractorName.ifBlank { label.substringBefore(" · ") }, version, quality
+        ).filter { it.isNotBlank() }.joinToString(" · ")
+    }
     private val episodePattern = Regex("""\[?s(\d+)\s*e(\d+)\]?""", RegexOption.IGNORE_CASE)
 
     fun isSiteUrl(url: String): Boolean = runCatching {
@@ -108,10 +112,14 @@ object FilmanParser {
             id != null -> "$BASE/link/go/$id"
             else -> null
         } ?: return@mapNotNull null
-        val label = listOf(cells[0].selectFirst("img")?.attr("alt").orEmpty(), cells[1].text(), cells[2].text())
+        val version = cells[1].text().ifBlank {
+            row.classNames().firstOrNull { it.startsWith("version-") }?.removePrefix("version-").orEmpty()
+        }
+        val quality = cells[2].text()
+        val label = listOf(cells[0].selectFirst("img")?.attr("alt").orEmpty(), version, quality)
             .filter { it.isNotBlank() }.joinToString(" · ")
-        Player(target, label)
-    }.distinctBy { it.url }
+        Player(target, label, version, quality)
+    }.distinctBy { Triple(it.url, it.version, it.quality) }
 
     fun embeddedUrl(payload: String, base: String): String? {
         val clean = payload.trim().replace("\\/", "/")

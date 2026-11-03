@@ -1,4 +1,10 @@
-# Weryfikacja wersji 1
+# Weryfikacja Filmana
+
+## Wersja 2 — oznaczenia źródeł
+
+3 listopada 2026: lokalna kompilacja `:FilmanProvider:make` zakończona poprawnie; **33 testy parsera, 0 błędów**. Nowe przypadki obejmują wersje językowe, brak oznaczenia, odczyt oznaczenia z klasy wiersza oraz wspólny adres z różnymi wersjami. Nazwa widoczna w odtwarzaczu zawiera wersję i jakość z tabeli Filmana, przy zachowaniu danych ekstraktora potrzebnych do odtwarzania. Wersję dodatku podniesiono do 2. Wyświetlanie na fizycznym urządzeniu wymaga próby użytkownika.
+
+## Wersja 1
 
 Data przygotowania: 3 listopada 2026.
 

@@ -11,6 +11,8 @@ Repozytorium dodatków do **CloudStream na Androidzie i Android TV / Google TV**
 
 Filman obsługuje katalog filmów i seriali, wyszukiwanie, listę odcinków oraz zwykłe zewnętrzne odtwarzacze przez ekstraktory CloudStream. Dodatek ma status wersji testowej. Dostępność odtwarzania zależy również od wybranego hostingu i aktualnego działania strony.
 
+Od wersji **FilmanProvider 2** nazwy źródeł w odtwarzaczu zawierają wersję językową i jakość ze strony, np. **Voe · Lektor_AI · 720p** lub **Streamtape · Napisy · 1080p**. Oznaczenia takie jak `ENG`, `Lektor`, `Lektor_AI`, `Napisy` i `Napisy_Tansl` są zachowywane zgodnie z opisem Filmana. Jeśli strona nie podaje wersji, dodatek jej nie zgaduje.
+
 **AnimeWatchProvider** udostępnia katalog anime, wyszukiwanie, filmy i listy odcinków z animewatch.pl bez logowania. Ma 18 poprawnych testów parsera i odczytu odtwarzaczy; wymaga jeszcze próby odtwarzania na urządzeniu. Przy problemie z ekstraktorem Byse otwiera zwykły odtwarzacz strony do ręcznego uruchomienia. [Szczegóły i ograniczenia](ANIMEWATCH.md).
 
 ## Instalacja repozytorium

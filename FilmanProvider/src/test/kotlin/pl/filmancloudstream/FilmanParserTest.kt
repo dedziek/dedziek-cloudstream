@@ -155,6 +155,34 @@ class FilmanParserTest {
         assertFalse(players.any { it.url.contains("1003") || it.label.contains("Premium") })
     }
 
+    @Test fun playerNamesIncludeEverySiteVersionWithoutGuessingOrNormalizingIt() {
+        listOf("ENG", "Lektor", "Lektor_AI", "Napisy", "Napisy_Transl", "Napisy_Tansl", "Dubbing", "Inna wersja").forEach { version ->
+            val html = row("data-id='42'").replace("<td>Lektor</td>", "<td>$version</td>")
+            val player = FilmanParser.players(doc(html), base).single()
+            assertEquals(version, player.version)
+            assertEquals("Voe · $version · 720p", player.displayName("Voe"))
+        }
+    }
+
+    @Test fun versionCanComeFromRowClassWhenItsCellIsEmpty() {
+        val html = row("data-id='42'").replace("<tr>", "<tr class='version-Lektor_AI version'>")
+            .replace("<td>Lektor</td>", "<td></td>")
+        val player = FilmanParser.players(doc(html), base).single()
+        assertEquals("Host · Lektor_AI · 720p", player.displayName("Host"))
+    }
+
+    @Test fun missingVersionIsNotInventedAndHostingFallbackRemainsReadable() {
+        val player = FilmanParser.players(doc(row("data-id='42'").replace("<td>Lektor</td>", "<td></td>")), base).single()
+        assertEquals("Host · 720p", player.displayName("Host"))
+        assertEquals("host.example · 720p", player.displayName(""))
+    }
+
+    @Test fun sameHostUrlWithDifferentVersionsRemainsTwoSources() {
+        val html = row("data-id='42'") + row("data-id='42'").replace("<td>Lektor</td>", "<td>Napisy</td>")
+        val players = FilmanParser.players(doc(html), base)
+        assertEquals(listOf("Lektor", "Napisy"), players.map { it.version })
+    }
+
     @Test fun legacyIframeRowsSupportEncodedHtmlAndEncodedJson() {
         val html = row("data-iframe='${encode("<iframe src=\"https://video.example/embed/one\"></iframe>")}'") +
             row("data-iframe='${encode("{\"src\":\"https:\\/\\/second.example\\/embed\\/two\"}")}'")
