@@ -1,0 +1,8 @@
+{
+  "name": "Filman CloudStream — wersja testowa",
+  "description": "Dodatek Filman dla darmowego konta. Logowanie na urządzeniu użytkownika.",
+  "manifestVersion": 1,
+  "pluginLists": [
+    "https://raw.githubusercontent.com/dedziek/dedziek-cloudstream/builds/plugins.json"
+  ]
+}

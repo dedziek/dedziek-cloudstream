@@ -1,0 +1,6 @@
+* text=auto
+gradlew text eol=lf
+*.yml text eol=lf
+*.mjs text eol=lf
+*.jar binary
+*.cs3 binary

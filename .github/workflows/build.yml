@@ -1,0 +1,73 @@
+name: Build and publish CloudStream repository
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+    paths-ignore:
+      - '**.md'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cloudstream-publication
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Compile and test
+        run: sh gradlew :FilmanProvider:make :FilmanProvider:testDebugUnitTest makePluginsJson --no-daemon --console=plain
+
+      - name: Validate package and prepare repository
+        run: node scripts/prepare-publication.mjs "$GITHUB_REPOSITORY"
+
+      - name: Save build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloudstream-repository
+          path: build/publication/
+          if-no-files-found: error
+
+      - name: Publish builds branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          publication="$RUNNER_TEMP/filman-publication"
+          if git ls-remote --exit-code --heads origin builds >/dev/null; then
+            git fetch origin builds
+            git worktree add -B builds "$publication" origin/builds
+          else
+            git worktree add --detach "$publication" HEAD
+            git -C "$publication" switch --orphan builds
+          fi
+          cp build/publication/FilmanProvider.cs3 build/publication/plugins.json build/publication/repo.json build/publication/SHA256SUMS.txt "$publication/"
+          git -C "$publication" config user.name 'github-actions[bot]'
+          git -C "$publication" config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git -C "$publication" add FilmanProvider.cs3 plugins.json repo.json SHA256SUMS.txt
+          if ! git -C "$publication" diff --cached --quiet; then
+            git -C "$publication" commit -m "Publish FilmanProvider from ${GITHUB_SHA}"
+            git -C "$publication" push origin HEAD:builds
+          fi
