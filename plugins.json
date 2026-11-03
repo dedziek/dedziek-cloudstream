@@ -1,0 +1,22 @@
+[
+  {
+    "fileHash": "sha256-c5d705993518fe3bd059dc8a8d863ed94a600efa6141c1c2a2a76c8847590d30",
+    "apiVersion": 1,
+    "repositoryUrl": "https://github.com/dedziek/dedziek-cloudstream",
+    "fileSize": 48196,
+    "status": 3,
+    "language": "pl",
+    "authors": [
+      "FilmanCloudStream contributors"
+    ],
+    "tvTypes": [
+      "Movie",
+      "TvSeries"
+    ],
+    "version": 1,
+    "internalName": "FilmanProvider",
+    "description": "Filman: darmowe konto, logowanie w oknie strony. Wersja testowa; wymaga weryfikacji na urządzeniu.",
+    "url": "https://raw.githubusercontent.com/dedziek/dedziek-cloudstream/builds/FilmanProvider.cs3",
+    "name": "FilmanProvider"
+  }
+]
