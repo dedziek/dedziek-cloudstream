@@ -7,7 +7,7 @@ Ma katalog filmów i seriali, wyszukiwanie, listę odcinków i obsługę zwykły
 
 ## Instalacja przez repozytorium GitHub
 
-Po udanym opublikowaniu gałęzi `builds` otwórz **CloudStream → Ustawienia → Rozszerzenia → Dodaj repozytorium** i wklej:
+Otwórz **CloudStream → Ustawienia → Rozszerzenia → Dodaj repozytorium** i wklej:
 
 ```text
 https://raw.githubusercontent.com/dedziek/dedziek-cloudstream/builds/repo.json
@@ -42,7 +42,7 @@ Dodatek nie odczytuje hasła z formularza. Zapisuje ciasteczka sesji i identyfik
 
 Przycisk **Usuń zapisaną sesję** usuwa lokalny zapis i ciasteczka Filmana dostępne dla tego okna. Wylogowanie z konta po stronie serwera można dodatkowo wykonać na stronie Filmana.
 
-Na Android TV/Google TV plik instaluje się jako lokalne rozszerzenie, ale logowanie wymaga dostępnego **Android System WebView** i wygodnego sposobu wpisania danych. Niektóre urządzenia TV nie mają odpowiedniego WebView. Sesję trzeba utworzyć osobno na każdym urządzeniu; przeniesienie backupu telefonu jej nie przenosi. Zgodność z TV nie była testowana.
+Na Android TV/Google TV możesz dodać ten sam link repozytorium. Logowanie wymaga dostępnego **Android System WebView** i wygodnego sposobu wpisania danych. Niektóre urządzenia TV nie mają odpowiedniego WebView. Sesję trzeba utworzyć osobno na każdym urządzeniu; przeniesienie backupu telefonu jej nie przenosi. Zgodność z TV nie była testowana.
 
 ## Obsługiwany zakres i ograniczenia
 
@@ -51,7 +51,7 @@ Na Android TV/Google TV plik instaluje się jako lokalne rozszerzenie, ale logow
 - Pomijane są linki `data-mp4` z czasowych podglądów „free premium”. Dodatek jest przygotowany do darmowego konta i zwykłych źródeł, a nie API Premium.
 - Weryfikacja TLS pozostaje włączona. CAPTCHA i inne weryfikacje strony obsługuje użytkownik w oknie logowania; nie ma automatycznego omijania blokad.
 - Zmiana układu strony, wygaśnięcie sesji, blokada WebView przez serwis albo nieobsługiwany hosting mogą wymagać poprawki. Jeżeli strona odmawia logowania w WebView, ta wersja dodatku nie gwarantuje alternatywnego sposobu wejścia.
-- Źródła są przeznaczone do repozytorium [dedziek/dedziek-cloudstream](https://github.com/dedziek/dedziek-cloudstream). Pliki instalacyjne publikuje automat na gałęzi `builds`. Jeśli automat jeszcze się nie zakończył, adres instalacyjny może zwracać 404.
+- Źródła są dostępne w repozytorium [dedziek/dedziek-cloudstream](https://github.com/dedziek/dedziek-cloudstream). Pliki instalacyjne publikuje automat na gałęzi `builds`; status kolejnych kompilacji jest widoczny w [Actions](https://github.com/dedziek/dedziek-cloudstream/actions).
 
 ## Kompilacja kodu
 

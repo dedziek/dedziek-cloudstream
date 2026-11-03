@@ -12,7 +12,7 @@ Data przygotowania: 3 listopada 2026.
 
 **Nie wykonano:** logowania kontem użytkownika w Android System WebView, próby odtworzenia po zalogowaniu ani testów na telefonie/TV. Na tym etapie plik należy traktować jako wersję testową.
 
-Przygotowano również `repo.json`, generator sprawdzający paczkę publikacyjną i workflow GitHub Actions do aktualizacji gałęzi `builds`. Status publikacji i log kompilacji są dostępne w zakładce Actions repozytorium.
+Publikacja na GitHubie została zakończona: [kompilacja, testy i publikacja w Actions](https://github.com/dedziek/dedziek-cloudstream/actions/runs/41726379239) zakończyły się poprawnie. Anonimowe pobranie `repo.json`, `plugins.json` i `.cs3` z gałęzi `builds` zwróciło HTTP 200; rozmiar i SHA-256 pobranej paczki zgadzają się z metadanymi i poniższą lokalną kompilacją. Weryfikację wykonano 3 listopada 2026.
 
 ## Parametry kompilacji
 
