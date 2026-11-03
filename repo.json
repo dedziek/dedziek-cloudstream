@@ -1,6 +1,6 @@
 {
-  "name": "Filman CloudStream — wersja testowa",
-  "description": "Dodatek Filman dla darmowego konta. Logowanie na urządzeniu użytkownika.",
+  "name": "Dedziek CloudStream — Filman i AnimeWatch",
+  "description": "Dodatki Filman dla darmowego konta i AnimeWatch. Wersje testowe; sesja Filmana pozostaje na urządzeniu użytkownika.",
   "manifestVersion": 1,
   "pluginLists": [
     "https://raw.githubusercontent.com/dedziek/dedziek-cloudstream/builds/plugins.json"

@@ -7,10 +7,11 @@ Repozytorium dodatków do **CloudStream na Androidzie i Android TV / Google TV**
 | Dodatek | Źródło w CloudStream | Wymagania |
 |---|---|---|
 | **FilmanProvider** | **Filman — konto darmowe (test)** | Darmowe konto Filman, Android 6.0 lub nowszy i działający Android System WebView do logowania |
+| **AnimeWatchProvider** | **AnimeWatch** | Aktualny CloudStream Beta, Android 6.0 lub nowszy; WebView do awaryjnego okna odtwarzacza |
 
 Filman obsługuje katalog filmów i seriali, wyszukiwanie, listę odcinków oraz zwykłe zewnętrzne odtwarzacze przez ekstraktory CloudStream. Dodatek ma status wersji testowej. Dostępność odtwarzania zależy również od wybranego hostingu i aktualnego działania strony.
 
-**AnimeWatch jest w przygotowaniu i nie jest jeszcze dostępny na opublikowanej liście dodatków.**
+**AnimeWatchProvider** udostępnia katalog anime, wyszukiwanie, filmy i listy odcinków z animewatch.pl bez logowania. Ma 18 poprawnych testów parsera i odczytu odtwarzaczy; wymaga jeszcze próby odtwarzania na urządzeniu. Przy problemie z ekstraktorem Byse otwiera zwykły odtwarzacz strony do ręcznego uruchomienia. [Szczegóły i ograniczenia](ANIMEWATCH.md).
 
 ## Instalacja repozytorium
 
@@ -21,8 +22,8 @@ Filman obsługuje katalog filmów i seriali, wyszukiwanie, listę odcinków oraz
    https://github.com/dedziek/dedziek-cloudstream/raw/refs/heads/main/repo.json
    ```
 
-3. Otwórz dodane repozytorium i zainstaluj **FilmanProvider**.
-4. Skonfiguruj logowanie według instrukcji poniżej, a na stronie głównej wybierz **Filman — konto darmowe (test)**.
+3. Otwórz dodane repozytorium i zainstaluj wybrany dodatek: **FilmanProvider** lub **AnimeWatchProvider**.
+4. Dla Filmana skonfiguruj logowanie według instrukcji poniżej i wybierz źródło **Filman — konto darmowe (test)**. Dla AnimeWatch wybierz źródło **AnimeWatch** — konfiguracja konta nie jest wymagana.
 
 Jeśli repozytorium jest już dodane i działa, wystarczy odświeżyć jego listę dodatków. Ponowne dodawanie repozytorium nie jest potrzebne. Aktualizacje dodatków są publikowane pod tym samym adresem.
 
@@ -84,7 +85,7 @@ Do lokalnej kompilacji przygotuj JDK 21 i Android SDK z platformą 35. Wskaż SD
 Windows:
 
 ```powershell
-.\gradlew.bat :FilmanProvider:make :FilmanProvider:testDebugUnitTest makePluginsJson --no-daemon
+.\gradlew.bat :FilmanProvider:make :AnimeWatchProvider:make testDebugUnitTest makePluginsJson --no-daemon
 ```
 
 Linux / macOS:
