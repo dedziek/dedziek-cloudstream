@@ -76,7 +76,7 @@ object AnimeGateLoginUi {
             dialog.saveButton.isEnabled = !value; dialog.checkButton.isEnabled = !value; dialog.clearButton.isEnabled = !value; dialog.catalogButton.isEnabled = !value
         }
         fun report(): String = buildString {
-            appendLine("AnimeGate discovery prototype v8")
+            appendLine("AnimeGate discovery prototype v9")
             appendLine("browser_state=$browserState")
             appendLine("api_seen=${apiSeen.get()}")
             appendLine("auth_seen=${authSeen.get()}")
