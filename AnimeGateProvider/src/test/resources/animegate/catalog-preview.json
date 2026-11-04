@@ -1,0 +1,17 @@
+{
+  "success": true, "message": "Success", "code": 200,
+  "data": {
+    "data": [
+      {
+        "id": "anime-fixture-1", "title": "Fixture Anime", "slug": "fixture-anime",
+        "year": 2015, "status": "COMPLETED",
+        "coverImage": "https://images.example/cover.jpg",
+        "totalEpisodes": 12, "effectiveRating": 83,
+        "genres": [{"id": "genre-fixture", "name": "Akcja", "slug": "akcja"}],
+        "episodeCount": 12
+      }
+    ],
+    "meta": {"total": 3, "page": 1, "limit": 8, "totalPages": 1, "hasNextPage": false, "hasPrevPage": false},
+    "mode": "preview"
+  }
+}

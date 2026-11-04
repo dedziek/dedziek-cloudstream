@@ -1,0 +1,18 @@
+{
+  "success": true, "message": "Success", "code": 200,
+  "data": {
+    "id": "anime-fixture-1", "title": "Fixture Anime", "slug": "fixture-anime",
+    "synopsis": "Syntetyczny opis do testu parsera.",
+    "year": 2015, "status": "COMPLETED", "airingStatus": null,
+    "visibility": "PUBLIC", "duration": "24", "totalEpisodes": 12,
+    "contentVersions": [], "format": null,
+    "coverImage": "https://images.example/cover.jpg", "bannerImage": "https://images.example/banner.jpg",
+    "trailerUrl": null, "anilistId": 21087, "anilistUrl": "https://anilist.co/anime/21087",
+    "anilistAverageScore": 83, "effectiveRating": 83,
+    "ageRating": "16+", "season": "FALL", "seasonYear": null,
+    "genres": [{"id": "genre-fixture", "name": "Akcja", "slug": "akcja"}],
+    "themes": [{"id": "theme-fixture", "name": "Supermoce", "slug": "supermoce"}],
+    "groups": [], "episodeCount": 12,
+    "episodes": [{"id": "episode-fixture-1", "animeId": "anime-fixture-1", "number": 1, "title": null}]
+  }
+}

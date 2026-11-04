@@ -15,7 +15,8 @@ internal class AnimeGateCatalogContract {
         val origin: String = originOf(url)
         val key: String get() = "$origin|$route?$queryKeys"
     }
-    data class Result(val route: String, val queryKeys: String, val status: Int, val shape: String, val origin: String, val parsedEpisodes: Int = -1)
+    data class Result(val route: String, val queryKeys: String, val status: Int, val shape: String, val origin: String,
+                      val parsedEpisodes: Int = -1, val parsedAnime: Int = -1, val parsedDetails: Int = -1)
     private val observed = linkedMapOf<String, Request>()
     private val results = mutableListOf<Result>()
     private var state = "NOT_RUN"
@@ -44,8 +45,15 @@ internal class AnimeGateCatalogContract {
         require(observed[request.key] === request)
         val episodeRoute = AnimeGateAuthPolicy.isApi(request.url) && URI(request.url).rawPath.matches(Regex("/api/[A-Za-z0-9_-]{1,32}/episodes/anime/[^/]+"))
         val episodes = if (status == 200 && !truncated && episodeRoute) runCatching { AnimeGateEpisodeParser.parse(body).size }.getOrDefault(-1) else -1
+        val path = URI(request.url).rawPath
+        val catalogRoute = AnimeGateAuthPolicy.isApi(request.url) && path == "/api/v1/anime/catalog-search"
+        val detailRoute = AnimeGateAuthPolicy.isApi(request.url) && path.matches(Regex("/api/v1/anime/slug/[^/]+"))
+        val anime = if (status == 200 && !truncated && catalogRoute) runCatching { AnimeGateCatalogParser.parsePage(body).anime.size }.getOrDefault(-1) else -1
+        val details = if (status == 200 && !truncated && detailRoute) runCatching {
+            AnimeGateCatalogParser.parseDetails(body, path.substringAfterLast('/')); 1
+        }.getOrDefault(-1) else -1
         val result = Result(request.route, request.queryKeys, status,
-            if (truncated) "truncated" else schema(body), request.origin, episodes)
+            if (truncated) "truncated" else schema(body), request.origin, episodes, anime, details)
         if (results.size < 8) results.add(result)
         return result
     }
@@ -60,6 +68,8 @@ internal class AnimeGateCatalogContract {
             appendLine("catalog_${i + 1}_status=${result.status}")
             appendLine("catalog_${i + 1}_shape=${result.shape}")
             if (result.parsedEpisodes >= 0) appendLine("catalog_${i + 1}_parsed_episodes=${result.parsedEpisodes}")
+            if (result.parsedAnime >= 0) appendLine("catalog_${i + 1}_parsed_anime=${result.parsedAnime}")
+            if (result.parsedDetails >= 0) appendLine("catalog_${i + 1}_parsed_details=${result.parsedDetails}")
         }
     }
 
@@ -102,10 +112,10 @@ internal class AnimeGateCatalogContract {
         private fun propertyName(value: String): Boolean = value.matches(Regex("[a-z][a-zA-Z_]{1,39}")) &&
             value.split(Regex("(?<=[a-z])(?=[A-Z])|_")).all { it.lowercase(Locale.ROOT) in propertyWords }
         private val propertyWords = setOf("include", "with", "group", "by", "source", "sources", "link", "links", "anime", "episode", "episodes", "host", "hoster", "provider", "website", "url", "name", "display", "title", "original", "japanese", "english", "polish", "romaji", "date", "air", "release", "count", "total", "number", "season", "index", "order", "sort", "priority", "position", "duration", "seconds", "minutes", "filler", "special", "is", "has", "available", "enabled", "premium", "quality", "translation", "translated", "translator", "language", "subtitle", "subtitles", "page", "size", "limit", "offset", "query", "search", "filter", "type", "status", "genre", "genres", "tag", "tags", "image", "poster", "cover", "thumbnail", "details", "data", "id")
-        private val routeWords = setOf("api", "anime", "animes", "episodes", "episode", "search", "genres", "genre", "tags", "tag", "catalog", "home", "latest", "recent", "popular", "trending", "featured", "seasonal", "list", "all", "details", "sources", "players", "links", "stream", "videos", "recommendations", "random", "updated", "new", "filters")
-        private val queryWords = setOf("q", "query", "search", "title", "page", "limit", "offset", "perPage", "pageSize", "sort", "order", "genre", "genres", "status", "type", "season", "year", "filter", "language")
+        private val routeWords = setOf("api", "anime", "animes", "episodes", "episode", "search", "genres", "genre", "tags", "tag", "catalog", "home", "latest", "recent", "popular", "trending", "featured", "seasonal", "list", "all", "details", "sources", "players", "links", "stream", "videos", "recommendations", "random", "updated", "new", "filters", "catalog-search", "search-suggestions", "slug")
+        private val queryWords = setOf("q", "query", "search", "title", "page", "limit", "offset", "perPage", "pageSize", "sort", "order", "genre", "genres", "status", "type", "season", "year", "filter", "language", "mode", "publicOnly")
         private val privateWords = setOf("auth", "me", "my", "user", "users", "profile", "account", "history", "watchlist", "favorite", "favorites", "bookmark", "bookmarks", "settings", "notifications", "progress", "tracking", "subscription", "subscriptions", "library", "collections", "personal", "activity", "preferences", "permissions", "roles", "members", "friends", "admin", "add", "delete", "remove", "update", "mark", "follow", "unfollow", "clear", "set", "create", "toggle", "subscribe", "unsubscribe", "rate", "vote", "report", "watch", "play", "csrf", "session", "token", "oauth", "login", "logout", "signin", "signout", "discord", "callback", "authorize", "register", "credentials", "password", "verify", "revalidate", "invalidate", "refresh", "graphql", "trpc", "rpc")
-        private val fields = routeWords + setOf("data", "result", "results", "items", "meta", "pagination", "success", "message", "code", "error", "id", "animeId", "episodeId", "slug", "title", "titles", "name", "romaji", "english", "polish", "native", "alternativeTitles", "description", "synopsis", "poster", "posterUrl", "poster_url", "image", "imageUrl", "image_url", "cover", "coverUrl", "thumbnail", "thumbnailUrl", "year", "releaseYear", "number", "episodeNumber", "episode_number", "seasonNumber", "total", "totalCount", "count", "perPage", "currentPage", "totalPages", "page", "pageSize", "limit", "offset", "hasNextPage", "nextPage", "studio", "studios", "url", "link", "embed", "embedUrl", "videoUrl", "host", "hostName", "language", "quality", "dubbed", "duration", "rating", "ageRating", "translator", "translators", "createdAt", "updatedAt")
+        private val fields = routeWords + setOf("coverImage", "bannerImage", "effectiveRating", "episodeCount", "mode", "hasPrevPage") + setOf("data", "result", "results", "items", "meta", "pagination", "success", "message", "code", "error", "id", "animeId", "episodeId", "slug", "title", "titles", "name", "romaji", "english", "polish", "native", "alternativeTitles", "description", "synopsis", "poster", "posterUrl", "poster_url", "image", "imageUrl", "image_url", "cover", "coverUrl", "thumbnail", "thumbnailUrl", "year", "releaseYear", "number", "episodeNumber", "episode_number", "seasonNumber", "total", "totalCount", "count", "perPage", "currentPage", "totalPages", "page", "pageSize", "limit", "offset", "hasNextPage", "nextPage", "studio", "studios", "url", "link", "embed", "embedUrl", "videoUrl", "host", "hostName", "language", "quality", "dubbed", "duration", "rating", "ageRating", "translator", "translators", "createdAt", "updatedAt")
 
         fun eligible(url: String): Boolean = (AnimeGateAuthPolicy.isApi(url) || AnimeGateAuthPolicy.isSite(url)) && runCatching {
             val uri = URI(url)

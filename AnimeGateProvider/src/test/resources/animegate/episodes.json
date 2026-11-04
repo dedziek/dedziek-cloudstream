@@ -1,0 +1,12 @@
+{
+  "success": true, "message": "Success", "code": 200,
+  "data": [
+    {
+      "id": "episode-fixture-1", "animeId": "anime-fixture-1", "number": 1, "title": null,
+      "malEpisodeId": null, "totalViews": 5,
+      "createdAt": "2026-05-25T13:44:16.542Z", "updatedAt": "2026-10-26T13:57:26.739Z",
+      "anime": {"id": "anime-fixture-1", "title": "Fixture Anime", "slug": "fixture-anime"},
+      "links": [{"id": "link-fixture-1", "label": "Lektor", "order": 0}]
+    }
+  ]
+}

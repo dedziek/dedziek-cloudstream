@@ -1,4 +1,10 @@
-# AnimeGateProvider v7 — parser odcinków i rozpoznanie katalogu
+# AnimeGateProvider v8 — potwierdzone parsery katalogu i odcinków
+
+4 listopada 2026 odczytano rzeczywiste API katalogu, szczegółów i odcinków z zalogowanej karty AnimeGate. [Kontrakt API i zakres obserwacji](ANIMEGATE-API.md) opisuje potwierdzone trasy oraz brakujące dane odtwarzania.
+
+V8 dodaje parser koperty katalogu `data.data` z metadanymi paginacji i parser szczegółów `data`. Przycisk **Test katalogu** sprawdza je na odpowiedziach zaobserwowanych w WebView. Raport zaczyna się od `AnimeGate discovery prototype v8`; pola `catalog_*_parsed_anime` i `catalog_*_parsed_details` podają wyłącznie liczbę sparsowanych pozycji. Pozostaje prototypem w ustawieniach, bez zarejestrowanego katalogu i odtwarzania w CloudStream. Ustalenie kontraktu odtwarzania oraz zakresu cookies klienta pozostaje kolejnym etapem.
+
+## Zakres wcześniejszej wersji v7
 
 Etap rozpoznania katalogu z [planu wdrożenia](ANIMEGATE-PLAN.md). Raporty v5 potwierdziły zwykłe logowanie Discord oraz poprawną sesję klienta HTTP przez `/auth/me`. Raport v6 potwierdził odpowiedź listy odcinków, dla której dodano parser. **Nie rejestruje jeszcze źródła katalogu ani odtwarzania w CloudStream**, ponieważ nadal trzeba ustalić format listy anime, wyszukiwania i źródeł wideo. Publiczne żądanie ze środowiska programistycznego otrzymało HTTP 403/1010; nie próbowano obchodzić tej odmowy.
 

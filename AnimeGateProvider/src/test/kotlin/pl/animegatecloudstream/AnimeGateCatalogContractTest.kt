@@ -4,6 +4,44 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class AnimeGateCatalogContractTest {
+    private fun fixture(name: String) = requireNotNull(javaClass.getResource("/animegate/$name.json")).readText()
+
+    @Test fun checksObservedCatalogAndDetailsWithoutExportingTheirValues() {
+        val catalog = AnimeGateCatalogContract()
+        catalog.observe("GET", "https://api.animegate.pl/api/v1/anime/catalog-search?mode=preview&page=1&limit=8&search=PRIVATE_QUERY&sortBy=rating&sortOrder=desc")
+        catalog.observe("GET", "https://api.animegate.pl/api/v1/anime/slug/fixture-anime")
+        catalog.observe("GET", "https://api.animegate.pl/api/v1/episodes/anime/PRIVATE_ID?publicOnly=true")
+        val requests = catalog.requests()
+        catalog.add(requests[0], 200, fixture("catalog-preview"))
+        catalog.add(requests[1], 200, fixture("anime-detail"))
+        catalog.add(requests[2], 200, fixture("episodes"))
+        val report = catalog.report()
+        assertTrue(report.contains("/api/v1/anime/catalog-search"))
+        assertTrue(report.contains("/api/v1/anime/slug/{param}"))
+        assertTrue(report.contains("query_keys=limit,mode,page,search,sortBy,sortOrder"))
+        assertTrue(report.contains("query_keys=publicOnly"))
+        assertTrue(report.contains("catalog_1_parsed_anime=1"))
+        assertTrue(report.contains("catalog_2_parsed_details=1"))
+        assertTrue(report.contains("catalog_3_parsed_episodes=1"))
+        for (value in listOf("PRIVATE", "fixture-anime", "Fixture Anime", "images.example", "anime-fixture-1")) {
+            assertFalse(value, report.contains(value))
+        }
+    }
+
+    @Test fun doesNotClaimCatalogSuccessForErrorsTruncationWrongSlugsOrOtherRoutes() {
+        val catalog = AnimeGateCatalogContract()
+        catalog.observe("GET", "https://api.animegate.pl/api/v1/anime/catalog-search")
+        catalog.observe("GET", "https://api.animegate.pl/api/v1/anime/search-suggestions?q=PRIVATE")
+        catalog.observe("GET", "https://api.animegate.pl/api/v1/anime/slug/wrong-slug")
+        val requests = catalog.requests()
+        assertEquals(-1, catalog.add(requests[0], 403, fixture("catalog-preview")).parsedAnime)
+        assertEquals(-1, catalog.add(requests[0], 200, fixture("catalog-preview"), true).parsedAnime)
+        assertEquals(-1, catalog.add(requests[1], 200, fixture("catalog-preview")).parsedAnime)
+        assertEquals(-1, catalog.add(requests[2], 200, fixture("anime-detail")).parsedDetails)
+        catalog.observe("POST", "https://api.animegate.pl/api/v1/episodes/PRIVATE/playback")
+        assertEquals(3, catalog.requests().size)
+    }
+
     @Test fun supportsObservedFrontendProxiesAndBackendNamespacesWithoutMixingOrigins() {
         val catalog = AnimeGateCatalogContract()
         val frontend = "https://animegate.pl/api/metadata?includeLinks=true&q=PRIVATE_QUERY"
