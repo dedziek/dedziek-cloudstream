@@ -9,3 +9,5 @@ local.properties
 *.session
 .env
 .env.*
+__pycache__/
+*.pyc

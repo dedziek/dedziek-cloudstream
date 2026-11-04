@@ -45,14 +45,28 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Test background player script
-        run: node --test scripts/test-animewatch-playback.mjs
+      - name: Test player and repository scripts
+        run: |
+          node --test scripts/test-*.mjs
+          python3 -m unittest discover -s scripts -p 'test_*.py'
 
       - name: Compile and test
         run: sh gradlew :FilmanProvider:make :AnimeWatchProvider:make testDebugUnitTest makePluginsJson --no-daemon --console=plain
 
       - name: Validate package and prepare repository
         run: node scripts/prepare-publication.mjs "$GITHUB_REPOSITORY"
+
+      - name: Synchronize selected Phisher plugin
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          previous="$RUNNER_TEMP/previous-phisher-plugins.json"
+          if git cat-file -e origin/builds:phisher-plugins.json 2>/dev/null; then
+            git show origin/builds:phisher-plugins.json > "$previous"
+          fi
+          python3 scripts/sync-phisher.py --previous "$previous" --output build/publication/phisher-plugins.json
 
       - name: Save build artifact
         uses: actions/upload-artifact@v4
@@ -74,10 +88,10 @@ jobs:
             git worktree add --detach "$publication" HEAD
             git -C "$publication" switch --orphan builds
           fi
-          cp build/publication/FilmanProvider.cs3 build/publication/AnimeWatchProvider.cs3 build/publication/plugins.json build/publication/repo.json build/publication/SHA256SUMS.txt "$publication/"
+          cp build/publication/FilmanProvider.cs3 build/publication/AnimeWatchProvider.cs3 build/publication/plugins.json build/publication/phisher-plugins.json build/publication/repo.json build/publication/SHA256SUMS.txt "$publication/"
           git -C "$publication" config user.name 'github-actions[bot]'
           git -C "$publication" config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git -C "$publication" add FilmanProvider.cs3 AnimeWatchProvider.cs3 plugins.json repo.json SHA256SUMS.txt
+          git -C "$publication" add FilmanProvider.cs3 AnimeWatchProvider.cs3 plugins.json phisher-plugins.json repo.json SHA256SUMS.txt
           if ! git -C "$publication" diff --cached --quiet; then
             git -C "$publication" commit -m "Publish CloudStream providers from ${GITHUB_SHA}"
             git -C "$publication" push origin HEAD:builds

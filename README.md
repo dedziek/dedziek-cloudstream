@@ -8,6 +8,7 @@ Repozytorium dodatków do **CloudStream na Androidzie i Android TV / Google TV**
 |---|---|---|
 | **FilmanProvider** | **Filman — konto darmowe (test)** | Darmowe konto Filman, Android 6.0 lub nowszy i działający Android System WebView do logowania |
 | **AnimeWatchProvider** | **AnimeWatch** | Aktualny CloudStream Beta, Android 6.0 lub nowszy; WebView do pobierania źródeł w tle |
+| **ObejrzyjTo** | Dodatek do `obejrzyj.to` autorstwa **Phisher98** | Oryginalna paczka z Phisher Repo; aktualizacje zgodne z wersjami autora |
 
 Filman obsługuje katalog filmów i seriali, wyszukiwanie, listę odcinków oraz zwykłe zewnętrzne odtwarzacze przez ekstraktory CloudStream. Dodatek ma status wersji testowej. Dostępność odtwarzania zależy również od wybranego hostingu i aktualnego działania strony.
 
@@ -24,10 +25,22 @@ Od wersji **FilmanProvider 2** nazwy źródeł w odtwarzaczu zawierają wersję 
    https://github.com/dedziek/dedziek-cloudstream/raw/refs/heads/main/repo.json
    ```
 
-3. Otwórz dodane repozytorium i zainstaluj wybrany dodatek: **FilmanProvider** lub **AnimeWatchProvider**.
+3. Otwórz dodane repozytorium i zainstaluj wybrany dodatek: **FilmanProvider**, **AnimeWatchProvider** lub **ObejrzyjTo**.
 4. Dla Filmana skonfiguruj logowanie według instrukcji poniżej i wybierz źródło **Filman — konto darmowe (test)**. Dla AnimeWatch wybierz źródło **AnimeWatch** — konfiguracja konta nie jest wymagana.
 
 Jeśli repozytorium jest już dodane i działa, wystarczy odświeżyć jego listę dodatków. Ponowne dodawanie repozytorium nie jest potrzebne. Aktualizacje dodatków są publikowane pod tym samym adresem.
+
+## ObejrzyjTo od Phishera i automatyczne aktualizacje
+
+**ObejrzyjTo** to polski dodatek do `obejrzyj.to` z [oryginalnego Phisher Repo](https://github.com/phisher98/cloudstream-extensions-phisher). Repozytorium Dedziek udostępnia jego wpis, z zachowaniem nazwy, autora, opisu, statusu i numeru wersji. Paczka `.cs3` jest pobierana bezpośrednio z konkretnego commita repozytorium Phishera. Nie jest modyfikowana ani przechowywana ponownie tutaj.
+
+CloudStream korzysta ze standardowego mechanizmu aktualizacji zainstalowanych dodatków przy uruchamianiu aplikacji. W **Ustawienia → Aktualizacje i kopie zapasowe** pozostaw włączone **Automatyczne aktualizacje rozszerzeń**; nazwy mogą się różnić zależnie od wersji. Numery wersji i stała nazwa wewnętrzna ObejrzyjTo pozwalają aplikacji aktualizować go tak samo jak pozostałe dodatki. Ustawienia na telefonie nie są zmieniane przez repozytorium.
+
+Zadanie [Update ObejrzyjTo from Phisher](.github/workflows/sync-phisher.yml) odświeża wpis po stronie repozytorium **co godzinę**, a także po ręcznym uruchomieniu. To harmonogram synchronizacji zewnętrznego katalogu; CloudStream sam obsługuje aktualizacje na urządzeniu. Własne dodatki są publikowane po zmianach kodu, zgodnie z oficjalnym szablonem repozytorium. GitHub może opóźnić zaplanowane wykonanie.
+
+Przed publikacją sprawdzane są źródło, autor, API, rozmiar, SHA-256 oraz nazwa i wersja w manifeście paczki. Adres jest przypięty do commita, aby odpowiadał sumie kontrolnej i wersji również po następnej publikacji Phishera. Błąd pobierania lub niezgodna paczka nie zastępują ostatniej opublikowanej listy. Synchronizacja nie instaluje dodatku na urządzeniu i nie potwierdza odtwarzania.
+
+Jeżeli masz już ObejrzyjTo zainstalowany z Phisher Repo, korzystaj z jednej instalacji tego źródła; CloudStream rozróżnia instalacje po repozytorium.
 
 ## Logowanie do Filmana
 
@@ -88,7 +101,7 @@ W [Issues](https://github.com/dedziek/dedziek-cloudstream/issues) podaj wersję 
 ## Kod, kompilacja i publikacja
 
 - Gałąź **`main`** zawiera kod źródłowy, instrukcję i manifest repozytorium.
-- Gałąź **`builds`** zawiera opublikowane pliki `.cs3`, `plugins.json`, `repo.json` i sumy kontrolne.
+- Gałąź **`builds`** zawiera własne pliki `.cs3`, `plugins.json`, `phisher-plugins.json`, `repo.json` i sumy kontrolne własnych paczek.
 - [GitHub Actions](https://github.com/dedziek/dedziek-cloudstream/actions) kompiluje dodatki, uruchamia testy i publikuje pliki instalacyjne.
 - Parametry kompilacji i wyniki testów Filmana opisuje [BUILD-INFO.md](BUILD-INFO.md).
 

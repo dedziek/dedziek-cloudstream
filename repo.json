@@ -1,8 +1,9 @@
 {
-  "name": "Dedziek CloudStream — Filman i AnimeWatch",
-  "description": "Dodatki Filman dla darmowego konta i AnimeWatch. Wersje testowe; sesja Filmana pozostaje na urządzeniu użytkownika.",
+  "name": "Dedziek CloudStream — polskie źródła",
+  "description": "Filman i AnimeWatch oraz ObejrzyjTo autorstwa Phisher98.",
   "manifestVersion": 1,
   "pluginLists": [
-    "https://raw.githubusercontent.com/dedziek/dedziek-cloudstream/builds/plugins.json"
+    "https://raw.githubusercontent.com/dedziek/dedziek-cloudstream/builds/plugins.json",
+    "https://raw.githubusercontent.com/dedziek/dedziek-cloudstream/builds/phisher-plugins.json"
   ]
 }
