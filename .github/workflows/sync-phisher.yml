@@ -4,6 +4,12 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '17 * * * *'
+  push:
+    branches: [main, master]
+    paths:
+      - '.github/workflows/sync-phisher.yml'
+      - 'scripts/sync-phisher.py'
+      - 'scripts/test_sync_phisher.py'
 
 permissions:
   contents: write
