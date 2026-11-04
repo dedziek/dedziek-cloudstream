@@ -1,5 +1,15 @@
 # Weryfikacja Filmana
 
+## Wersja 3 — zgodność okna logowania z Cloudflare
+
+4 listopada 2026: kompilacja kodu Androida i **37 testów Filmana, 0 błędów** zakończone poprawnie. Dodano cztery testy polityki nawigacji ramek i zakresu przekazywania zapisanych ciasteczek. Parametry lokalnego sprawdzenia: JDK 21.0.13, Android SDK 35, Kotlin 2.3.0.
+
+Okno logowania akceptuje ciasteczka potrzebne osadzonej weryfikacji, zachowuje rzeczywisty identyfikator WebView i dopuszcza ramki `challenges.cloudflare.com`, `about:blank` i `about:srcdoc` w starszym callbacku nawigacji. Główny dokument i zapisane ciasteczka pozostają ograniczone do HTTPS `filman.cc`. Konfigurację porównano z [oficjalnymi wymaganiami Cloudflare dla aplikacji mobilnych](https://developers.cloudflare.com/turnstile/get-started/mobile-implementation/).
+
+Dodano widoczny stan ładowania, komunikaty błędów HTTP/połączenia/certyfikatu i ręczne odświeżanie. Nie jest wykonywane automatyczne rozwiązywanie weryfikacji. Walidacja certyfikatów i blokada dostępu do plików pozostają aktywne.
+
+Nie potwierdzono przejścia Cloudflare ani logowania na fizycznym urządzeniu. Jedna publiczna próba adresu `/logowanie` z tego środowiska zwróciła HTTP 403 i stronę „Sorry, you have been blocked”; nie ponawiano jej w celu obejścia tej blokady. Poprawka zgodności WebView nie gwarantuje zniesienia odmowy dostępu nałożonej przez serwis.
+
 ## Wersja 2 — oznaczenia źródeł
 
 3 listopada 2026: lokalna kompilacja `:FilmanProvider:make` zakończona poprawnie; **33 testy parsera, 0 błędów**. Nowe przypadki obejmują wersje językowe, brak oznaczenia, odczyt oznaczenia z klasy wiersza oraz wspólny adres z różnymi wersjami. Nazwa widoczna w odtwarzaczu zawiera wersję i jakość z tabeli Filmana, przy zachowaniu danych ekstraktora potrzebnych do odtwarzania. Wersję dodatku podniesiono do 2. Wyświetlanie na fizycznym urządzeniu wymaga próby użytkownika.

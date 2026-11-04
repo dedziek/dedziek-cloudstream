@@ -1,4 +1,4 @@
-version = 2
+version = 3
 cloudstream {
     description = "Filman: darmowe konto, logowanie w oknie strony. Wersja testowa; wymaga weryfikacji na urządzeniu."
     authors = listOf("FilmanCloudStream contributors")

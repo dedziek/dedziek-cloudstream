@@ -4,6 +4,8 @@ import android.app.Activity
 import android.app.AlertDialog
 import android.content.Context
 import android.content.ContextWrapper
+import android.graphics.Bitmap
+import android.net.http.SslError
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -11,6 +13,8 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
 import android.webkit.CookieManager
+import android.webkit.SslErrorHandler
+import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
@@ -55,11 +59,13 @@ object FilmanLoginUi {
             toast(activity, "Nie można uruchomić Android System WebView. Sprawdź jego instalację i aktualizacje.")
             return
         }
-        val userAgent = WebSettings.getDefaultUserAgent(activity)
+        // Retain the actual WebView identity for the entire verification/login session.
+        val userAgent = web.settings.userAgentString
         web.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
-            userAgentString = userAgent
+            loadWithOverviewMode = true
+            useWideViewPort = true
             allowFileAccess = false
             allowContentAccess = false
             allowFileAccessFromFileURLs = false
@@ -75,7 +81,16 @@ object FilmanLoginUi {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             web.importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS
         }
-        CookieManager.getInstance().setAcceptThirdPartyCookies(web, false)
+        val manager = CookieManager.getInstance()
+        manager.setAcceptCookie(true)
+        // Turnstile's verification frames need cookies in this login WebView.
+        manager.setAcceptThirdPartyCookies(web, true)
+        val padding = (16 * activity.resources.displayMetrics.density).toInt()
+        val status = TextView(activity).apply {
+            text = "Ładowanie strony logowania…"
+            setPadding(padding, padding / 2, padding, padding / 2)
+        }
+        var pageError: String? = null
         web.setDownloadListener { _, _, _, _, _ -> toast(activity, "To okno służy wyłącznie do logowania.") }
         web.webViewClient = object : WebViewClient() {
             override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
@@ -91,7 +106,43 @@ object FilmanLoginUi {
                 return request.isForMainFrame && blockExternal(request.url.toString())
             }
 
-            override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean = blockExternal(url)
+            override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {
+                if (FilmanLoginPolicy.allowLegacyNavigation(url)) return false
+                return blockExternal(url)
+            }
+
+            override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
+                pageError = null
+                status.text = "Ładowanie strony logowania…"
+            }
+
+            override fun onPageFinished(view: WebView, url: String) {
+                status.text = pageError ?: "Jeżeli strona prosi o weryfikację, dokończ ją samodzielnie. Po zalogowaniu wybierz „Zapisz sesję”."
+            }
+
+            override fun onReceivedHttpError(view: WebView, request: WebResourceRequest, response: WebResourceResponse) {
+                if (!request.isForMainFrame) return
+                pageError = when (response.statusCode) {
+                    403 -> "Strona odmówiła dostępu (HTTP 403). Jeśli Cloudflare wyświetla „Sorry, you have been blocked”, sprawdź ten sam adres w zwykłej przeglądarce. Zapis sesji nie usuwa blokady serwisu."
+                    429 -> "Strona ograniczyła liczbę prób (HTTP 429). Odczekaj przed kolejną próbą."
+                    else -> "Nie udało się otworzyć strony (HTTP ${response.statusCode})."
+                }
+                status.text = pageError
+            }
+
+            override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
+                if (!request.isForMainFrame) return
+                pageError = "Błąd połączenia ze stroną logowania (${error.errorCode})."
+                status.text = pageError
+            }
+
+            override fun onReceivedSslError(view: WebView?, handler: SslErrorHandler?, error: SslError?) {
+                handler?.cancel()
+                if (error?.url?.let(FilmanSession::isFilmanUrl) == true) {
+                    pageError = "Błąd certyfikatu HTTPS Filmana. Nie można bezpiecznie otworzyć logowania."
+                    status.text = pageError
+                }
+            }
 
             private fun blockExternal(url: String): Boolean {
                 if (FilmanSession.isFilmanUrl(url)) return false
@@ -100,19 +151,20 @@ object FilmanLoginUi {
             }
             // Default WebView certificate and Safe Browsing handling is retained.
         }
-        val padding = (16 * activity.resources.displayMetrics.density).toInt()
         val content = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
             addView(TextView(activity).apply {
-                text = "Zaloguj się w formularzu Filmana. Po zalogowaniu naciśnij „Zapisz sesję”. Sam zapis nie potwierdza poprawnego logowania."
+                text = "Zaloguj się w formularzu Filmana. Sam zapis ciasteczek nie potwierdza poprawnego logowania."
                 setPadding(padding, padding / 2, padding, padding / 2)
             }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+            addView(status, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             addView(web, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
         }
         val dialog = AlertDialog.Builder(activity)
             .setTitle("Logowanie — filman.cc")
             .setView(content)
             .setPositiveButton("Zapisz sesję", null)
+            .setNeutralButton("Odśwież", null)
             .setNegativeButton("Zamknij", null)
             .create()
         dialog.setOnShowListener {
@@ -141,6 +193,10 @@ object FilmanLoginUi {
                 } catch (_: Exception) {
                     toast(activity, "Nie udało się zapisać sesji na urządzeniu. Spróbuj ponownie.")
                 }
+            }
+            dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
+                if (FilmanSession.isFilmanUrl(web.url.orEmpty())) web.reload()
+                else web.loadUrl("${FilmanSession.BASE_URL}/logowanie")
             }
             web.requestFocus()
             web.loadUrl("${FilmanSession.BASE_URL}/logowanie")

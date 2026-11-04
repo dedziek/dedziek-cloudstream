@@ -39,6 +39,8 @@ Jeśli repozytorium jest już dodane i działa, wystarczy odświeżyć jego list
 
 Komunikat zapisu potwierdza zapis ciasteczek; poprawność logowania sprawdzisz, korzystając ze źródła. Dodatek korzysta ze zwykłych źródeł dla darmowego konta. Nie obsługuje API Premium ani czasowych podglądów „free premium”.
 
+Wersja 3 Filmana obsługuje ciasteczka osadzonej weryfikacji Cloudflare i zachowuje identyfikator przeglądarki przez całą sesję. Okno pokazuje błędy połączenia oraz odpowiedzi HTTP i udostępnia przycisk **Odśwież** do ręcznego ponowienia ładowania.
+
 ## Telefon i telewizor
 
 Na Android TV / Google TV dodaj ten sam link repozytorium. Do logowania potrzebny jest działający **Android System WebView** i możliwość wpisania danych konta; część urządzeń TV nie udostępnia odpowiedniego WebView. Zgodność z konkretnymi modelami telewizorów nie została przetestowana.
@@ -56,6 +58,12 @@ Sesję Filmana trzeba utworzyć osobno na każdym urządzeniu. Kopia ustawień C
 ### Katalog działa, ale wyszukiwanie lub odtwarzanie prosi o logowanie
 
 Otwórz zębatkę **FilmanProvider**, zaloguj się ponownie i wybierz **Zapisz sesję**. Sesja może wygasnąć po stronie serwisu.
+
+### Okno logowania jest puste lub zatrzymuje się na Cloudflare
+
+Jeśli strona pokazuje interaktywną weryfikację, wykonaj ją samodzielnie w oknie dodatku. Wersja 3 dopuszcza wymagane ramki Cloudflare także w starszym interfejsie WebView. Nie zmienia to domeny, do której mogą trafiać zapisane ciasteczka Filmana: pozostaje nią wyłącznie `https://filman.cc`.
+
+Komunikat **Sorry, you have been blocked** lub utrzymujący się HTTP 403 może oznaczać odmowę dostępu przez serwis. Sprawdź ten sam adres w zwykłej przeglądarce na tym samym urządzeniu. Jeżeli również tam pojawia się blokada, sama zmiana dodatku nie przywróci dostępu. Logowanie w zewnętrznej przeglądarce nie przenosi automatycznie sesji do CloudStream.
 
 ### Nie działa wybrany odtwarzacz
 
