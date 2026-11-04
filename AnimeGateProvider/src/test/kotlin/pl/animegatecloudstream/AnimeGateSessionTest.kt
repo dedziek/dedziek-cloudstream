@@ -15,6 +15,14 @@ import org.robolectric.annotation.Config
 class AnimeGateSessionTest {
     private val context: Context get() = RuntimeEnvironment.getApplication()
     private val key = SecretKeySpec(ByteArray(16) { 7 }, "AES")
+    @Test fun backendSnapshotNeverForwardsItsCookiesToFrontendAuthOrOtherVersions() {
+        val backend = "https://api.animegate.pl/api/v7/auth/session"
+        AnimeGateSession(context, { 1000 }, { key }).save(backend, "api_session=PRIVATE", "Real WebView")
+        val restored = AnimeGateSession(context, { 1001 }, { key })
+        assertEquals("api_session=PRIVATE", restored.cookieHeader(backend))
+        for (url in listOf(AnimeGateAuthPolicy.ROOT, AnimeGateAuthPolicy.SESSION, "https://auth.animegate.pl/api/auth/discord/callback", "https://api.animegate.pl/api/v8/auth/session", "https://discord.com/")) assertEquals("", restored.cookieHeader(url))
+        assertThrows(IllegalArgumentException::class.java) { restored.save("https://auth.animegate.pl/api/auth/session", "private=value", "WebView") }
+    }
     @Test fun encryptedSnapshotSurvivesRecreationAndHasAnExactUrlScope() {
         val session = AnimeGateSession(context, { 1000 }, { key })
         session.save(AnimeGateAuthPolicy.SESSION, "private_session=SECRET", "Real WebView")

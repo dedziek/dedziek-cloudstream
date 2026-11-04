@@ -4,6 +4,13 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class AnimeGateProbeTest {
+    @Test fun observedBackendSessionCanBeClassifiedWithoutFollowingAuthRedirects() {
+        val backend = "https://api.animegate.pl/api/v7/auth/session"
+        assertEquals(AnimeGateProbe.Outcome.VERIFIED_SESSION_API, AnimeGateProbe.classify(backend, 200, """{"user":{"id":"PRIVATE"}}""").outcome)
+        assertEquals(AnimeGateProbe.Outcome.LOGIN_REQUIRED, AnimeGateProbe.classify(backend, 200, "{}").outcome)
+        assertEquals(AnimeGateProbe.Outcome.UNCONFIRMED, AnimeGateProbe.classify(backend, 200, "<html>Loading</html>").outcome)
+        assertEquals(AnimeGateProbe.Outcome.LOGIN_REQUIRED, AnimeGateProbe.classify(backend, 302, "", "https://auth.animegate.pl/api/auth/discord/start?state=SECRET").outcome)
+    }
     @Test fun verifiesOnlyTheSessionApiAndDoesNotExposeItsPrivateFields() {
         val evidence = AnimeGateProbe.classify(AnimeGateAuthPolicy.SESSION, 200, """{"user":{"name":"SECRET","email":"private@example.com"}}""")
         assertEquals(AnimeGateProbe.Outcome.VERIFIED_SESSION_API, evidence.outcome)

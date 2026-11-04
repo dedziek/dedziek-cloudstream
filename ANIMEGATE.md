@@ -1,4 +1,4 @@
-# AnimeGateProvider v3 — prototyp logowania
+# AnimeGateProvider v4 — prototyp logowania
 
 Pierwszy etap [planu wdrożenia](ANIMEGATE-PLAN.md). Ta wersja dodaje ustawienia logowania i test sesji. **Nie rejestruje źródła katalogu ani odtwarzania**, ponieważ dostęp po Discord OAuth trzeba najpierw potwierdzić na urządzeniu. Publiczne żądanie z środowiska programistycznego otrzymało HTTP 403/1010; nie próbowano obchodzić tej odmowy.
 
@@ -15,11 +15,13 @@ Do normalnego logowania użytkownik używa własnego konta w formularzu strony. 
 
 ## Co oznacza wynik
 
-W v3 naprawiono blokadę `HOST_NOT_ALLOWED` dla `api.animegate.pl`, wykazaną w raporcie z telefonu. Przeglądarka dopuszcza tę dokładną domenę HTTPS podczas przejścia do Discorda i jako domenę callbacku OAuth. Pozostałe niepotwierdzone subdomeny pozostają zablokowane. Parametry autoryzacji nie są przepisywane ani odczytywane do raportu.
+W v4 naprawiono kolejną blokadę `HOST_NOT_ALLOWED`, tym razem dla `auth.animegate.pl`. Logowanie i callback Discord OAuth dopuszczają teraz dokładne domeny HTTPS: `animegate.pl`, `api.animegate.pl` i `auth.animegate.pl`. Pozostałe niepotwierdzone subdomeny pozostają zablokowane. Parametry autoryzacji nie są przepisywane ani odczytywane do raportu.
 
-Pole `api_seen` wskazuje, że przeglądarka dotarła do serwera API. Wiersze `api_route` obejmują teraz również obserwowane żądania do tej domeny i wskazują, czy trasa pochodzi z `animegate.pl`, czy `api.animegate.pl`. Wartości query i fragmenty są usuwane, a zmienne segmenty ścieżek maskowane. Nie wysyła się na tej podstawie zgadywanych żądań do API.
+Pola `api_seen` i `auth_seen` wskazują, że przeglądarka dotarła do odpowiednich serwerów. Wiersze `api_route` obejmują obserwowane żądania z trzech domen. Wartości query i fragmenty są usuwane, a zmienne segmenty ścieżek maskowane.
 
-Rozszerzenie listy domen logowania nie rozszerza zakresu zapisanych nagłówków klienta HTTP. Dane cookies API pozostają obsługiwane przez WebView zgodnie z regułami przeglądarki; prototyp nie kopiuje zapisanego nagłówka strony głównej do serwera API. Działanie logowania i użytecznej sesji po restarcie wymaga ponownej próby na urządzeniu.
+Raport z telefonu pokazał też żądanie do trasy API o wzorcu `/api/{param}/auth/session`. V4 zapamiętuje dokładny adres, jeżeli WebView faktycznie wysłał do niego GET, a adres nie zawiera query ani fragmentu. Po wybraniu **Zapisz i sprawdź** ten zaobserwowany endpoint ma pierwszeństwo przed frontendem. Numer wersji ani adres API nie są zgadywane lub konstruowane. Nagłówek cookies jest pobierany dla właściwego adresu API; nagłówek strony głównej nie jest tam przekazywany.
+
+Pola `observed_session_origin` i `saved_session_origin` przyjmują `API`, `SITE` albo `NONE`. Pierwsze opisuje obserwacje bieżącego okna, drugie zapis używany po restarcie. Obserwacja endpointu nie oznacza zalogowania. Działanie logowania i użytecznej sesji po restarcie wymaga ponownej próby na urządzeniu.
 
 W v2 poprawiono obsługę pustej strony pośredniej `about:blank` w głównej ramce WebView. Taka strona nie jest traktowana jako domena AnimeGate i nigdy nie służy do pobierania cookies ani zapisu sesji. Nadal nie potwierdzono rzeczywistego logowania na urządzeniu.
 
@@ -27,7 +29,7 @@ Jeżeli pojawi się `REDIRECT_BLOCKED`, wybierz **Raport**. Pola `first_block_ho
 
 Raport v1 nie zawierał celu przekierowania i nie pozwalał ustalić, co dokładnie zatrzymało logowanie. Nowe dane pozwolą odróżnić pustą stronę, nieobsługiwaną domenę logowania, zewnętrzny schemat aplikacji i callback do innej domeny. Nie rozszerzono automatycznie uprawnień na niepotwierdzone domeny.
 
-- `VERIFIED_SESSION_API`: przeglądarka faktycznie zażądała z AnimeGate `/api/auth/session`, a klient dodatku otrzymał z tego samego endpointu niepusty obiekt użytkownika. Dane użytkownika są odczytywane wyłącznie jako sygnał i nie trafiają do raportu.
+- `VERIFIED_SESSION_API`: klient dodatku otrzymał z zaobserwowanego endpointu sesji niepusty obiekt `user`. Inny lub nieznany format odpowiedzi pozostaje niepotwierdzony. Dane użytkownika są odczytywane wyłącznie jako sygnał i nie trafiają do raportu.
 - `PAGE_CANDIDATE`: klient dostał HTML z elementem wylogowania i odnośnikiem katalogu. To wskazówka do dalszej analizy, nie potwierdzenie działania API.
 - `UNCONFIRMED`: odpowiedź może być samą powłoką JavaScript albo innym niepotwierdzonym formatem. Sam HTTP 200 i obecność cookie nie potwierdzają logowania.
 - `LOGIN_REQUIRED`: zasób odrzucił sesję lub skierował do logowania.
@@ -40,7 +42,7 @@ Endpoint sesji nie jest zakładany jako istniejący: żądanie do niego jest doz
 
 Zapis obejmuje cookie stosowne do jednego dokładnego adresu testu, rzeczywisty User-Agent WebView i czas zapisu. Jest zaszyfrowany AES-GCM kluczem Android Keystore w osobnym pliku poza kopią zapasową. Po zmianie User-Agent test wymaga nowego logowania zamiast podszywania się pod poprzednią wersję przeglądarki.
 
-Nie są eksportowane tokeny konta Discord, jego cookies ani zawartość formularzy. Zapisany nagłówek cookies klienta HTTP nie jest wysyłany do Discorda, serwera API, innych domen ani innych ścieżek. Usunięcie sesji dotyczy pliku prototypu i cookies strony głównej AnimeGate dla obsługiwanych ścieżek; nie czyści całego magazynu cookies CloudStream ani oddzielnych cookies serwera API. Pełny model wygaśnięcia, usuwania i rotacji sesji będzie zależeć od potwierdzonego interfejsu serwisu.
+Nie są eksportowane tokeny konta Discord, jego cookies ani zawartość formularzy. Zapisany nagłówek cookies klienta HTTP jest wysyłany wyłącznie do dokładnego zapisanego adresu testu, bez podążania za przekierowaniami. Nie jest przenoszony pomiędzy stroną główną, API, serwerem logowania i Discordem. Usunięcie sesji dotyczy pliku prototypu i cookies dla obsługiwanych adresów testu strony głównej oraz zaobserwowanego lub zapisanego API; nie czyści całego magazynu cookies CloudStream ani sesji Discorda. Pełny model wygaśnięcia, usuwania i rotacji sesji będzie zależeć od potwierdzonego interfejsu serwisu.
 
 Raport zawiera stałe kategorie stanu, kody HTTP, wartości logiczne, domeny zablokowanych przekierowań oraz uproszczone ścieżki API i nawigacji. Nie zachowuje pełnych adresów ani danych użytkownika w adresie. Segmenty ścieżek spoza zamkniętego słownika są zastępowane `{param}`; query i fragmenty nie są kopiowane. Konsola JavaScript stron logowania nie jest przekazywana do logów dodatku. Nie ma mostka JavaScript ani wstrzykiwania kodu na stronach Discorda.
 
