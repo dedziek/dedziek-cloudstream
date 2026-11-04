@@ -4,7 +4,6 @@ import android.app.Activity
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
-import android.webkit.WebView
 import android.widget.TextView
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -36,7 +35,9 @@ class FilmanLoginDialogTest {
         val activity = controller.get()
         activity.setTheme(theme)
         controller.setup()
-        val web = WebView(activity)
+        // ShadowWebView installs a no-op provider, including onMeasure. Use a normal
+        // Android View to test the space allocated to the browser by the real layout.
+        val web = View(activity)
         val status = TextView(activity).apply { text = message }
         val dialog = FilmanLoginDialog(activity, web, status)
         try {
@@ -50,8 +51,8 @@ class FilmanLoginDialogTest {
             root.layout(0, 0, width, height)
 
             // A loaded page cannot be seen when the browser collapses to zero, as in v3.
-            assertTrue("Browser must have room to display the login form", web.height >= 100 * density)
-            assertTrue("Browser must span the window", web.width >= width * 0.9)
+            assertTrue("Browser must have room to display the login form: ${web.width}x${web.height}", web.height >= 100 * density)
+            assertTrue("Browser must span the window: ${web.width} / $width", web.width >= width * 0.9)
             val actions = dialog.saveButton.parent as ViewGroup
             assertTrue("Actions must remain below the browser", actions.top >= web.bottom)
             assertTrue("Actions must remain inside the window", actions.bottom <= height)
@@ -65,7 +66,6 @@ class FilmanLoginDialogTest {
         } finally {
             dialog.dismiss()
             (web.parent as? ViewGroup)?.removeView(web)
-            web.destroy()
             controller.pause().stop().destroy()
         }
     }
