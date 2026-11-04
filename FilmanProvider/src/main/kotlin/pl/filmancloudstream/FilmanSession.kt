@@ -168,10 +168,6 @@ class FilmanSession(context: Context) {
         private const val KEY_ALIAS = "pl.filmancloudstream.session.v1"
         private val ORIGINS = listOf(BASE_URL)
 
-        fun isFilmanUrl(url: String): Boolean = runCatching {
-            val parsed = URI(url)
-            parsed.scheme.equals("https", true) && parsed.host.equals("filman.cc", true) &&
-                parsed.userInfo == null && (parsed.port == -1 || parsed.port == 443)
-        }.getOrDefault(false)
+        fun isFilmanUrl(url: String): Boolean = FilmanLoginPolicy.isFilmanUrl(url)
     }
 }
