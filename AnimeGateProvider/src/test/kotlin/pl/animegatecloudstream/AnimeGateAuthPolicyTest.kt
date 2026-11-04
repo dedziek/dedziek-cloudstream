@@ -4,6 +4,16 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class AnimeGateAuthPolicyTest {
+    @Test fun authServiceAndItsDiscordCallbackAreAllowedWithoutGrantingCookieCapture() {
+        val auth = "https://auth.animegate.pl/api/auth/discord/start"
+        assertTrue(AnimeGateAuthPolicy.allowMainNavigation(auth))
+        assertTrue(AnimeGateAuthPolicy.allowLegacyNavigation(auth))
+        assertTrue(AnimeGateAuthPolicy.allowMainNavigation("https://discord.com/oauth2/authorize?redirect_uri=https%3A%2F%2Fauth.animegate.pl%2Fapi%2Fauth%2Fdiscord%2Fcallback&state=PRIVATE"))
+        assertFalse(AnimeGateAuthPolicy.canCapture(auth))
+        assertFalse(AnimeGateAuthPolicy.isProbeUrl(auth))
+        for (url in listOf("http://auth.animegate.pl/", "https://auth.animegate.pl.evil.com/", "https://other.animegate.pl/", "https://private@auth.animegate.pl/", "https://auth.animegate.pl:444/")) assertFalse(url, AnimeGateAuthPolicy.allowMainNavigation(url))
+        assertFalse(AnimeGateAuthPolicy.allowMainNavigation("https://discord.com/oauth2/authorize?redirect_uri=https%3A%2F%2Fauth.animegate.pl.evil.com%2Fcallback"))
+    }
     @Test fun apiLoginAndItsDiscordCallbackAreAllowedWithoutGrantingCookieCapture() {
         val start = "https://api.animegate.pl/api/v1/auth/discord"
         val callback = "https://api.animegate.pl/api/v1/auth/discord/callback?code=SECRET&state=PRIVATE"
@@ -42,7 +52,7 @@ class AnimeGateAuthPolicyTest {
         assertTrue(AnimeGateAuthPolicy.canCapture(AnimeGateAuthPolicy.ROOT))
         for (url in listOf("https://discord.com/", AnimeGateAuthPolicy.LOGIN, "https://animegate.pl/api/auth/callback/discord?code=secret", "https://animegate.pl/?co%64e=secret", "https://animegate.pl/?state=secret")) assertFalse(url, AnimeGateAuthPolicy.canCapture(url))
     }
-    @Test fun probeIsLimitedToTwoCanonicalUrlsAndNotArbitrarySameSitePaths() {
+    @Test fun frontendProbeIsLimitedToTwoCanonicalUrlsAndNotArbitrarySameSitePaths() {
         assertTrue(AnimeGateAuthPolicy.isProbeUrl(AnimeGateAuthPolicy.ROOT))
         assertTrue(AnimeGateAuthPolicy.isProbeUrl(AnimeGateAuthPolicy.SESSION))
         for (url in listOf("https://animegate.pl/anime/private", "https://animegate.pl/%61pi/auth/session", "https://animegate.pl/?token=secret", "https://discord.com/api/auth/session")) assertFalse(AnimeGateAuthPolicy.isProbeUrl(url))

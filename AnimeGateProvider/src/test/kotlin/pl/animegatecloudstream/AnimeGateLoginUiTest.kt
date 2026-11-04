@@ -10,6 +10,7 @@ import android.view.ViewGroup
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
+import android.webkit.CookieManager
 import java.util.concurrent.atomic.AtomicReference
 import org.junit.Assert.*
 import org.junit.Test
@@ -26,22 +27,39 @@ class AnimeGateLoginUiTest {
     @Test fun backendDiscordAndFrontendLoginFlowDoesNotTriggerABlock() = withLogin { activity, dialog, web ->
         val client = web.webViewClient
         val backend = "https://api.animegate.pl/api/v1/auth/discord"
-        val discord = "https://discord.com/oauth2/authorize?redirect_uri=https%3A%2F%2Fapi.animegate.pl%2Fapi%2Fv1%2Fauth%2Fdiscord%2Fcallback&state=SECRET"
-        val callback = "$backend/callback?code=SECRET&state=PRIVATE"
-        for (url in listOf(backend, discord, callback, AnimeGateAuthPolicy.ROOT)) {
+        val auth = "https://auth.animegate.pl/api/auth/discord/start"
+        val discord = "https://discord.com/oauth2/authorize?redirect_uri=https%3A%2F%2Fauth.animegate.pl%2Fapi%2Fauth%2Fdiscord%2Fcallback&state=SECRET"
+        val callback = "https://auth.animegate.pl/api/auth/discord/callback?code=SECRET&state=PRIVATE"
+        assertNull(client.shouldInterceptRequest(web, request("https://api.animegate.pl/api/v7/auth/session")))
+        for (url in listOf(backend, auth, discord, callback, "$backend/callback?code=SECRET", AnimeGateAuthPolicy.ROOT)) {
             assertFalse(url.substringBefore('?'), client.shouldOverrideUrlLoading(web, request(url)))
             assertNull(client.shouldInterceptRequest(web, request(url)))
             client.onPageStarted(web, url, null)
         }
         client.onPageFinished(web, AnimeGateAuthPolicy.ROOT)
         val report = report(activity, dialog)
-        assertTrue(report.contains("AnimeGate login prototype v3"))
+        assertTrue(report.contains("AnimeGate login prototype v4"))
         assertTrue(report.contains("api_seen=true"))
+        assertTrue(report.contains("auth_seen=true"))
+        assertTrue(report.contains("session_api_observed=true"))
+        assertTrue(report.contains("observed_session_origin=API"))
         assertTrue(report.contains("discord_seen=true"))
         assertTrue(report.contains("returned_to_animegate=true"))
         assertTrue(report.contains("blocked_count=0"))
         assertTrue(report.contains("api_route=api.animegate.pl/api/{param}/auth/discord"))
         assertFalse(report.contains("SECRET")); assertFalse(report.contains("PRIVATE"))
+    }
+    @Test fun clearingObservedBackendCookiesPreservesDiscordCookies() = withLogin { _, dialog, web ->
+        val backend = "https://api.animegate.pl/api/v7/auth/session"
+        val manager = CookieManager.getInstance()
+        manager.setCookie(backend, "api_only=PRIVATE_API; Path=/api/v7/auth; Secure")
+        manager.setCookie("https://discord.com/", "discord_only=PRIVATE_DISCORD; Path=/; Secure")
+        assertTrue(manager.getCookie(backend).orEmpty().contains("PRIVATE_API"))
+        web.webViewClient.shouldInterceptRequest(web, request(backend))
+        dialog.clearButton.performClick()
+        shadowOf(Looper.getMainLooper()).idle()
+        assertFalse(manager.getCookie(backend).orEmpty().contains("PRIVATE_API"))
+        assertTrue(manager.getCookie("https://discord.com/").orEmpty().contains("PRIVATE_DISCORD"))
     }
     @Test fun blankNavigationContinuesAndBlockedNavigationCanBeDiagnosedFromTheReport() = withLogin { activity, dialog, web ->
         val client = web.webViewClient

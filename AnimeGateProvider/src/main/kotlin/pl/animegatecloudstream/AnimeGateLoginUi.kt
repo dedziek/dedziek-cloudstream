@@ -24,6 +24,7 @@ import android.webkit.WebViewClient
 import android.widget.TextView
 import android.widget.Toast
 import java.io.ByteArrayInputStream
+import java.net.URI
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -57,8 +58,9 @@ object AnimeGateLoginUi {
         val status = TextView(activity).apply { text = "Ładowanie logowania…"; setPadding(16, 4, 16, 4) }
         val dialog = AnimeGateLoginDialog(activity, web, status)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-        val sessionApi = AtomicBoolean(false)
+        val observedSession = AnimeGateObservedSession()
         val apiSeen = AtomicBoolean(false)
+        val authSeen = AtomicBoolean(false)
         val redirects = AnimeGateRedirectDiagnostics()
         val routes = linkedSetOf<String>()
         var sawDiscord = false
@@ -71,12 +73,17 @@ object AnimeGateLoginUi {
             dialog.saveButton.isEnabled = !value; dialog.checkButton.isEnabled = !value; dialog.clearButton.isEnabled = !value
         }
         fun report(): String = buildString {
-            appendLine("AnimeGate login prototype v3")
+            appendLine("AnimeGate login prototype v4")
             appendLine("browser_state=$browserState")
             appendLine("api_seen=${apiSeen.get()}")
+            appendLine("auth_seen=${authSeen.get()}")
             appendLine("discord_seen=$sawDiscord")
             appendLine("returned_to_animegate=$returned")
-            appendLine("session_api_observed=${sessionApi.get()}")
+            val observed = observedSession.url()
+            appendLine("session_api_observed=${observed != null}")
+            appendLine("observed_session_origin=${when { observed == null -> "NONE"; AnimeGateAuthPolicy.isApi(observed) -> "API"; else -> "SITE" }}")
+            val savedUrl = session.requestUrl()
+            appendLine("saved_session_origin=${when { savedUrl == null -> "NONE"; AnimeGateAuthPolicy.isApi(savedUrl) -> "API"; else -> "SITE" }}")
             appendLine("saved_candidate=${session.hasSession()}")
             appendLine("agent_matches=${session.hasSession() && session.agent() == agent}")
             appendLine("http_checked=$checked")
@@ -142,9 +149,10 @@ object AnimeGateLoginUi {
             override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
                 val url = request.url.toString()
                 if (AnimeGateAuthPolicy.isApi(url)) apiSeen.set(true)
-                if (request.method == "GET" && AnimeGateAuthPolicy.observedSessionApi(url)) sessionApi.set(true)
+                if (AnimeGateAuthPolicy.isAuth(url)) authSeen.set(true)
+                observedSession.observe(request.method, url)
                 AnimeGateAuthPolicy.safeApiPath(url)?.let { route ->
-                    val host = if (AnimeGateAuthPolicy.isApi(url)) "api.animegate.pl" else "animegate.pl"
+                    val host = when { AnimeGateAuthPolicy.isApi(url) -> "api.animegate.pl"; AnimeGateAuthPolicy.isAuth(url) -> "auth.animegate.pl"; else -> "animegate.pl" }
                     synchronized(routes) { if (routes.size < 32) routes.add("$host$route") }
                 }
                 if (request.isForMainFrame && blocked(url, AnimeGateRedirectDiagnostics.Source.MAIN_REQUEST)) {
@@ -155,6 +163,7 @@ object AnimeGateLoginUi {
             override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
                 browserState = "LOADING"
                 if (AnimeGateAuthPolicy.isApi(url)) apiSeen.set(true)
+                if (AnimeGateAuthPolicy.isAuth(url)) authSeen.set(true)
                 if (AnimeGateAuthPolicy.isDiscord(url)) sawDiscord = true
                 if (sawDiscord && AnimeGateAuthPolicy.isSite(url)) returned = true
                 status.text = if (AnimeGateAuthPolicy.isDiscord(url)) "Dokończ logowanie i zgodę na stronie Discorda." else "Ładowanie AnimeGate…"
@@ -181,7 +190,7 @@ object AnimeGateLoginUi {
         }
         dialog.saveButton.setOnClickListener {
             if (!AnimeGateAuthPolicy.canCapture(web.url.orEmpty())) { status.text = "Najpierw zakończ logowanie i wróć do strony AnimeGate."; return@setOnClickListener }
-            val url = if (sessionApi.get()) AnimeGateAuthPolicy.SESSION else AnimeGateAuthPolicy.ROOT
+            val url = observedSession.url() ?: AnimeGateAuthPolicy.ROOT
             check(url, manager.getCookie(url).orEmpty(), true)
         }
         dialog.checkButton.setOnClickListener {
@@ -195,17 +204,21 @@ object AnimeGateLoginUi {
             toast(activity, "Skopiowano raport bez haseł, tokenów i wartości ciasteczek.")
         }
         dialog.clearButton.setOnClickListener {
-            val old = session.requestUrl()?.let(session::cookieHeader).orEmpty()
-            val names = (old + ";" + manager.getCookie(AnimeGateAuthPolicy.ROOT).orEmpty() + ";" + manager.getCookie(AnimeGateAuthPolicy.SESSION).orEmpty())
-                .split(';').map { it.substringBefore('=').trim() }.filter { it.matches(Regex("[!#$%&'*+.^_`|~0-9A-Za-z-]+")) }.distinct()
-            session.clear()
-            for (name in names) for (path in listOf("/", "/auth", "/auth/", "/api", "/api/", "/api/auth", "/api/auth/", "/api/auth/session")) {
-                val expired = "$name=; Max-Age=0; Path=$path; Secure; HttpOnly"
-                manager.setCookie(AnimeGateAuthPolicy.ROOT, expired)
-                manager.setCookie(AnimeGateAuthPolicy.ROOT, "$expired; Domain=animegate.pl")
-                manager.setCookie(AnimeGateAuthPolicy.ROOT, "$expired; Domain=.animegate.pl")
+            val targets = listOfNotNull(AnimeGateAuthPolicy.ROOT, AnimeGateAuthPolicy.SESSION, session.requestUrl(), observedSession.url()).distinct()
+            for (target in targets) {
+                val names = (session.cookieHeader(target) + ";" + manager.getCookie(target).orEmpty())
+                    .split(';').map { it.substringBefore('=').trim() }.filter { it.matches(Regex("[!#$%&'*+.^_`|~0-9A-Za-z-]+")) }.distinct()
+                val uri = URI(target)
+                val parts = uri.rawPath.split('/').filter(String::isNotBlank)
+                val paths = setOf("/", "/auth", "/api", "/api/auth", "/api/auth/session") + parts.indices.map { "/" + parts.take(it + 1).joinToString("/") }
+                for (name in names) for (path in paths.flatMap { listOf(it, it.trimEnd('/') + "/") }.distinct()) {
+                    val expired = "$name=; Max-Age=0; Path=$path; Secure; HttpOnly"
+                    manager.setCookie(target, expired)
+                    for (domain in setOf(uri.host, "animegate.pl")) manager.setCookie(target, "$expired; Domain=$domain")
+                }
             }
-            manager.flush(); checked = false; status.text = "Usunięto zapis i cookies AnimeGate dla obsługiwanych ścieżek. Pozostałe serwisy zachowują swoje sesje."
+            session.clear()
+            manager.flush(); checked = false; status.text = "Usunięto zapis i cookies obsługiwanych adresów testu AnimeGate. Pozostałe serwisy zachowują swoje sesje."
         }
         dialog.setOnDismissListener {
             scope.cancel(); web.stopLoading(); web.clearFormData(); (web.parent as? ViewGroup)?.removeView(web); web.destroy()

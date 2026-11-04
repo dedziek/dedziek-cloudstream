@@ -32,7 +32,7 @@ object AnimeGateProbe {
             }, status)
         }
         if (status !in 200..299 || truncated) return Evidence(Outcome.UNCONFIRMED, status)
-        if (URI(url).path == AnimeGateAuthPolicy.SESSION_PATH) {
+        if (AnimeGateAuthPolicy.isSessionProbeUrl(url)) {
             return try {
                 val json = ObjectMapper().readTree(body)
                 Evidence(when {
@@ -69,7 +69,7 @@ object AnimeGateProbe {
             connection.readTimeout = 12_000
             connection.setRequestProperty("Cookie", cookies)
             connection.setRequestProperty("User-Agent", agent)
-            connection.setRequestProperty("Accept", if (url == AnimeGateAuthPolicy.SESSION) "application/json" else "text/html")
+            connection.setRequestProperty("Accept", if (AnimeGateAuthPolicy.isSessionProbeUrl(url)) "application/json" else "text/html")
             connection.setRequestProperty("Cache-Control", "no-store")
             val status = connection.responseCode
             val bytes = ByteArrayOutputStream()

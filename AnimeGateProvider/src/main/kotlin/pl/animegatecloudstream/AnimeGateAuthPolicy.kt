@@ -10,6 +10,7 @@ object AnimeGateAuthPolicy {
     const val LOGIN = "$BASE/auth/login?next=%2F"
     const val SESSION_PATH = "/api/auth/session"
     const val SESSION = "$BASE$SESSION_PATH"
+    private val apiSessionPath = Regex("/api/[A-Za-z0-9_-]{1,32}/auth/session")
 
     private fun https(url: String): URI? = runCatching {
         val uri = URI(url)
@@ -20,9 +21,10 @@ object AnimeGateAuthPolicy {
 
     fun isSite(url: String): Boolean = https(url)?.host.equals("animegate.pl", true)
     // The real-device login flow redirects here before reaching Discord.
-    // Navigation trust does not grant the HTTP probe access to this origin's cookies.
+    // Navigation trust alone does not grant the HTTP probe access to cookies.
     fun isApi(url: String): Boolean = https(url)?.host.equals("api.animegate.pl", true)
-    fun isLoginOrigin(url: String): Boolean = isSite(url) || isApi(url)
+    fun isAuth(url: String): Boolean = https(url)?.host.equals("auth.animegate.pl", true)
+    fun isLoginOrigin(url: String): Boolean = isSite(url) || isApi(url) || isAuth(url)
     fun isDiscord(url: String): Boolean = https(url)?.host?.lowercase() in setOf("discord.com", "discordapp.com")
 
     // A blank interstitial is not an authenticated origin and can never supply cookies.
@@ -58,15 +60,28 @@ object AnimeGateAuthPolicy {
     }.getOrDefault(false)
 
     // Captured Cookie headers are never widened beyond the exact URL they came from.
-    fun isProbeUrl(url: String): Boolean = isSite(url) && runCatching {
+    fun isProbeUrl(url: String): Boolean = isSessionProbeUrl(url) || (isSite(url) && runCatching {
         val uri = URI(url)
-        uri.rawPath in setOf("/", SESSION_PATH) && uri.rawQuery == null && uri.rawFragment == null
+        uri.rawPath == "/" && uri.rawQuery == null && uri.rawFragment == null
+    }.getOrDefault(false))
+
+    fun isSessionProbeUrl(url: String): Boolean = runCatching {
+        val uri = https(url) ?: return false
+        uri.rawQuery == null && uri.rawFragment == null &&
+            ((isSite(url) && uri.rawPath == SESSION_PATH) || (isApi(url) && apiSessionPath.matches(uri.rawPath)))
     }.getOrDefault(false)
 
-    fun observedSessionApi(url: String): Boolean = isSite(url) && runCatching { URI(url).rawPath == SESSION_PATH }.getOrDefault(false)
+    // The API URL is used only when actually observed as a GET by the page, never constructed.
+    fun observedSessionUrl(url: String): String? = when {
+        isSite(url) && runCatching { URI(url).rawPath == SESSION_PATH }.getOrDefault(false) -> SESSION
+        isApi(url) && isSessionProbeUrl(url) -> url
+        else -> null
+    }
+    fun observedSessionApi(url: String): Boolean = observedSessionUrl(url) != null
 
     fun redirectKind(url: String): String = when {
         isSite(url) -> if (runCatching { URI(url).path.orEmpty().startsWith("/auth/") }.getOrDefault(false)) "LOGIN" else "SITE"
+        isAuth(url) -> "LOGIN"
         isDiscord(url) -> "DISCORD"
         else -> "OTHER"
     }
