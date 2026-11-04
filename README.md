@@ -9,7 +9,7 @@ Repozytorium dodatków do **CloudStream na Androidzie i Android TV / Google TV**
 | **FilmanProvider** | **Filman — konto darmowe (test)** | Darmowe konto Filman, Android 6.0 lub nowszy i działający Android System WebView do logowania |
 | **AnimeWatchProvider** | **AnimeWatch** | Aktualny CloudStream Beta, Android 6.0 lub nowszy; WebView do pobierania źródeł w tle |
 | **ObejrzyjTo** | Dodatek do `obejrzyj.to` autorstwa **Phisher98** | Oryginalna paczka z Phisher Repo; aktualizacje zgodne z wersjami autora |
-| **AnimeGateProvider v2** | **Prototyp logowania w ustawieniach dodatku** | Discord i wymagany dostęp AnimeGate; katalog i odtwarzanie nie są jeszcze udostępnione |
+| **AnimeGateProvider v3** | **Prototyp logowania w ustawieniach dodatku** | Discord i wymagany dostęp AnimeGate; katalog i odtwarzanie nie są jeszcze udostępnione |
 
 Filman obsługuje katalog filmów i seriali, wyszukiwanie, listę odcinków oraz zwykłe zewnętrzne odtwarzacze przez ekstraktory CloudStream. Dodatek ma status wersji testowej. Dostępność odtwarzania zależy również od wybranego hostingu i aktualnego działania strony.
 

@@ -25,6 +25,7 @@ class AnimeGateSessionTest {
         assertEquals("private_session=SECRET", restored.cookieHeader(AnimeGateAuthPolicy.SESSION))
         assertEquals("", restored.cookieHeader(AnimeGateAuthPolicy.ROOT))
         assertEquals("", restored.cookieHeader("https://discord.com/"))
+        assertEquals("", restored.cookieHeader("https://api.animegate.pl/api/v1/auth/discord"))
     }
     @Test fun expiryAndClockRollbackInvalidateThePrototypeSnapshot() {
         var now = 1000L
