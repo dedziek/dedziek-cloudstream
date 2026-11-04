@@ -2,7 +2,7 @@
 
 Data: 4 listopada 2026. Repozytorium: `dedziek/dedziek-cloudstream`.
 
-Status: realizacja etapu 1. Raport v3 wykazał kolejny serwer logowania `auth.animegate.pl` oraz rzeczywiste żądanie API sesji. V4 dopuszcza tę dokładną domenę HTTPS i wykorzystuje zaobserwowany adres endpointu sesji API z jego własnym zakresem cookies. Logowanie i sesja pozostają niepotwierdzone; katalog i odtwarzanie czekają na wynik próby. Instrukcja prototypu: [ANIMEGATE.md](ANIMEGATE.md).
+Status: realizacja etapu 1. Raport v4 potwierdził przejście przeglądarki przez Discord i powrót, lecz klient HTTP nie potwierdził sesji mimo HTTP 200. Zaobserwowano również endpoint bieżącego użytkownika `/auth/me`. V5 nadaje mu pierwszeństwo, obsługuje rozpoznawalne profile i raportuje wyłącznie bezpieczną strukturę JSON. Ponowne użycie sesji przez klienta pozostaje do potwierdzenia; katalog i odtwarzanie czekają na ten wynik. Instrukcja prototypu: [ANIMEGATE.md](ANIMEGATE.md).
 
 ## Cel i docelowa obsługa
 

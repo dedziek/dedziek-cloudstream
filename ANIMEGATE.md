@@ -1,6 +1,6 @@
-# AnimeGateProvider v4 — prototyp logowania
+# AnimeGateProvider v5 — prototyp logowania
 
-Pierwszy etap [planu wdrożenia](ANIMEGATE-PLAN.md). Ta wersja dodaje ustawienia logowania i test sesji. **Nie rejestruje źródła katalogu ani odtwarzania**, ponieważ dostęp po Discord OAuth trzeba najpierw potwierdzić na urządzeniu. Publiczne żądanie z środowiska programistycznego otrzymało HTTP 403/1010; nie próbowano obchodzić tej odmowy.
+Pierwszy etap [planu wdrożenia](ANIMEGATE-PLAN.md). Ta wersja dodaje ustawienia logowania i test sesji. **Nie rejestruje źródła katalogu ani odtwarzania**, ponieważ ponowne użycie sesji przez klienta HTTP trzeba najpierw potwierdzić na urządzeniu. Publiczne żądanie z środowiska programistycznego otrzymało HTTP 403/1010; nie próbowano obchodzić tej odmowy.
 
 ## Próba na telefonie
 
@@ -15,21 +15,27 @@ Do normalnego logowania użytkownik używa własnego konta w formularzu strony. 
 
 ## Co oznacza wynik
 
+Raport v4 potwierdził przejście przeglądarki przez Discord i powrót do AnimeGate, ale natywny klient otrzymał z endpointu sesji HTTP 200 bez rozpoznanego potwierdzenia użytkownika. V5 wybiera zaobserwowane GET `/api/{param}/auth/me` przed `/auth/session`, ponieważ dotyczy ono bieżącego użytkownika. Adres nadal pochodzi z rzeczywistego żądania strony, bez zgadywania wersji API. Po aktualizacji wybierz ponownie **Zapisz i sprawdź**, aby zapisać nowy cel; **Sprawdź zapis** zachowuje dokładny poprzednio zapisany adres.
+
+W polu `http_endpoint` raport wskazuje `API_ME`, `API_SESSION`, `SITE_SESSION` lub `SITE_ROOT`. Pole `http_json_shape` zawiera wyłącznie ograniczoną strukturę odpowiedzi: dozwolone nazwy pól i typy, np. `{data:{id:string,username:string}}`. Wartości, elementy tablic i nieznane nazwy pól nie są kopiowane. Nieznane klucze zastępuje `{field}`. HTML jest oznaczany jako `html`, inny nie-JSON jako `non_json`. Nie przesyłaj surowej odpowiedzi API ani danych konta.
+
+Zewnętrzne przejścia zatrzymane po powrocie do strony AnimeGate nadal są blokowane, ale zwykła anulowana nawigacja nie zastępuje stanu strony błędem logowania. Raport zachowuje dane blokady i licznik `post_login_external_blocks`. Błędne callbacki OAuth oraz blokady na etapie przechwytywania żądania nadal oznaczają błąd nawigacji. Żadne nowe zewnętrzne domeny nie zostały dopuszczone.
+
 W v4 naprawiono kolejną blokadę `HOST_NOT_ALLOWED`, tym razem dla `auth.animegate.pl`. Logowanie i callback Discord OAuth dopuszczają teraz dokładne domeny HTTPS: `animegate.pl`, `api.animegate.pl` i `auth.animegate.pl`. Pozostałe niepotwierdzone subdomeny pozostają zablokowane. Parametry autoryzacji nie są przepisywane ani odczytywane do raportu.
 
 Pola `api_seen` i `auth_seen` wskazują, że przeglądarka dotarła do odpowiednich serwerów. Wiersze `api_route` obejmują obserwowane żądania z trzech domen. Wartości query i fragmenty są usuwane, a zmienne segmenty ścieżek maskowane.
 
-Raport z telefonu pokazał też żądanie do trasy API o wzorcu `/api/{param}/auth/session`. V4 zapamiętuje dokładny adres, jeżeli WebView faktycznie wysłał do niego GET, a adres nie zawiera query ani fragmentu. Po wybraniu **Zapisz i sprawdź** ten zaobserwowany endpoint ma pierwszeństwo przed frontendem. Numer wersji ani adres API nie są zgadywane lub konstruowane. Nagłówek cookies jest pobierany dla właściwego adresu API; nagłówek strony głównej nie jest tam przekazywany.
+Prototyp zapamiętuje dokładny adres endpointu sesji lub bieżącego użytkownika, jeżeli WebView faktycznie wysłał do niego GET, a adres nie zawiera query ani fragmentu. Zaobserwowane `/auth/me` ma pierwszeństwo przed sesją API, a sesja API przed frontendem. Numer wersji ani adres API nie są zgadywane lub konstruowane. Nagłówek cookies jest pobierany dla właściwego adresu API; nagłówek strony głównej nie jest tam przekazywany.
 
 Pola `observed_session_origin` i `saved_session_origin` przyjmują `API`, `SITE` albo `NONE`. Pierwsze opisuje obserwacje bieżącego okna, drugie zapis używany po restarcie. Obserwacja endpointu nie oznacza zalogowania. Działanie logowania i użytecznej sesji po restarcie wymaga ponownej próby na urządzeniu.
 
-W v2 poprawiono obsługę pustej strony pośredniej `about:blank` w głównej ramce WebView. Taka strona nie jest traktowana jako domena AnimeGate i nigdy nie służy do pobierania cookies ani zapisu sesji. Nadal nie potwierdzono rzeczywistego logowania na urządzeniu.
+W v2 poprawiono obsługę pustej strony pośredniej `about:blank` w głównej ramce WebView. Taka strona nie jest traktowana jako domena AnimeGate i nigdy nie służy do pobierania cookies ani zapisu sesji.
 
 Jeżeli pojawi się `REDIRECT_BLOCKED`, wybierz **Raport**. Pola `first_block_host`, `first_block_reason`, `first_block_source` i `first_block_callback_host` pokazują domenę celu, powód, miejsce blokady i ewentualną domenę callbacku OAuth. Pierwsza blokada jest zachowana także po późniejszych przejściach. Pole `last_block_*` pojawia się, jeśli ostatnia blokada ma inne dane. Nie przesyłaj pełnego adresu przekierowania — wystarczy raport.
 
 Raport v1 nie zawierał celu przekierowania i nie pozwalał ustalić, co dokładnie zatrzymało logowanie. Nowe dane pozwolą odróżnić pustą stronę, nieobsługiwaną domenę logowania, zewnętrzny schemat aplikacji i callback do innej domeny. Nie rozszerzono automatycznie uprawnień na niepotwierdzone domeny.
 
-- `VERIFIED_SESSION_API`: klient dodatku otrzymał z zaobserwowanego endpointu sesji niepusty obiekt `user`. Inny lub nieznany format odpowiedzi pozostaje niepotwierdzony. Dane użytkownika są odczytywane wyłącznie jako sygnał i nie trafiają do raportu.
+- `VERIFIED_SESSION_API`: klient otrzymał z zaobserwowanego endpointu rozpoznawalny profil: niepusty identyfikator i pole nazwy lub e-mail. Obsługiwany jest obiekt `user` w znanych kontenerach oraz bezpośredni profil z `/auth/me` w korzeniu lub `data`. Jawna odmowa logowania, pusty użytkownik i błędy mają pierwszeństwo przed profilem. Sama metadana sesji lub częściowy profil nie wystarczają. Dane użytkownika nie trafiają do raportu.
 - `PAGE_CANDIDATE`: klient dostał HTML z elementem wylogowania i odnośnikiem katalogu. To wskazówka do dalszej analizy, nie potwierdzenie działania API.
 - `UNCONFIRMED`: odpowiedź może być samą powłoką JavaScript albo innym niepotwierdzonym formatem. Sam HTTP 200 i obecność cookie nie potwierdzają logowania.
 - `LOGIN_REQUIRED`: zasób odrzucił sesję lub skierował do logowania.
