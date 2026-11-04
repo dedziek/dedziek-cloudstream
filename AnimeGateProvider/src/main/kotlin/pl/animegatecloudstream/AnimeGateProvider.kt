@@ -3,24 +3,32 @@ package pl.animegatecloudstream
 import android.webkit.CookieManager
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.ExtractorLink
+import com.lagradost.cloudstream3.utils.loadExtractor
+import com.lagradost.cloudstream3.utils.newExtractorLink
+import kotlinx.coroutines.CancellationException
 import java.net.URI
 import java.math.BigDecimal
 import javax.net.ssl.HttpsURLConnection
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-/** Catalogue preview is usable; playback is explicitly unavailable in this version. */
+/** Uses the observed AnimeGate ticket contract and CloudStream's built-in host extractor. */
 class AnimeGateProvider(private val session: AnimeGateSession) : MainAPI() {
     override var mainUrl = AnimeGateAuthPolicy.BASE
     override var name = "AnimeGate"
     override var lang = "pl"
     override val supportedTypes = setOf(TvType.Anime)
     override val hasMainPage = true
+    override val loadLinksTimeoutMs = 120_000L
     override val mainPage = mainPageOf("preview" to "Najwyżej oceniane — podgląd")
     private val catalog = AnimeGateCatalogApi(::get)
+    private val playback = AnimeGatePlaybackApi(post = { url, body -> request(url, body) })
 
-    private fun get(url: String): String {
-        require(AnimeGateAuthPolicy.isApi(url) && AnimeGateCatalogContract.eligible(url))
+    private fun get(url: String): String = request(url)
+
+    private fun request(url: String, body: String? = null): String {
+        require(if (body == null) AnimeGateAuthPolicy.isApi(url) && AnimeGateCatalogContract.eligible(url)
+            else AnimeGatePlaybackApi.isPostUrl(url))
         if (!session.hasSession()) throw ErrorLoadingException("AnimeGate: otwórz ustawienia dodatku, zaloguj się i wybierz „Zapisz i sprawdź”.")
         // Ask the browser cookie store for THIS exact destination. Never widen the saved
         // auth/me snapshot or forward it to catalogue requests or external image/video hosts.
@@ -37,9 +45,17 @@ class AnimeGateProvider(private val session: AnimeGateSession) : MainAPI() {
             connection.setRequestProperty("Cookie", cookies)
             connection.setRequestProperty("User-Agent", agent)
             connection.setRequestProperty("Accept", "application/json")
+            if (body != null) {
+                connection.requestMethod = "POST"
+                connection.doOutput = true
+                connection.setRequestProperty("Content-Type", "application/json")
+                val bytes = body.toByteArray(Charsets.UTF_8)
+                connection.setFixedLengthStreamingMode(bytes.size)
+                connection.outputStream.use { it.write(bytes) }
+            }
             val status = connection.responseCode
             if (status == 401 || status in 300..399) throw ErrorLoadingException("AnimeGate: sesja wygasła. Zaloguj się ponownie w ustawieniach dodatku.")
-            if (status != 200) throw ErrorLoadingException("AnimeGate: serwis zwrócił HTTP $status. Sprawdź dostęp w ustawieniach dodatku.")
+            if (status !in 200..299) throw ErrorLoadingException("AnimeGate: serwis zwrócił HTTP $status. Sprawdź dostęp w ustawieniach dodatku.")
             val bytes = connection.inputStream.use { input ->
                 val output = java.io.ByteArrayOutputStream()
                 val buffer = ByteArray(8192)
@@ -74,7 +90,7 @@ class AnimeGateProvider(private val session: AnimeGateSession) : MainAPI() {
         val episodes = catalog.episodes(details.anime.id)
         newAnimeLoadResponse(details.anime.title, url, TvType.Anime) {
             posterUrl = details.anime.coverImage; year = details.anime.year
-            plot = "Odtwarzanie w CloudStream nie jest jeszcze dostępne.\n\n" + details.synopsis.orEmpty()
+            plot = details.synopsis
             tags = details.anime.genres
             showStatus = when (details.anime.status) {
                 "COMPLETED" -> ShowStatus.Completed
@@ -92,6 +108,28 @@ class AnimeGateProvider(private val session: AnimeGateSession) : MainAPI() {
 
     override suspend fun loadLinks(data: String, isCasting: Boolean, subtitleCallback: (SubtitleFile) -> Unit,
                                    callback: (ExtractorLink) -> Unit): Boolean {
-        throw ErrorLoadingException("AnimeGate: katalog i odcinki są dostępne, ale odtwarzanie w CloudStream nie jest jeszcze obsługiwane.")
+        return withContext(Dispatchers.IO) {
+            val episode = catalog.watchEpisode(data)
+            var found = false
+            for (version in episode.links.take(8)) {
+                try {
+                    val iframe = playback.resolve(episode.id, version.id)
+                    // Only a public iframe address crosses this boundary, never AnimeGate cookies or tickets.
+                    val extracted = mutableListOf<ExtractorLink>()
+                    loadExtractor(iframe, "$mainUrl/", subtitleCallback) { extracted.add(it) }
+                    for (link in extracted) {
+                        found = true
+                        callback(newExtractorLink("AnimeGate", "${version.label} — ${link.name}", link.url, link.type) {
+                            referer = link.referer; headers = link.headers; quality = link.quality
+                            extractorData = link.extractorData
+                        })
+                    }
+                } catch (error: CancellationException) { throw error }
+                catch (error: ErrorLoadingException) { throw error }
+                catch (_: Exception) { /* Try remaining language versions, without logging response data. */ }
+            }
+            if (!found) throw ErrorLoadingException("AnimeGate: nie uzyskano wideo z dostępnych wersji odcinka. Sprawdź sesję w ustawieniach lub spróbuj później.")
+            true
+        }
     }
 }

@@ -6,7 +6,9 @@ import java.math.BigDecimal
 
 /** The episode-list envelope and fields were confirmed by the v6 device report. */
 internal object AnimeGateEpisodeParser {
-    class Episode(val id: String, val animeId: String, val number: BigDecimal, val title: String?, val linkIds: List<String>) {
+    class Link(val id: String, val label: String)
+    class Episode(val id: String, val animeId: String, val number: BigDecimal, val title: String?, val links: List<Link>) {
+        val linkIds: List<String> get() = links.map { it.id }
         val displayName: String get() = title ?: "Odcinek ${number.stripTrailingZeros().toPlainString()}"
     }
 
@@ -21,8 +23,10 @@ internal object AnimeGateEpisodeParser {
             if (id == null || animeId == null || number == null || (expectedAnimeId != null && animeId != expectedAnimeId)) return@mapNotNull null
             val title = node.path("title").takeIf { it.isTextual }?.asText()?.trim()?.takeIf { it.isNotEmpty() }
             val links = node.path("links").takeIf { it.isArray }?.mapNotNull {
-                it.path("id").takeIf { value -> value.isTextual }?.asText()?.takeIf(String::isNotBlank)
-            }?.distinct().orEmpty()
+                val linkId = it.path("id").takeIf { value -> value.isTextual }?.asText()?.takeIf(String::isNotBlank)
+                val label = it.path("label").takeIf { value -> value.isTextual }?.asText()?.trim()?.takeIf(String::isNotBlank) ?: "Wersja"
+                linkId?.let { value -> Link(value, label) }
+            }?.distinctBy { it.id }.orEmpty()
             Episode(id, animeId, number, title, links)
         }.distinctBy { it.id }.sortedWith(compareBy<Episode> { it.number }.thenBy { it.id })
     }

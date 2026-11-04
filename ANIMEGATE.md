@@ -1,3 +1,14 @@
+# AnimeGateProvider v10 — odtwarzanie i uproszczone logowanie
+
+V10 łączy natywny katalog oraz odcinki z potwierdzonym przez odpowiedzi użytkownika mechanizmem odtwarzania: POST playback z linkId → bilet z expiresIn → POST playback/resolve z ticket → iframeUrl. Bilet jest pobierany na nowo dla każdej wersji językowej, sprawdzany względem czasu ważności i pozostaje wyłącznie w pamięci wywołania. Nie trafia do pliku sesji ani raportu.
+
+Potwierdzony adres ramki Playmogo jest przekazywany do istniejącego ekstraktora CloudStream. Dodatek nie implementuje własnego obchodzenia zabezpieczeń hostingu ani nie przekazuje mu cookies AnimeGate. Zwrócone źródła mają etykiety wersji z API, np. Lektor IVO, Napisy lub Lektor AI. Nie jest wysyłane dodatkowe żądanie view. Błędy sesji przerywają próbę bez ponawiania dla kolejnych wersji.
+
+Okno ustawień pokazuje logowanie, status i jeden wiersz akcji: **Zapisz i sprawdź**, **Zamknij**, **Więcej**. Sprawdzenie zapisu, usunięcie sesji, test katalogu i raport są schowane pod Więcej. Logowanie Discord i godzinny limit zapisu sesji pozostają bez zmian. Katalog nadal korzysta z potwierdzonego podglądu do ośmiu wyników; pełna paginacja pozostaje niezweryfikowana.
+
+Walidacja lokalna: 30 testów czystego kodu JVM. Testy obejmują dwustopniową wymianę biletu, jego wygaśnięcie, błędne koperty, walidację adresu ramki oraz powiązanie odcinka z tytułem. Nie potwierdzają odtwarzania na fizycznym urządzeniu. Zewnętrzny hosting może odmówić dostępu lub zmienić format. Użytkownik potwierdził działanie odcinka w przeglądarce bez F12 i cofanie do listy po otwarciu F12; nie przeprowadzano kolejnej automatycznej próby hostingu.
+
+## Historia v9
 # AnimeGateProvider v9 — źródło na ekranie głównym
 
 V9 rejestruje źródło **AnimeGate** w CloudStream. Po aktualizacji wybierz je w wyborze źródła na ekranie głównym. W ustawieniach dodatku zaloguj się i wybierz **Zapisz i sprawdź**. Dostępne są: podgląd ośmiu najwyżej ocenianych tytułów, do ośmiu wyników wyszukiwania, szczegóły oraz lista odcinków. Pełna paginacja i odtwarzanie pozostają w przygotowaniu; wybór odcinka wyświetla jednoznaczny komunikat o braku odtwarzania.

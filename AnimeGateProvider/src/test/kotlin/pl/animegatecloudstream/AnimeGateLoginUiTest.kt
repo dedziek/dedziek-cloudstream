@@ -49,7 +49,7 @@ class AnimeGateLoginUiTest {
         }
         client.onPageFinished(web, AnimeGateAuthPolicy.ROOT)
         val report = report(activity, dialog)
-        assertTrue(report.contains("AnimeGate discovery prototype v9"))
+        assertTrue(report.contains("AnimeGate discovery prototype v10"))
         assertTrue(report.contains("api_seen=true"))
         assertTrue(report.contains("auth_seen=true"))
         assertTrue(report.contains("session_api_observed=true"))
