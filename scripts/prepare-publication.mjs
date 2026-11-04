@@ -14,6 +14,7 @@ const expectedPlugins = new Map([
   ['FilmanProvider', 'pl.filmancloudstream.FilmanPlugin'],
   ['AnimeWatchProvider', 'pl.animewatchcloudstream.AnimeWatchPlugin'],
   ['AnimeGateProvider', 'pl.animegatecloudstream.AnimeGatePlugin'],
+  ['EkinoProvider', 'pl.ekinocloudstream.EkinoPlugin'],
 ]);
 const entries = JSON.parse(await readFile(path.join(root, 'build', 'plugins.json'), 'utf8'));
 if (!Array.isArray(entries) || entries.length !== expectedPlugins.size ||
