@@ -7,6 +7,12 @@ object AnimeWatchPlayback {
     data class Stream(val url: String, val headers: Map<String, String>, val referer: String, val isHls: Boolean)
     data class PlayerSource(val url: String = "", val type: String = "", val referer: String = "", val error: String? = null)
 
+    class VerificationRequired : Exception("Byse wymaga potwierdzenia w odtwarzaczu.")
+
+    /** Resume the same load request after the user completes a required verification. */
+    suspend fun resolveWithVerification(resolve: suspend (interactive: Boolean) -> Stream?): Stream? =
+        try { resolve(false) } catch (_: VerificationRequired) { resolve(true) }
+
     private val publicHost = Regex("""(?i)^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?\.[a-z]{2,63}$""")
     private val localSuffixes = listOf(".local", ".localhost", ".internal", ".lan", ".home", ".test", ".invalid")
     private val mediaPath = Regex("""(?i)\.(?:m3u8|mp4)$""")
