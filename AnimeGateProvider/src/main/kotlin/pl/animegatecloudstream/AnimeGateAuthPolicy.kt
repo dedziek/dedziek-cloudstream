@@ -4,6 +4,7 @@ import java.net.URI
 import java.net.URLDecoder
 
 object AnimeGateAuthPolicy {
+    enum class BlockReason { MALFORMED_URL, UNSUPPORTED_SCHEME, USER_INFO, UNSUPPORTED_PORT, HOST_NOT_ALLOWED, OAUTH_CALLBACK_ORIGIN, MALFORMED_OAUTH }
     const val BASE = "https://animegate.pl"
     const val ROOT = "$BASE/"
     const val LOGIN = "$BASE/auth/login?next=%2F"
@@ -20,15 +21,26 @@ object AnimeGateAuthPolicy {
     fun isSite(url: String): Boolean = https(url)?.host.equals("animegate.pl", true)
     fun isDiscord(url: String): Boolean = https(url)?.host?.lowercase() in setOf("discord.com", "discordapp.com")
 
-    fun allowMainNavigation(url: String): Boolean {
-        if (isSite(url)) return true
-        if (!isDiscord(url)) return false
-        return runCatching {
-            val uri = https(url) ?: return false
-            if (uri.path.trimEnd('/') !in setOf("/oauth2/authorize", "/api/oauth2/authorize")) return true
+    // A blank interstitial is not an authenticated origin and can never supply cookies.
+    fun isBlankDocument(url: String): Boolean = url.substringBefore('#') == "about:blank" && runCatching { URI(url) }.isSuccess
+
+    fun allowMainNavigation(url: String): Boolean = mainBlockReason(url) == null
+
+    fun mainBlockReason(url: String): BlockReason? {
+        if (isBlankDocument(url)) return null
+        val uri = runCatching { URI(url) }.getOrNull() ?: return BlockReason.MALFORMED_URL
+        if (!uri.scheme.equals("https", true)) return BlockReason.UNSUPPORTED_SCHEME
+        if (uri.userInfo != null) return BlockReason.USER_INFO
+        if (uri.port !in setOf(-1, 443)) return BlockReason.UNSUPPORTED_PORT
+        if (uri.host.isNullOrBlank()) return BlockReason.MALFORMED_URL
+        if (isSite(url)) return null
+        if (!isDiscord(url)) return BlockReason.HOST_NOT_ALLOWED
+        return try {
+            if (uri.path.trimEnd('/') !in setOf("/oauth2/authorize", "/api/oauth2/authorize")) return null
             val callbacks = uri.rawQuery.orEmpty().split('&').filter { URLDecoder.decode(it.substringBefore('='), "UTF-8") == "redirect_uri" }
-            callbacks.isEmpty() || (callbacks.size == 1 && isSite(URLDecoder.decode(callbacks.first().substringAfter('='), "UTF-8")))
-        }.getOrDefault(false)
+            if (callbacks.isEmpty() || (callbacks.size == 1 && isSite(URLDecoder.decode(callbacks.first().substringAfter('='), "UTF-8")))) null
+            else BlockReason.OAUTH_CALLBACK_ORIGIN
+        } catch (_: Exception) { BlockReason.MALFORMED_OAUTH }
     }
 
     fun allowLegacyNavigation(url: String): Boolean = allowMainNavigation(url) ||
