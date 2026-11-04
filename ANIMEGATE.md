@@ -1,3 +1,11 @@
+# AnimeGateProvider v9 — źródło na ekranie głównym
+
+V9 rejestruje źródło **AnimeGate** w CloudStream. Po aktualizacji wybierz je w wyborze źródła na ekranie głównym. W ustawieniach dodatku zaloguj się i wybierz **Zapisz i sprawdź**. Dostępne są: podgląd ośmiu najwyżej ocenianych tytułów, do ośmiu wyników wyszukiwania, szczegóły oraz lista odcinków. Pełna paginacja i odtwarzanie pozostają w przygotowaniu; wybór odcinka wyświetla jednoznaczny komunikat o braku odtwarzania.
+
+Klient używa potwierdzonych tras GET. Dla każdego dokładnego adresu pobiera właściwe cookies z CookieManager WebView; nie kopiuje zapisanego nagłówka z auth/me. Nie podąża za przekierowaniami, nie wykonuje żądań playback i nie przekazuje sesji do obrazów czy zewnętrznych hostingów. Obowiązuje dotychczasowy godzinny limit zapisu sesji. Weryfikacja na fizycznym urządzeniu pozostaje do wykonania.
+
+## Historia v8
+
 # AnimeGateProvider v8 — potwierdzone parsery katalogu i odcinków
 
 4 listopada 2026 odczytano rzeczywiste API katalogu, szczegółów i odcinków z zalogowanej karty AnimeGate. [Kontrakt API i zakres obserwacji](ANIMEGATE-API.md) opisuje potwierdzone trasy oraz brakujące dane odtwarzania.

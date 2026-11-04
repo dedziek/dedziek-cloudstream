@@ -8,7 +8,7 @@ import com.lagradost.cloudstream3.plugins.Plugin
 class AnimeGatePlugin : Plugin() {
     override fun load(context: Context) {
         val session = AnimeGateSession(context.applicationContext)
-        // Auth feasibility is the first gate. Do not register a fictitious catalogue API.
+        registerMainAPI(AnimeGateProvider(session))
         openSettings = { settingsContext -> AnimeGateLoginUi.show(settingsContext, session) }
     }
 }
