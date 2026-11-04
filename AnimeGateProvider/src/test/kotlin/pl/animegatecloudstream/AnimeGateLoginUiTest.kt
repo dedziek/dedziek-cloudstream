@@ -38,7 +38,7 @@ class AnimeGateLoginUiTest {
         }
         client.onPageFinished(web, AnimeGateAuthPolicy.ROOT)
         val report = report(activity, dialog)
-        assertTrue(report.contains("AnimeGate login prototype v4"))
+        assertTrue(report.contains("AnimeGate login prototype v5"))
         assertTrue(report.contains("api_seen=true"))
         assertTrue(report.contains("auth_seen=true"))
         assertTrue(report.contains("session_api_observed=true"))
@@ -48,6 +48,22 @@ class AnimeGateLoginUiTest {
         assertTrue(report.contains("blocked_count=0"))
         assertTrue(report.contains("api_route=api.animegate.pl/api/{param}/auth/discord"))
         assertFalse(report.contains("SECRET")); assertFalse(report.contains("PRIVATE"))
+    }
+    @Test fun externalLinksAfterReturningDoNotReplaceThePageStateAndForeignCallbacksStillBlock() = withLogin { activity, dialog, web ->
+        val client = web.webViewClient
+        client.onPageStarted(web, "https://discord.com/login", null)
+        web.loadUrl(AnimeGateAuthPolicy.ROOT)
+        client.onPageStarted(web, AnimeGateAuthPolicy.ROOT, null)
+        client.onPageFinished(web, AnimeGateAuthPolicy.ROOT)
+        for (url in listOf("https://lo.doveyzoetic.qpon/private?token=SECRET", "https://tryedesign.com/private"))
+            assertTrue(client.shouldOverrideUrlLoading(web, request(url)))
+        val text = report(activity, dialog)
+        assertTrue(text.contains("browser_state=PAGE_LOADED"))
+        assertTrue(text.contains("post_login_external_blocks=2"))
+        assertTrue(text.contains("blocked_count=2"))
+        assertFalse(text.contains("SECRET"))
+        assertTrue(client.shouldOverrideUrlLoading(web, request("https://discord.com/oauth2/authorize?redirect_uri=https%3A%2F%2Fevil.example%2F")))
+        assertTrue(report(activity, dialog).contains("browser_state=REDIRECT_BLOCKED"))
     }
     @Test fun clearingObservedBackendCookiesPreservesDiscordCookies() = withLogin { _, dialog, web ->
         val backend = "https://api.animegate.pl/api/v7/auth/session"

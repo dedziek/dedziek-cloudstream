@@ -4,6 +4,19 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class AnimeGateObservedSessionTest {
+    @Test fun observedCurrentUserGetsPriorityRegardlessOfObservationOrder() {
+        val session = "https://api.animegate.pl/api/v7/auth/session"
+        val me = "https://api.animegate.pl/api/v7/auth/me"
+        for (urls in listOf(listOf(session, me), listOf(me, session))) {
+            val observed = AnimeGateObservedSession()
+            for (url in urls) observed.observe("GET", url)
+            observed.observe("GET", AnimeGateAuthPolicy.SESSION)
+            assertEquals(me, observed.url())
+            assertEquals("API_ME", AnimeGateAuthPolicy.probeKind(me))
+        }
+        assertNull(AnimeGateAuthPolicy.observedSessionUrl("$me?token=PRIVATE"))
+        assertFalse(AnimeGateAuthPolicy.isProbeUrl("https://auth.animegate.pl/api/v7/auth/me"))
+    }
     @Test fun backendSessionIsSelectedOnlyAfterAnActualGetAndPreferredToTheFrontend() {
         val observed = AnimeGateObservedSession()
         val backend = "https://api.animegate.pl/api/v7/auth/session"

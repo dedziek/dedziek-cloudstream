@@ -10,7 +10,7 @@ object AnimeGateAuthPolicy {
     const val LOGIN = "$BASE/auth/login?next=%2F"
     const val SESSION_PATH = "/api/auth/session"
     const val SESSION = "$BASE$SESSION_PATH"
-    private val apiSessionPath = Regex("/api/[A-Za-z0-9_-]{1,32}/auth/session")
+    private val apiSessionPath = Regex("/api/[A-Za-z0-9_-]{1,32}/auth/(?:session|me)")
 
     private fun https(url: String): URI? = runCatching {
         val uri = URI(url)
@@ -70,6 +70,17 @@ object AnimeGateAuthPolicy {
         uri.rawQuery == null && uri.rawFragment == null &&
             ((isSite(url) && uri.rawPath == SESSION_PATH) || (isApi(url) && apiSessionPath.matches(uri.rawPath)))
     }.getOrDefault(false)
+
+    fun isCurrentUserProbeUrl(url: String): Boolean = isApi(url) && isSessionProbeUrl(url) &&
+        runCatching { URI(url).rawPath.endsWith("/auth/me") }.getOrDefault(false)
+
+    fun probeKind(url: String): String = when {
+        isCurrentUserProbeUrl(url) -> "API_ME"
+        isApi(url) && isSessionProbeUrl(url) -> "API_SESSION"
+        isSessionProbeUrl(url) -> "SITE_SESSION"
+        isProbeUrl(url) -> "SITE_ROOT"
+        else -> "NONE"
+    }
 
     // The API URL is used only when actually observed as a GET by the page, never constructed.
     fun observedSessionUrl(url: String): String? = when {

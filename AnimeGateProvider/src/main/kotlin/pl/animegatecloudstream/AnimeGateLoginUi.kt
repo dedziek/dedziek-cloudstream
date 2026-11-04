@@ -68,12 +68,14 @@ object AnimeGateLoginUi {
         var browserState = "LOADING"
         var evidence = AnimeGateProbe.Evidence(AnimeGateProbe.Outcome.UNCONFIRMED)
         var checked = false
+        var checkedEndpoint = "NONE"
+        var postLoginExternalBlocks = 0
 
         fun busy(value: Boolean) {
             dialog.saveButton.isEnabled = !value; dialog.checkButton.isEnabled = !value; dialog.clearButton.isEnabled = !value
         }
         fun report(): String = buildString {
-            appendLine("AnimeGate login prototype v4")
+            appendLine("AnimeGate login prototype v5")
             appendLine("browser_state=$browserState")
             appendLine("api_seen=${apiSeen.get()}")
             appendLine("auth_seen=${authSeen.get()}")
@@ -89,6 +91,9 @@ object AnimeGateLoginUi {
             appendLine("http_checked=$checked")
             appendLine("http_status=${evidence.status}")
             appendLine("http_result=${evidence.outcome.name}")
+            appendLine("http_endpoint=$checkedEndpoint")
+            appendLine("http_json_shape=${evidence.jsonShape}")
+            appendLine("post_login_external_blocks=$postLoginExternalBlocks")
             appendLine("signout_control=${evidence.signOut}")
             appendLine("catalog_links=${evidence.catalogLinks}")
             append(redirects.report())
@@ -100,8 +105,14 @@ object AnimeGateLoginUi {
             // The request interceptor runs on a worker thread; only update views on main.
             val update = {
                 if (dialog.isShowing) {
-                    browserState = "REDIRECT_BLOCKED"
-                    status.text = "Zablokowano przejście do ${block.host} (${block.reason.name}). Wybierz „Raport” — zawiera domenę i powód bez tokenów."
+                    if (returned && source != AnimeGateRedirectDiagnostics.Source.MAIN_REQUEST &&
+                        block.reason == AnimeGateAuthPolicy.BlockReason.HOST_NOT_ALLOWED && AnimeGateAuthPolicy.canCapture(web.url.orEmpty())) {
+                        // Cancelling an outgoing link keeps the current AnimeGate page and login status intact.
+                        postLoginExternalBlocks++
+                    } else {
+                        browserState = "REDIRECT_BLOCKED"
+                        status.text = "Zablokowano przejście do ${block.host} (${block.reason.name}). Wybierz „Raport” — zawiera domenę i powód bez tokenów."
+                    }
                 }
             }
             if (Looper.myLooper() == Looper.getMainLooper()) update() else web.post { update() }
@@ -115,7 +126,7 @@ object AnimeGateLoginUi {
                 try {
                     val response = withContext(Dispatchers.IO) { AnimeGateProbe.request(url, cookies, agent) }
                     if (!dialog.isShowing) return@launch
-                    checked = true; evidence = response.evidence
+                    checked = true; evidence = response.evidence; checkedEndpoint = AnimeGateAuthPolicy.probeKind(url)
                     // Native CookieManager enforces each Set-Cookie domain/path. Never send these to Discord.
                     response.applyCookies { manager.setCookie(url, it) }
                     manager.flush()

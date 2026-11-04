@@ -1,6 +1,5 @@
 package pl.animegatecloudstream
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import java.io.ByteArrayOutputStream
 import java.net.URI
 import java.net.URL
@@ -12,7 +11,7 @@ import org.jsoup.Jsoup
 object AnimeGateProbe {
     enum class Outcome { VERIFIED_SESSION_API, PAGE_CANDIDATE, UNCONFIRMED, LOGIN_REQUIRED, ACCESS_DENIED,
         RATE_LIMITED, REDIRECT_SITE, REDIRECT_OTHER, NETWORK_ERROR, TLS_ERROR, TIMEOUT }
-    data class Evidence(val outcome: Outcome, val status: Int = 0, val signOut: Boolean = false, val catalogLinks: Boolean = false)
+    data class Evidence(val outcome: Outcome, val status: Int = 0, val signOut: Boolean = false, val catalogLinks: Boolean = false, val jsonShape: String = "NONE")
     // Deliberately not a data class: response cookies must never appear in toString/logs.
     class Response(val evidence: Evidence, private val rotations: List<String> = emptyList()) {
         fun applyCookies(accept: (String) -> Unit) = rotations.forEach(accept)
@@ -33,15 +32,8 @@ object AnimeGateProbe {
         }
         if (status !in 200..299 || truncated) return Evidence(Outcome.UNCONFIRMED, status)
         if (AnimeGateAuthPolicy.isSessionProbeUrl(url)) {
-            return try {
-                val json = ObjectMapper().readTree(body)
-                Evidence(when {
-                    !json.isObject || json.hasNonNull("error") -> Outcome.UNCONFIRMED
-                    json.path("user").isObject && json.path("user").size() > 0 -> Outcome.VERIFIED_SESSION_API
-                    json.size() == 0 || (json.has("user") && json.path("user").isNull) -> Outcome.LOGIN_REQUIRED
-                    else -> Outcome.UNCONFIRMED
-                }, status)
-            } catch (_: Exception) { Evidence(Outcome.UNCONFIRMED, status) }
+            val result = AnimeGateSessionResponse.inspect(body, AnimeGateAuthPolicy.isCurrentUserProbeUrl(url))
+            return Evidence(result.outcome, status, jsonShape = result.schema)
         }
         val doc = Jsoup.parse(body, url)
         val controls = doc.select("a,button,[role=button],form")
