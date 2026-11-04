@@ -45,7 +45,7 @@ class AnimeGateRedirectDiagnosticsTest {
             assertFalse(trace.report().contains("SECRET"))
         }
         assertEquals(AnimeGateAuthPolicy.BlockReason.UNSUPPORTED_PORT, AnimeGateAuthPolicy.mainBlockReason("https://discord.com:444/login"))
-        assertEquals(AnimeGateAuthPolicy.BlockReason.MALFORMED_OAUTH, AnimeGateAuthPolicy.mainBlockReason("https://discord.com/oauth2/authorize?redirect%ZZ=SECRET"))
+        assertEquals(AnimeGateAuthPolicy.BlockReason.MALFORMED_URL, AnimeGateAuthPolicy.mainBlockReason("https://discord.com/oauth2/authorize?redirect%ZZ=SECRET"))
     }
     @Test fun subdomainsAndForeignCallbacksRemainBlocked() {
         for (url in listOf("https://www.animegate.pl/", "https://discord.com.evil.example/login", "https://discord.com/oauth2/authorize?redirect_uri=https%3A%2F%2Fexternal.example%2F", "intent://discord.com/login#Intent;scheme=https;end")) {
