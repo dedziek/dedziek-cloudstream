@@ -1,15 +1,21 @@
-# AnimeGateProvider v6 — sesja i rozpoznanie katalogu
+# AnimeGateProvider v7 — parser odcinków i rozpoznanie katalogu
 
-Etap rozpoznania katalogu z [planu wdrożenia](ANIMEGATE-PLAN.md). Raporty v5 potwierdziły zwykłe logowanie Discord oraz poprawną sesję klienta HTTP przez `/auth/me`. V6 dodaje test struktury katalogu, wyszukiwania i odcinków. **Nie rejestruje jeszcze źródła katalogu ani odtwarzania w CloudStream**, ponieważ format tych odpowiedzi trzeba ustalić na urządzeniu. Publiczne żądanie ze środowiska programistycznego otrzymało HTTP 403/1010; nie próbowano obchodzić tej odmowy.
+Etap rozpoznania katalogu z [planu wdrożenia](ANIMEGATE-PLAN.md). Raporty v5 potwierdziły zwykłe logowanie Discord oraz poprawną sesję klienta HTTP przez `/auth/me`. Raport v6 potwierdził odpowiedź listy odcinków, dla której dodano parser. **Nie rejestruje jeszcze źródła katalogu ani odtwarzania w CloudStream**, ponieważ nadal trzeba ustalić format listy anime, wyszukiwania i źródeł wideo. Publiczne żądanie ze środowiska programistycznego otrzymało HTTP 403/1010; nie próbowano obchodzić tej odmowy.
 
-## Test katalogu w v6
+## Test katalogu w v7
 
 1. Zaktualizuj dodatek i otwórz jego zębatkę. W razie potrzeby wybierz **Zapisz i sprawdź**; działającej sesji nie trzeba usuwać.
 2. W widocznej stronie AnimeGate wyszukaj dowolne anime, otwórz jego kartę, listę odcinków i jeden odcinek. Nie musisz uruchamiać wideo.
 3. Bez zamykania okna wybierz **Test katalogu** i poczekaj na wynik.
-4. Wybierz **Raport** i przekaż skopiowany tekst. Początek nowego raportu: `AnimeGate discovery prototype v6`.
+4. Wybierz **Raport** i przekaż skopiowany tekst. Początek nowego raportu: `AnimeGate discovery prototype v7`.
 
-Test najpierw ponownie potwierdza sesję, następnie wykonuje do ośmiu wcześniej zaobserwowanych GET z dozwolonych tras katalogu API. Nie zgaduje adresów. W oknie trzyma najwyżej 24 różne wzorce tras; dla powtarzanej trasy zachowuje ostatnie żądanie, np. ostatnie wyszukiwanie, a na czas testu zamraża wybór. Żądania uwierzytelniania, historii, list i ustawień użytkownika nie są częścią katalogu.
+V7 uwzględnia także zaobserwowane API głównej domeny `animegate.pl`, pominięte w v6, i publiczne przestrzenie nazw backendu. `catalog_*_origin` odróżnia `SITE` od `API`. Dla nieznanej przestrzeni nazw dopuszczona jest wyłącznie krótka nazwa z małych liter i myślników. Trasy uwierzytelniania, użytkowników, historii, ustawień, RPC i typowe operacje zmieniające dane pozostają wykluczone. Osobne pochodzenia mają osobne obserwacje i cookies.
+
+Rozszerzono słownik technicznych nazw pól i parametrów, m.in. złożenia typu `includeLinks`, `sourceName`, `sortOrder` i `airDate`. Nie jest to kopiowanie dowolnych kluczy: nieznane identyfikatory i nazwy pozostają maskowane, obiekty użytkowników/nagłówków są redagowane, a nieznane obiekty nie są rozwijane. Wartości nie są eksportowane.
+
+Parser potwierdzonego `/api/v1/episodes/anime/{param}` odczytuje identyfikator odcinka i anime, liczbę odcinka, opcjonalny tytuł oraz identyfikatory grup linków. Zachowuje odcinki specjalne i ułamkowe, usuwa duplikaty po identyfikatorze i sortuje numery dziesiętnie. Nie zgaduje adresów wideo. Pole `catalog_*_parsed_episodes` pokazuje tylko liczbę poprawnie sparsowanych odcinków — bez identyfikatorów i tytułów.
+
+Test najpierw ponownie potwierdza sesję, następnie wykonuje do ośmiu wcześniej zaobserwowanych GET z dozwolonych tras API obu domen. Nie zgaduje adresów. W oknie trzyma najwyżej 24 różne wzorce tras; dla powtarzanej trasy zachowuje ostatnie żądanie, np. ostatnie wyszukiwanie, a na czas testu zamraża wybór. Żądania uwierzytelniania, historii, list i ustawień użytkownika nie są częścią katalogu.
 
 Każdy adres otrzymuje cookies z własnego zakresu przeglądarki. Nagłówek zapisany dla `/auth/me` nie jest kopiowany do katalogu. Klient nie podąża za przekierowaniami; po 401, 403, 429 lub błędzie połączenia przerywa serię bez automatycznych ponowień. Zamknięcie okna anuluje kolejne żądania.
 
