@@ -1,9 +1,9 @@
 [
   {
-    "fileHash": "sha256-ddf7d6e844f4f7cb8dd2c34c72a66bad124fc5bfb2358e7c3ff2514a589157be",
+    "fileHash": "sha256-a9c640f9b612dbbcc0c88839b9d5a71b92437019ae9c56d4932456a270ba33bc",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/dedziek/dedziek-cloudstream",
-    "fileSize": 76867,
+    "fileSize": 84194,
     "status": 3,
     "language": "pl",
     "authors": [
@@ -12,9 +12,9 @@
     "tvTypes": [
       "Anime"
     ],
-    "version": 9,
+    "version": 10,
     "internalName": "AnimeGateProvider",
-    "description": "AnimeGate: podgląd katalogu, wyszukiwanie i odcinki po logowaniu Discord. Odtwarzanie nie jest jeszcze obsługiwane.",
+    "description": "AnimeGate: katalog, odcinki i integracja odtwarzania Playmogo po logowaniu Discord. Wersja testowa, podgląd do 8 wyników.",
     "url": "https://raw.githubusercontent.com/dedziek/dedziek-cloudstream/builds/AnimeGateProvider.cs3",
     "name": "AnimeGateProvider"
   },
