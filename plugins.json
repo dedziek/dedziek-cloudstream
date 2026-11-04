@@ -21,10 +21,10 @@
     "name": "AnimeWatchProvider"
   },
   {
-    "fileHash": "sha256-dba1cdf45c7828d9e93b90ce862b56bdb97748640464bac4b56b5fcc1bea961c",
+    "fileHash": "sha256-0291d0e8af15251665f31ed810f987ea5af361b500e73aa700c9f366b4c2148a",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/dedziek/dedziek-cloudstream",
-    "fileSize": 50301,
+    "fileSize": 52237,
     "status": 3,
     "language": "pl",
     "authors": [
@@ -34,7 +34,7 @@
       "Movie",
       "TvSeries"
     ],
-    "version": 2,
+    "version": 3,
     "internalName": "FilmanProvider",
     "description": "Filman: darmowe konto, logowanie w oknie strony. Wersja testowa; wymaga weryfikacji na urządzeniu.",
     "url": "https://raw.githubusercontent.com/dedziek/dedziek-cloudstream/builds/FilmanProvider.cs3",
