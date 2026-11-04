@@ -22,9 +22,19 @@ class AnimeGateAuthPolicyTest {
         for (url in listOf("https://animegate.pl/anime/private", "https://animegate.pl/%61pi/auth/session", "https://animegate.pl/?token=secret", "https://discord.com/api/auth/session")) assertFalse(AnimeGateAuthPolicy.isProbeUrl(url))
     }
     @Test fun legacyFramesNeverWidenTheMainDocumentPolicy() {
-        for (url in listOf("about:blank", "about:srcdoc", "https://newassets.hcaptcha.com/frame", "https://challenges.cloudflare.com/frame")) {
+        for (url in listOf("about:srcdoc", "https://newassets.hcaptcha.com/frame", "https://challenges.cloudflare.com/frame")) {
             assertTrue(AnimeGateAuthPolicy.allowLegacyNavigation(url)); assertFalse(AnimeGateAuthPolicy.allowMainNavigation(url))
         }
+    }
+    @Test fun blankInterstitialIsAllowedWithoutBecomingACookieOrigin() {
+        for (url in listOf("about:blank", "about:blank#interstitial")) {
+            assertTrue(AnimeGateAuthPolicy.allowMainNavigation(url))
+            assertTrue(AnimeGateAuthPolicy.allowLegacyNavigation(url))
+            assertFalse(AnimeGateAuthPolicy.isSite(url))
+            assertFalse(AnimeGateAuthPolicy.canCapture(url))
+            assertFalse(AnimeGateAuthPolicy.isProbeUrl(url))
+        }
+        for (url in listOf("about:blank?next=https://evil.com", "about:srcdoc", "about:blank/evil", "about:blank#\nsecret")) assertFalse(AnimeGateAuthPolicy.allowMainNavigation(url))
     }
     @Test fun reportPathsRemoveValuesQueriesAndUnrecognisedSegments() {
         val path = AnimeGateAuthPolicy.safeApiPath("https://animegate.pl/api/users/private-user-123?access_token=SECRET#code")

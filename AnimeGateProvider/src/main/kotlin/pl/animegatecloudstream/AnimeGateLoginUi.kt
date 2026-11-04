@@ -58,6 +58,7 @@ object AnimeGateLoginUi {
         val dialog = AnimeGateLoginDialog(activity, web, status)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
         val sessionApi = AtomicBoolean(false)
+        val redirects = AnimeGateRedirectDiagnostics()
         val routes = linkedSetOf<String>()
         var sawDiscord = false
         var returned = false
@@ -69,7 +70,7 @@ object AnimeGateLoginUi {
             dialog.saveButton.isEnabled = !value; dialog.checkButton.isEnabled = !value; dialog.clearButton.isEnabled = !value
         }
         fun report(): String = buildString {
-            appendLine("AnimeGate login prototype v1")
+            appendLine("AnimeGate login prototype v2")
             appendLine("browser_state=$browserState")
             appendLine("discord_seen=$sawDiscord")
             appendLine("returned_to_animegate=$returned")
@@ -81,7 +82,21 @@ object AnimeGateLoginUi {
             appendLine("http_result=${evidence.outcome.name}")
             appendLine("signout_control=${evidence.signOut}")
             appendLine("catalog_links=${evidence.catalogLinks}")
+            append(redirects.report())
             synchronized(routes) { routes.forEach { appendLine("api_route=$it") } }
+        }
+
+        fun blocked(url: String, source: AnimeGateRedirectDiagnostics.Source): Boolean {
+            val block = redirects.record(url, source) ?: return false
+            // The request interceptor runs on a worker thread; only update views on main.
+            val update = {
+                if (dialog.isShowing) {
+                    browserState = "REDIRECT_BLOCKED"
+                    status.text = "Zablokowano przejście do ${block.host} (${block.reason.name}). Wybierz „Raport” — zawiera domenę i powód bez tokenów."
+                }
+            }
+            if (Looper.myLooper() == Looper.getMainLooper()) update() else web.post { update() }
+            return true
         }
 
         fun check(url: String, cookies: String, persist: Boolean) {
@@ -117,20 +132,16 @@ object AnimeGateLoginUi {
 
         web.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
-                val blocked = request.isForMainFrame && !AnimeGateAuthPolicy.allowMainNavigation(request.url.toString())
-                if (blocked) { browserState = "REDIRECT_BLOCKED"; status.text = "Nieobsługiwane przekierowanie logowania. Skopiuj raport bez udostępniania adresu z tokenami." }
-                return blocked
+                return request.isForMainFrame && blocked(request.url.toString(), AnimeGateRedirectDiagnostics.Source.MAIN_NAVIGATION)
             }
             override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {
-                val blocked = !AnimeGateAuthPolicy.allowLegacyNavigation(url)
-                if (blocked) { browserState = "REDIRECT_BLOCKED"; status.text = "Nieobsługiwane przekierowanie. Skopiuj raport." }
-                return blocked
+                return !AnimeGateAuthPolicy.allowLegacyNavigation(url) && blocked(url, AnimeGateRedirectDiagnostics.Source.LEGACY_NAVIGATION)
             }
             override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
                 val url = request.url.toString()
                 if (request.method == "GET" && AnimeGateAuthPolicy.observedSessionApi(url)) sessionApi.set(true)
                 AnimeGateAuthPolicy.safeApiPath(url)?.let { route -> synchronized(routes) { if (routes.size < 32) routes.add(route) } }
-                if (request.isForMainFrame && !AnimeGateAuthPolicy.allowMainNavigation(url)) {
+                if (request.isForMainFrame && blocked(url, AnimeGateRedirectDiagnostics.Source.MAIN_REQUEST)) {
                     return WebResourceResponse("text/plain", "UTF-8", 403, "Blocked", emptyMap(), ByteArrayInputStream("Niedozwolone przekierowanie logowania.".toByteArray()))
                 }
                 return null

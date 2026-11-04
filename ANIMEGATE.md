@@ -1,4 +1,4 @@
-# AnimeGateProvider v1 — prototyp logowania
+# AnimeGateProvider v2 — prototyp logowania
 
 Pierwszy etap [planu wdrożenia](ANIMEGATE-PLAN.md). Ta wersja dodaje ustawienia logowania i test sesji. **Nie rejestruje źródła katalogu ani odtwarzania**, ponieważ dostęp po Discord OAuth trzeba najpierw potwierdzić na urządzeniu. Publiczne żądanie z środowiska programistycznego otrzymało HTTP 403/1010; nie próbowano obchodzić tej odmowy.
 
@@ -15,6 +15,12 @@ Do normalnego logowania użytkownik używa własnego konta w formularzu strony. 
 
 ## Co oznacza wynik
 
+W v2 poprawiono obsługę pustej strony pośredniej `about:blank` w głównej ramce WebView. Taka strona nie jest traktowana jako domena AnimeGate i nigdy nie służy do pobierania cookies ani zapisu sesji. Nadal nie potwierdzono rzeczywistego logowania na urządzeniu.
+
+Jeżeli pojawi się `REDIRECT_BLOCKED`, wybierz **Raport**. Pola `first_block_host`, `first_block_reason`, `first_block_source` i `first_block_callback_host` pokazują domenę celu, powód, miejsce blokady i ewentualną domenę callbacku OAuth. Pierwsza blokada jest zachowana także po późniejszych przejściach. Pole `last_block_*` pojawia się, jeśli ostatnia blokada ma inne dane. Nie przesyłaj pełnego adresu przekierowania — wystarczy raport.
+
+Raport v1 nie zawierał celu przekierowania i nie pozwalał ustalić, co dokładnie zatrzymało logowanie. Nowe dane pozwolą odróżnić pustą stronę, nieobsługiwaną domenę logowania, zewnętrzny schemat aplikacji i callback do innej domeny. Nie rozszerzono automatycznie uprawnień na niepotwierdzone domeny.
+
 - `VERIFIED_SESSION_API`: przeglądarka faktycznie zażądała z AnimeGate `/api/auth/session`, a klient dodatku otrzymał z tego samego endpointu niepusty obiekt użytkownika. Dane użytkownika są odczytywane wyłącznie jako sygnał i nie trafiają do raportu.
 - `PAGE_CANDIDATE`: klient dostał HTML z elementem wylogowania i odnośnikiem katalogu. To wskazówka do dalszej analizy, nie potwierdzenie działania API.
 - `UNCONFIRMED`: odpowiedź może być samą powłoką JavaScript albo innym niepotwierdzonym formatem. Sam HTTP 200 i obecność cookie nie potwierdzają logowania.
@@ -30,7 +36,7 @@ Zapis obejmuje cookie stosowne do jednego dokładnego adresu testu, rzeczywisty 
 
 Nie są eksportowane tokeny konta Discord, jego cookies ani zawartość formularzy. Cookie AnimeGate nie jest wysyłane do Discorda, innych domen ani innych ścieżek. Usunięcie sesji dotyczy pliku prototypu i cookies AnimeGate dla obsługiwanych ścieżek; nie czyści całego magazynu cookies CloudStream. Pełny model wygaśnięcia i rotacji sesji będzie zależeć od potwierdzonego interfejsu serwisu.
 
-Raport zawiera wyłącznie stałe kategorie stanu, kody HTTP, wartości logiczne i uproszczone ścieżki API. Segmenty spoza zamkniętego słownika są zastępowane `{param}`; query i fragmenty nie są kopiowane. Konsola JavaScript stron logowania nie jest przekazywana do logów dodatku. Nie ma mostka JavaScript ani wstrzykiwania kodu na stronach Discorda.
+Raport zawiera stałe kategorie stanu, kody HTTP, wartości logiczne, domeny zablokowanych przekierowań oraz uproszczone ścieżki API i nawigacji. Nie zachowuje pełnych adresów ani danych użytkownika w adresie. Segmenty ścieżek spoza zamkniętego słownika są zastępowane `{param}`; query i fragmenty nie są kopiowane. Konsola JavaScript stron logowania nie jest przekazywana do logów dodatku. Nie ma mostka JavaScript ani wstrzykiwania kodu na stronach Discorda.
 
 Otwarcie Chrome lub aplikacji Discord przez zewnętrzny schemat nie przenosi automatycznie sesji do klienta dodatku. Jeśli proces wymaga takiego przejścia, trzeba ustalić obsługiwany sposób przekazania wyniku — prototyp nie deklaruje go jako działający.
 
