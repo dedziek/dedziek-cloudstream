@@ -19,31 +19,43 @@ internal class AnimeGateLoginDialog(activity: Activity, browser: View, status: T
     val catalogButton = Button(context).apply { text = "Test katalogu" }
     val clearButton = Button(context).apply { text = "Usuń sesję" }
     val closeButton = Button(context).apply { text = "Zamknij" }
+    val moreButton = Button(context).apply { text = "Więcej" }
     init {
         requestWindowFeature(Window.FEATURE_NO_TITLE)
         val pad = (16 * context.resources.displayMetrics.density).toInt()
         val root = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             addView(TextView(context).apply {
-                text = "AnimeGate — testy"; textSize = 20f; setTypeface(typeface, Typeface.BOLD)
+                text = "AnimeGate — logowanie"; textSize = 20f; setTypeface(typeface, Typeface.BOLD)
                 setPadding(pad, pad, pad, pad / 2)
             }, LinearLayout.LayoutParams(-1, -2))
             addView(TextView(context).apply {
-                text = "Zapisz i sprawdź sesję. Otwórz na stronie wyszukiwanie, tytuł i odcinek, a potem wybierz „Test katalogu”."
+                text = "Zaloguj się przez Discord, a następnie wybierz „Zapisz i sprawdź”."
                 textSize = 14f; setPadding(pad, 0, pad, pad / 2)
             }, LinearLayout.LayoutParams(-1, -2))
             status.maxLines = 3; status.ellipsize = TextUtils.TruncateAt.END; status.textSize = 14f
             addView(status, LinearLayout.LayoutParams(-1, -2))
             addView(browser, LinearLayout.LayoutParams(-1, 0, 1f))
-            for (buttons in listOf(listOf(saveButton, checkButton), listOf(catalogButton, reportButton), listOf(clearButton, closeButton))) {
-                addView(LinearLayout(context).apply {
+            fun row(buttons: List<Button>) = LinearLayout(context).apply {
                     orientation = LinearLayout.HORIZONTAL
                     for (button in buttons) {
                         button.textSize = 13f; button.isAllCaps = false; button.minWidth = 0; button.minimumWidth = 0
                         button.setPadding(pad / 2, 0, pad / 2, 0)
                         addView(button, LinearLayout.LayoutParams(0, -2, 1f))
                     }
-                }, LinearLayout.LayoutParams(-1, -2))
+                }
+            addView(row(listOf(saveButton, closeButton, moreButton)), LinearLayout.LayoutParams(-1, -2))
+            val advanced = LinearLayout(context).apply {
+                orientation = LinearLayout.VERTICAL
+                visibility = View.GONE
+                addView(row(listOf(checkButton, clearButton)), LinearLayout.LayoutParams(-1, -2))
+                addView(row(listOf(catalogButton, reportButton)), LinearLayout.LayoutParams(-1, -2))
+            }
+            addView(advanced, LinearLayout.LayoutParams(-1, -2))
+            moreButton.setOnClickListener {
+                val expanded = advanced.visibility != View.VISIBLE
+                advanced.visibility = if (expanded) View.VISIBLE else View.GONE
+                moreButton.text = if (expanded) "Zwiń" else "Więcej"
             }
         }
         setContentView(root, ViewGroup.LayoutParams(-1, -1))

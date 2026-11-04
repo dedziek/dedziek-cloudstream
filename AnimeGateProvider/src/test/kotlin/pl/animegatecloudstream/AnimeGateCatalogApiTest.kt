@@ -6,6 +6,15 @@ import org.junit.Test
 class AnimeGateCatalogApiTest {
     private fun fixture(name: String) = requireNotNull(javaClass.getResource("/animegate/$name.json")).readText()
 
+    @Test fun resolvesWatchPageToMatchingEpisodeAndLabel() {
+        val api = AnimeGateCatalogApi { url -> fixture(if (url.contains("/episodes/")) "episodes" else "anime-detail") }
+        val episode = api.watchEpisode("https://animegate.pl/watch/fixture-anime/1.0")
+        assertEquals("episode-fixture-1", episode.id)
+        assertEquals("Lektor", episode.links.single().label)
+        assertThrows(IllegalArgumentException::class.java) { api.watchEpisode("https://animegate.pl/watch/fixture-anime/2") }
+        assertThrows(IllegalArgumentException::class.java) { api.watchEpisode("https://evil.example/watch/fixture-anime/1") }
+    }
+
     @Test fun encodesSearchAsOneParameterWithoutCreatingExtraRequests() {
         val requests = mutableListOf<String>()
         val api = AnimeGateCatalogApi { requests.add(it); fixture("catalog-preview") }

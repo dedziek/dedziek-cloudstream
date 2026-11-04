@@ -33,8 +33,17 @@ class AnimeGateLoginDialogTest {
             assertTrue((dialog.saveButton.parent as ViewGroup).top >= page.bottom)
             assertTrue((dialog.closeButton.parent as ViewGroup).bottom <= height)
             assertTrue(dialog.closeButton.isShown)
+            assertFalse(dialog.catalogButton.isShown)
+            assertFalse(dialog.reportButton.isShown)
+            assertTrue(dialog.moreButton.isShown)
+            dialog.moreButton.performClick()
+            root.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY))
+            root.layout(0, 0, width, height)
             assertTrue(dialog.catalogButton.isShown)
-            assertTrue((dialog.catalogButton.parent as ViewGroup).bottom <= height)
+            assertTrue(page.height >= 80 * density)
+            assertTrue(dialog.catalogButton.bottom + (dialog.catalogButton.parent as ViewGroup).top + (dialog.catalogButton.parent.parent as ViewGroup).top <= height)
+            dialog.moreButton.performClick()
+            assertFalse(dialog.catalogButton.isShown)
             dialog.closeButton.performClick(); assertFalse(dialog.isShowing)
         } finally { dialog.dismiss(); controller.pause().stop().destroy() }
     }

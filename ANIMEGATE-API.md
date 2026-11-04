@@ -46,7 +46,23 @@ GET `/api/v1/episodes/anime/{animeId}?publicOnly=true`, HTTP 200. `animeId` poch
 
 `title` może być null. Potwierdzono `links[].label = "Lektor"`; jest to etykieta grupy linków, nie adres wideo. Istniejący parser odcinków poprawnie odczytuje tę odpowiedź. Linki interfejsu mają postać `/watch/{slug}/{number}`.
 
-## Odtwarzanie — nadal do ustalenia
+## Odtwarzanie — kontrakt potwierdzony ręcznym odczytem
+
+Użytkownik dostarczył odpowiedzi dwóch żądań z HTTP 201:
+
+```text
+POST /api/v1/episodes/{episodeId}/playback
+żądanie: {linkId:string}
+odpowiedź: {success:true,message:string,code:201,data:{ticket:string,expiresIn:60}}
+
+POST /api/v1/episodes/{episodeId}/playback/resolve
+żądanie: {ticket:string}
+odpowiedź: {success:true,message:string,code:201,data:{iframeUrl:string}}
+```
+
+Potwierdzony iframeUrl ma postać `https://playmogo.com/e/{id}`. Nie zapisano wartości przesłanego biletu. CloudStream ma wbudowany ekstraktor `Playmogo : DoodLaExtractor`, zarejestrowany w extractorApis; potwierdzono to w oficjalnych plikach `library/src/commonMain/kotlin/com/lagradost/cloudstream3/extractors/DoodExtractor.kt` i `utils/ExtractorApi.kt` repozytorium recloudstream/cloudstream. V10 przekazuje do niego sam zweryfikowany adres ramki. Bilety i cookies nie są przekazywane hostingowi. Działanie ekstraktora na urządzeniu pozostaje do sprawdzenia.
+
+Poniższe wpisy zachowują historię obserwacji poprzedzających potwierdzenie kontraktu.
 
 Otwarcie strony odcinka uruchomiło normalny mechanizm witryny:
 
@@ -57,7 +73,17 @@ Otwarcie strony odcinka uruchomiło normalny mechanizm witryny:
 | `/api/v1/episodes/{episodeId}/playback/resolve` | HTTP 201; osobne żądanie wstępne 204 |
 | `/api/v1/episodes/{episodeId}/view` | HTTP 201 |
 
-Nie odczytano metod, treści żądań ani odpowiedzi tych tras. Dostęp do surowej diagnostyki CDP został zatrzymany podczas rozstrzygania wstrzymanej odpowiedzi dokumentu. Interfejs nadal działał i pozwolił wrócić do katalogu. Nie próbowano obchodzić tego ograniczenia. Nie ustalono parametrów sesji odtwarzania ani formatu źródła. Sam adres `playback/resolve` nie wystarcza do implementacji odtwarzania. Kod dodatku nie wykonuje nowych żądań do tych tras.
+Kolejna obserwacja 4 listopada 2026, odcinek 1 „Sousou no Frieren 2nd Season”, potwierdziła:
+
+- GET szczegółów odcinka z `publicOnly=true` zwraca HTTP 200.
+- POST `playback` ma JSON z jednym polem `linkId` i zwraca HTTP 201.
+- POST `playback/resolve` ma JSON z jednym polem `ticket` i zwraca HTTP 201.
+- POST `view` nie ma zaobserwowanej treści i zwraca HTTP 201. Nie jest potrzebny do parsowania źródła i nie należy dodawać go jako sztucznego wymogu odtwarzania.
+- Po rozstrzygnięciu playback strona umieszcza iframe z adresem `https://playmogo.com/e/{id}`. Wybrana wersja w interfejsie: „Lektor IVO”. Jest to adres osadzonego odtwarzacza, nie potwierdzony bezpośredni strumień wideo.
+
+Nie eksportowano wartości `ticket`, cookies ani nagłówków autoryzacji. Odpowiedzi POST pozostają nieodczytane: przy `Network.getResponseBody` narzędzie ponownie zgłosiło wstrzymaną odpowiedź dokumentu, a ramka była widoczna jako `about:blank`. Nie potwierdzono, czy przyczyną jest oczekiwanie na zgodę dla domeny odtwarzacza. Nie obchodzono tego ograniczenia. Nadal brakuje nazw pól odpowiedzi, sposobu uzyskania i czasu ważności biletu oraz kontraktu źródła wideo w Playmogo. Kod dodatku nie wykonuje nowych żądań do tych tras.
+
+Dalsza weryfikacja w Edge: otwarcie dokładnego adresu ramki w osobnej karcie pokazało blokadę Microsoft Defender SmartScreen „Ta witryna została zgłoszona jako niebezpieczna”, dotyczącą `playmogo.com`. Nie przechodzono przez ostrzeżenie ani nie zmieniano ochrony przeglądarki. Wszystkie trzy wersje tego odcinka — Lektor IVO, Napisy i Lektor AI — wskazywały ramki `/e/{id}` na tej samej domenie. Po sprawdzeniu przywrócono wybór Lektor IVO. Użytkownik nie widział w Codex prośby o zgodę na tę domenę. Sama obserwacja blokady SmartScreen nie ustala przyczyny wewnętrznego komunikatu CDP, ale uniemożliwia dalszą automatyczną analizę tego hostingu w tej przeglądarce.
 
 ## Zmiany v8 i walidacja
 
