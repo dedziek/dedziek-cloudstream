@@ -2,6 +2,10 @@ name: Build and publish CloudStream repository
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [main, master]
+    paths-ignore:
+      - '**.md'
   push:
     branches: [main, master]
     paths-ignore:
@@ -11,7 +15,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: cloudstream-publication
+  group: cloudstream-${{ github.event.pull_request.number || 'publication' }}
   cancel-in-progress: false
 
 jobs:
@@ -58,6 +62,7 @@ jobs:
           if-no-files-found: error
 
       - name: Publish builds branch
+        if: github.event_name != 'pull_request'
         shell: bash
         run: |
           set -euo pipefail
