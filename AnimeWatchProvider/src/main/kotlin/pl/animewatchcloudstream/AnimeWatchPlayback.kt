@@ -38,6 +38,17 @@ object AnimeWatchPlayback {
     fun acceptsMessage(nonce: String, expectedNonce: String, source: PlayerSource, pages: List<URI>): Boolean =
         nonce == expectedNonce && isPlayerPage(source.referer, pages)
 
+    /** Metadata is observed in the actual /e/ parent before it creates its player iframe. */
+    fun discoveredFrame(nonce: String, expectedNonce: String, source: PlayerSource, parent: URI): URI? {
+        if (source.type != "embed_frame" || source.error != null ||
+            !acceptsMessage(nonce, expectedNonce, source, listOf(parent))) return null
+        val code = Regex("^/e/([A-Za-z0-9]+)/?$").matchEntire(parent.path)?.groupValues?.get(1) ?: return null
+        val frame = publicHttps(source.url) ?: return null
+        if (!frame.path.matches(Regex("/[A-Za-z0-9_-]{1,32}/${Regex.escape(code)}/?"))) return null
+        if (isPlayerPage(source.url, listOf(parent))) return null
+        return frame
+    }
+
     fun acceptsSource(nonce: String, expectedNonce: String, source: PlayerSource, pages: List<URI>): Boolean =
         acceptsMessage(nonce, expectedNonce, source, pages) && source.error == null && publicHttps(source.url) != null &&
             (isMedia(source.url) || source.type.lowercase() in setOf("hls", "m3u8", "mp4", "video/mp4", "application/x-mpegurl", "application/vnd.apple.mpegurl"))
@@ -90,6 +101,43 @@ object AnimeWatchPlayback {
     // cross-origin player frame. evaluateJavascript() on the outer page cannot do that.
     val frameScriptTemplate = """
         ;(function () {
+            // Observe the parent's normal metadata response with its real WebView
+            // cookies/UA. Do not issue another request or alter the response/body.
+            // Register the frame before React can create it and load its entry script.
+            var originalFetch = window.fetch;
+            if (typeof originalFetch === 'function') {
+                window.fetch = function (input, options) {
+                    var observe = false;
+                    var code = '';
+                    try {
+                        var page = new URL(location.href);
+                        var match = page.pathname.match(/^\/e\/([A-Za-z0-9]+)\/?$/);
+                        var target = new URL(input && typeof input.url === 'string' ? input.url : String(input), page.href);
+                        var method = String((options && options.method) || (input && input.method) || 'GET').toUpperCase();
+                        code = match ? match[1] : '';
+                        observe = !!code && method === 'GET' && target.origin === page.origin &&
+                            target.pathname === '/api/videos/' + code + '/embed/details';
+                    } catch (_) {}
+                    var pending = originalFetch.apply(this, arguments);
+                    if (!observe) return pending;
+                    return pending.then(function (response) {
+                        if (!response.ok || typeof response.clone !== 'function') return response;
+                        try {
+                            return response.clone().json().then(function (details) {
+                                try {
+                                    if (details && details.code === code && typeof details.embed_frame_url === 'string' &&
+                                        window.AnimeWatchBridge && typeof window.AnimeWatchBridge.postSource === 'function') {
+                                        window.AnimeWatchBridge.postSource('__AW_NONCE__', JSON.stringify({
+                                            type: 'embed_frame', url: details.embed_frame_url, referer: location.href
+                                        }));
+                                    }
+                                } catch (_) {}
+                                return response;
+                            }, function () { return response; });
+                        } catch (_) { return response; }
+                    });
+                };
+            }
             var stopped = false;
             var attempts = 0;
             var gateReported = false;

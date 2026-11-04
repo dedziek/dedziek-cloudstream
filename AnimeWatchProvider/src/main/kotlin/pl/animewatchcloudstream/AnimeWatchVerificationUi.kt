@@ -32,9 +32,9 @@ object AnimeWatchVerificationUi {
         val window = AlertDialog.Builder(activity).setTitle("AnimeWatch — weryfikacja Byse")
             .setNegativeButton("Zamknij", null)
         if (request == null) {
-            window.setMessage("Nie ma odcinka wymagającego weryfikacji. Najpierw spróbuj go odtworzyć. Jeżeli Byse zgłosi wymóg weryfikacji, wróć do tych ustawień.")
+            window.setMessage("Nie ma zapamiętanej próby Byse. Najpierw spróbuj odtworzyć wybrany odcinek, a następnie wróć do tych ustawień, jeśli odtwarzanie się nie powiedzie.")
         } else {
-            window.setMessage("Otwórz odtwarzacz ostatniego odcinka i samodzielnie dokończ weryfikację Byse. Po uzyskaniu źródła okno zamknie się. Następnie uruchom ten sam odcinek ponownie w CloudStream.")
+            window.setMessage("Otwórz odtwarzacz ostatniego odcinka. Samodzielnie naciśnij przycisk odtwarzania i dokończ weryfikację, jeżeli Byse jej wymaga. Po uzyskaniu źródła okno zamknie się. Następnie uruchom ten sam odcinek ponownie w CloudStream.")
             window.setPositiveButton("Otwórz weryfikację") { _, _ ->
                 if (active?.isActive == true) return@setPositiveButton
                 active = scope.launch {

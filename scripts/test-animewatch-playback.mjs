@@ -154,3 +154,82 @@ test('reports the verification gate once without clicking or solving it', () => 
   assert.equal(frame.messages[1].source.url, hls);
   assert.equal(frame.timers.length, 0);
 });
+
+const parentPage = 'https://host.example/e/code';
+const metadataUrl = 'https://host.example/api/videos/code/embed/details';
+const embedFrame = 'https://frame.example/ooa4/code';
+const details = { code: 'code', embed_frame_url: embedFrame, title: 'Example episode' };
+
+function metadataContext(fetch) {
+  const frame = frameContext();
+  frame.ctx.location.href = parentPage;
+  frame.ctx.window.fetch = fetch;
+  frameScript.runInContext(frame.ctx);
+  return frame;
+}
+
+test('registers the iframe before the parent receives its metadata without consuming the response', async () => {
+  const response = new Response(JSON.stringify(details));
+  const requests = [];
+  const options = { credentials: 'include', headers: { 'X-Example': 'unchanged' } };
+  const frame = metadataContext((...args) => { requests.push(args); return Promise.resolve(response); });
+  assert.equal(requests.length, 0, 'observer must not send its own API requests');
+  const result = await frame.ctx.window.fetch('/api/videos/code/embed/details', options);
+  assert.equal(result, response);
+  assert.equal(result.bodyUsed, false);
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0][0], '/api/videos/code/embed/details');
+  assert.equal(requests[0][1], options);
+  assert.deepEqual(frame.messages, [{ token: nonce, source: { type: 'embed_frame', url: embedFrame, referer: parentPage } }]);
+  assert.deepEqual(await result.json(), details);
+});
+
+test('observes Request objects without changing the original request', async () => {
+  const request = new Request(metadataUrl);
+  let received;
+  const frame = metadataContext(input => { received = input; return Promise.resolve(new Response(JSON.stringify(details))); });
+  await frame.ctx.window.fetch(request);
+  assert.equal(received, request);
+  assert.equal(frame.messages[0].source.url, embedFrame);
+});
+
+test('does not inspect unrelated requests or POST bodies', async () => {
+  const response = { ok: true, clone: () => assert.fail('unrelated response must not be inspected') };
+  const pending = Promise.resolve(response);
+  const frame = metadataContext(() => pending);
+  for (const [url, options] of [
+    ['https://advert.example/api/videos/code/embed/details'],
+    ['https://host.example/api/videos/another/embed/details'],
+    ['https://host.example/api/videos/code/embed/settings'],
+    [metadataUrl, { method: 'POST', body: '{"unchanged":true}' }],
+    [new Request(metadataUrl, { method: 'POST', body: 'unchanged' })],
+  ]) {
+    assert.equal(frame.ctx.window.fetch(url, options), pending);
+  }
+  assert.equal(frame.messages.length, 0);
+});
+
+test('leaves HTTP errors, invalid JSON and mismatched metadata unchanged', async () => {
+  for (const response of [
+    new Response('blocked', { status: 403 }),
+    new Response('<html>not JSON</html>'),
+    new Response(JSON.stringify({ ...details, code: 'another' })),
+    new Response(JSON.stringify({ code: 'code' })),
+  ]) {
+    const frame = metadataContext(() => Promise.resolve(response));
+    assert.equal(await frame.ctx.window.fetch(metadataUrl), response);
+    assert.equal(response.bodyUsed, false);
+    assert.equal(frame.messages.length, 0);
+  }
+});
+
+test('preserves network failures and ignores observer failures', async () => {
+  const error = new Error('network unavailable');
+  const failed = metadataContext(() => Promise.reject(error));
+  await assert.rejects(failed.ctx.window.fetch(metadataUrl), value => value === error);
+  const response = new Response(JSON.stringify(details));
+  const frame = metadataContext(() => Promise.resolve(response));
+  frame.ctx.window.AnimeWatchBridge.postSource = () => { throw new Error('bridge unavailable'); };
+  assert.equal(await frame.ctx.window.fetch(metadataUrl), response);
+  assert.deepEqual(await response.json(), details);
+});

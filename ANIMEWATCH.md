@@ -1,4 +1,4 @@
-# AnimeWatch dla CloudStream — wersja testowa 3
+# AnimeWatch dla CloudStream — wersja testowa 4
 
 Dodatek **AnimeWatchProvider** korzysta z publicznych stron `https://animewatch.pl`. Udostępnia katalog, wyszukiwanie, opisy, plakaty, gatunki, filmy anime i listy odcinków. Materiał na stronie jest opisywany jako polski lektor IVO; w CloudStream odcinki znajdują się pod wariantem „Dubbing”. Logowanie nie jest wymagane.
 
@@ -20,11 +20,13 @@ Jeśli bezpośredni ekstraktor Byse nie uzyska wideo, dodatek otwiera w tle stro
 
 Obserwator źródeł jest dołączany do żądania skryptu startowego `/assets/index-....js` wyłącznie dla odtwarzacza wskazanego przez Byse. Wiadomość z ramki wymaga losowego identyfikatora bieżącej próby oraz zgodnego adresu dokumentu. Osadzony odtwarzacz może używać własnych ciasteczek w tej instancji WebView. Żądania POST, inicjalizację sesji i komunikację między ramkami wykonują skrypty hostingu.
 
+Wersja 4 może ustalić adres ramki także z normalnej odpowiedzi metadanych otrzymanej przez stronę nadrzędną w WebView. Nie zależy wtedy wyłącznie od wcześniejszego, osobnego żądania dodatku. Odpowiedź jest odczytywana z kopii, bez zmiany oryginalnej odpowiedzi, nagłówków, ciasteczek ani treści żądań POST. Ramka musi odpowiadać temu samemu kodowi filmu; zgłoszenie jej adresu jest przyjmowane wyłącznie od właściwej strony nadrzędnej i z identyfikatorem bieżącej próby.
+
 Dodatek nie klika reklam ani weryfikacji. Jeżeli Byse wyświetla bramkę CAPTCHA, zwykła próba odtwarzania kończy się komunikatem wskazującym ręczną weryfikację. Nie otwiera dodatkowego okna automatycznie.
 
 ### Ręczna weryfikacja na żądanie
 
-1. Spróbuj odtworzyć wybrany odcinek. Dodatek zapamięta odcinek, dla którego Byse zażądał weryfikacji.
+1. Spróbuj odtworzyć wybrany odcinek. Dodatek zapamięta ostatnią próbę Byse, także gdy zakończy się oczekiwaniem 45 sekund bez wykrycia CAPTCHA.
 2. Otwórz ustawienia zainstalowanego **AnimeWatchProvider** i wybierz **Otwórz weryfikację**.
 3. Samodzielnie naciśnij przycisk odtwarzacza i dokończ wymaganą weryfikację na stronie Byse.
 4. Po wykryciu źródła okno zamknie się. W ciągu minuty uruchom ponownie ten sam odcinek w CloudStream.
@@ -34,6 +36,12 @@ Uzyskany adres wraz z nagłówkami jest przekazywany jednorazowo przez pamięć 
 Wymagany jest aktualny **CloudStream pre-release** z ekstraktorem ByseSX. Starsza aplikacja może nie załadować dodatku. Android 6.0 / API 23 jest minimalną wersją kompilacji.
 
 ## Weryfikacja i ograniczenia
+
+Wersja 4 usuwa lukę, w której niedostępna odpowiedź osobnego żądania metadanych pozostawiała obserwator wyłącznie w stronie nadrzędnej, bez dostępu do źródła w ramce. Adres ramki może teraz zostać zgłoszony przed utworzeniem jej przez stronę. Komunikat po upływie czasu wskazuje opcjonalną ręczną próbę w ustawieniach. Zwykłe odtwarzanie nadal nie otwiera okna ani nie klika przycisków strony.
+
+Zgłoszenie z 4 listopada 2026 dotyczy „Kyouran Reijou Nia Liston…”, odcinek 1. Publiczna strona AnimeWatch zawierała jedno źródło Byse, `mpbwc02rmz6f`. Z tego środowiska Byse odpowiedział HTTP 403 zarówno dla strony osadzenia, jak i metadanych. Nie ponawiano tych żądań w celu obejścia blokady; nie potwierdzono rzeczywistego odtwarzania tego odcinka. Nie ustalono, czy błąd zgłoszony z urządzenia miał tę samą przyczynę sieciową.
+
+Dodano testy obserwacji zwykłej odpowiedzi metadanych, kolejności zgłoszenia ramki, nienaruszonej treści odpowiedzi, obiektów Request, żądań POST, błędów sieci/HTTP/JSON i awarii mostka. Testy Kotlin sprawdzają dostęp do skryptu i źródła po odkryciu ramki bez początkowej podpowiedzi oraz odrzucanie wiadomości z innych dokumentów, domen, kodów filmu i niepublicznych adresów. Testy skryptów wykonuje polecenie `node --test scripts/test-animewatch-playback.mjs`; pełną kompilację i testy uruchamia GitHub Actions.
 
 Wersja 3 poprawia błąd inicjalizacji ramki obecny w wersji 2. Wewnętrzny adres z `embed_frame_url` oczekuje kontekstu od rodzica i samodzielnie nie uruchamiał odtwarzacza. Powodowało to 45-sekundowe oczekiwanie. Dla „Zombie Sagashitemasu”, odcinek 1, publiczna odpowiedź ustawień Byse w środowisku testowym dodatkowo zgłaszała `captcha_required: true`; skrypt hostingu rozpoczyna tę weryfikację dopiero po kliknięciu użytkownika. Wersja 3 rozpoznaje tę bramkę w rzeczywistej ramce i udostępnia ręczną weryfikację w ustawieniach.
 
