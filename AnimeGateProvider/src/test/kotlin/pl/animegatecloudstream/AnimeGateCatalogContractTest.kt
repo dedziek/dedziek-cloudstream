@@ -4,6 +4,32 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class AnimeGateCatalogContractTest {
+    @Test fun supportsObservedFrontendProxiesAndBackendNamespacesWithoutMixingOrigins() {
+        val catalog = AnimeGateCatalogContract()
+        val frontend = "https://animegate.pl/api/metadata?includeLinks=true&q=PRIVATE_QUERY"
+        val backend = "https://api.animegate.pl/api/v1/metadata/anime?page=1"
+        assertTrue(AnimeGateCatalogContract.eligible(frontend)); assertTrue(AnimeGateCatalogContract.eligible(backend))
+        catalog.observe("GET", frontend); catalog.observe("GET", backend)
+        assertEquals(setOf("SITE", "API"), catalog.requests().map { it.origin }.toSet())
+        val request = catalog.requests().first { it.origin == "SITE" }
+        val result = catalog.add(request, 200, """{"data":[{"id":"PRIVATE_ID","sourceName":"PRIVATE_NAME","sortOrder":3,"airDate":null,"user":{"PRIVATE_PERSON":"PRIVATE_EMAIL"}}]}""")
+        assertEquals("SITE", result.origin)
+        assertTrue(result.shape.contains("sourceName:string"))
+        assertTrue(result.shape.contains("sortOrder:number"))
+        assertTrue(result.shape.contains("airDate:null"))
+        assertFalse(catalog.report().contains("PRIVATE"))
+        assertTrue(catalog.report().contains("query_keys=includeLinks,q"))
+        for (url in listOf("https://animegate.pl/api/auth/session", "https://animegate.pl/api/revalidate?secret=PRIVATE", "https://api.animegate.pl/api/v1/services/oauth/start", "https://api.animegate.pl/api/v1/my/anime", "https://animegate.pl/api/trpc/anime.search")) assertFalse(url, AnimeGateCatalogContract.eligible(url))
+    }
+    @Test fun confirmsEpisodeParserCountsWithoutExportingIdentifiers() {
+        val catalog = AnimeGateCatalogContract()
+        catalog.observe("GET", "https://api.animegate.pl/api/v1/episodes/anime/PRIVATE_ID?includeLinks=true")
+        val request = catalog.requests().single()
+        catalog.add(request, 200, """{"success":true,"data":[{"id":"PRIVATE_EPISODE","animeId":"PRIVATE_ID","number":1,"title":null,"links":[]}]}""")
+        val report = catalog.report()
+        assertTrue(report.contains("parsed_episodes=1"))
+        assertFalse(report.contains("PRIVATE"))
+    }
     @Test fun reportsOnlyRoutePatternsQueryNamesAndItemFieldTypes() {
         val catalog = AnimeGateCatalogContract()
         catalog.observe("GET", "https://api.animegate.pl/api/v1/anime/PRIVATE_ID/episodes?page=3&q=PRIVATE_QUERY")

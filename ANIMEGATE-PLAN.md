@@ -2,7 +2,7 @@
 
 Data: 4 listopada 2026. Repozytorium: `dedziek/dedziek-cloudstream`.
 
-Status: logowanie i sesja potwierdzone raportami v5 (`VERIFIED_SESSION_API`, `API_ME`, HTTP 200), zarówno z istniejącą sesją, jak i po pełnym przejściu Discord OAuth. Rozpoczęto etap katalogu. V6 zbiera ograniczoną strukturę odpowiedzi z rzeczywiście zaobserwowanych tras katalogu i odcinków; parser oraz odtwarzanie czekają na te dane. Instrukcja: [ANIMEGATE.md](ANIMEGATE.md).
+Status: logowanie i sesja potwierdzone raportami v5 (`VERIFIED_SESSION_API`, `API_ME`, HTTP 200). Raport v6 potwierdził strukturę listy odcinków `/api/v1/episodes/anime/{param}`. V7 dodaje jej parser, obsługę obserwacji API głównej domeny i dokładniejsze schematy. Brakuje kontraktu listy anime, wyszukiwania oraz źródeł wideo; źródło CloudStream nie jest jeszcze rejestrowane. Instrukcja: [ANIMEGATE.md](ANIMEGATE.md).
 
 ## Cel i docelowa obsługa
 
