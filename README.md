@@ -8,6 +8,7 @@ Repozytorium dodatków do **CloudStream na Androidzie i Android TV / Google TV**
 |---|---|---|
 | **FilmanProvider** | **Filman — konto darmowe (test)** | Darmowe konto Filman, Android 6.0 lub nowszy i działający Android System WebView do logowania |
 | **AnimeWatchProvider** | **AnimeWatch** | Aktualny CloudStream Beta, Android 6.0 lub nowszy; WebView do pobierania źródeł w tle |
+| **EkinoProvider** | **Ekino** | Filmy, seriale i odcinki; opcjonalne logowanie w ustawieniach, Android System WebView |
 | **ObejrzyjTo** | Dodatek do `obejrzyj.to` autorstwa **Phisher98** | Oryginalna paczka z Phisher Repo; aktualizacje zgodne z wersjami autora |
 | **AnimeGateProvider v11** | **Katalog, odcinki i odtwarzanie; proste logowanie** | Odtwarzanie potwierdzone przez użytkownika; podgląd katalogu do 8 wyników |
 
@@ -16,6 +17,8 @@ Filman obsługuje katalog filmów i seriali, wyszukiwanie, listę odcinków oraz
 Od wersji **FilmanProvider 2** nazwy źródeł w odtwarzaczu zawierają wersję językową i jakość ze strony, np. **Voe · Lektor_AI · 720p** lub **Streamtape · Napisy · 1080p**. Oznaczenia takie jak `ENG`, `Lektor`, `Lektor_AI`, `Napisy` i `Napisy_Tansl` są zachowywane zgodnie z opisem Filmana. Jeśli strona nie podaje wersji, dodatek jej nie zgaduje.
 
 **AnimeWatchProvider** udostępnia katalog anime, wyszukiwanie, filmy i listy odcinków z animewatch.pl bez logowania. Wersja 5 pobiera źródło w tle, a gdy Byse wymaga weryfikacji, otwiera jej stronę bezpośrednio podczas wybierania odcinka. Po wykonaniu weryfikacji wynik wraca do CloudStream — bez szukania ustawień i ponownego wybierania odcinka. Awaryjne otwarcie z ustawień pozostaje dostępne. Pełne odtwarzanie wymaga jeszcze próby na urządzeniu. [Szczegóły i ograniczenia](ANIMEWATCH.md).
+
+**EkinoProvider v1** obsługuje ekino-tv.pl, obecnie przekierowujące do oficjalnej domeny ekino.ws. Udostępnia filmy, seriale, wyszukiwanie i listy odcinków. Zwykłe odtwarzacze są przekazywane ekstraktorom CloudStream; odtwarzanie wymaga próby na urządzeniu. Logowanie jest opcjonalne i dostępne w zębatce dodatku. [Instrukcja i ograniczenia](EKINO.md).
 
 ## Instalacja repozytorium
 
@@ -26,7 +29,7 @@ Od wersji **FilmanProvider 2** nazwy źródeł w odtwarzaczu zawierają wersję 
    https://github.com/dedziek/dedziek-cloudstream/raw/refs/heads/main/repo.json
    ```
 
-3. Otwórz dodane repozytorium i zainstaluj wybrany dodatek: **FilmanProvider**, **AnimeWatchProvider**, **ObejrzyjTo** lub prototyp **AnimeGateProvider**.
+3. Otwórz dodane repozytorium i zainstaluj wybrany dodatek: **FilmanProvider**, **AnimeWatchProvider**, **EkinoProvider**, **ObejrzyjTo** lub prototyp **AnimeGateProvider**.
 4. Dla Filmana skonfiguruj logowanie według instrukcji poniżej i wybierz źródło **Filman — konto darmowe (test)**. Dla AnimeWatch wybierz źródło **AnimeWatch** — konfiguracja konta nie jest wymagana.
 
 Jeśli repozytorium jest już dodane i działa, wystarczy odświeżyć jego listę dodatków. Ponowne dodawanie repozytorium nie jest potrzebne. Aktualizacje dodatków są publikowane pod tym samym adresem.

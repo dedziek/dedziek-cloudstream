@@ -10,3 +10,4 @@ rootProject.name = "FilmanCloudStream"
 include("FilmanProvider")
 include("AnimeWatchProvider")
 include("AnimeGateProvider")
+include("EkinoProvider")
