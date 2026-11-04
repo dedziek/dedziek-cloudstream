@@ -1,14 +1,12 @@
 package pl.animewatchcloudstream
 
 import android.annotation.SuppressLint
-import android.app.AlertDialog
 import android.net.http.SslError
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.view.View
 import android.view.ViewGroup
-import android.view.WindowManager
 import android.webkit.CookieManager
 import android.webkit.RenderProcessGoneDetail
 import android.webkit.SslErrorHandler
@@ -19,48 +17,42 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import android.widget.Toast
-import android.widget.FrameLayout
 import com.lagradost.cloudstream3.CommonActivity
+import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.ByteArrayInputStream
-import java.net.URI
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.coroutines.resume
 
-/** Opens the ordinary embedded player; the user handles playback and any site verification. */
+/** Lets the hosting's own scripts initialise the player without opening a dialog. */
 object AnimeWatchBrowser {
     data class Stream(
         val url: String,
         val headers: Map<String, String>,
-        val userAgent: String?,
-        val referer: String?
+        val referer: String,
+        val isHls: Boolean
     )
 
-    private val mediaPath = Regex("""(?i)\.(?:m3u8|mp4)$""")
-    private val publicHost = Regex("""(?i)^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?\.[a-z]{2,63}$""")
-    private val localSuffixes = listOf(".local", ".localhost", ".internal", ".lan", ".home", ".test", ".invalid")
+    data class PlayerSource(val url: String = "", val type: String = "", val referer: String = "")
 
     @SuppressLint("SetJavaScriptEnabled")
     @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
     suspend fun resolve(embedUrl: String, referer: String): Stream? {
-        val player = publicHttps(embedUrl) ?: return null
-        if (publicHttps(referer) == null) return null
-        return withTimeoutOrNull(180_000L) {
+        val player = AnimeWatchPlayback.publicHttps(embedUrl) ?: return null
+        if (AnimeWatchPlayback.publicHttps(referer) == null) return null
+        return withTimeoutOrNull(45_000L) {
             suspendCancellableCoroutine { continuation ->
                 val main = Handler(Looper.getMainLooper())
                 val finished = AtomicBoolean(false)
-                var dialog: AlertDialog? = null
                 var web: WebView? = null
+                var probe: Runnable? = null
 
                 fun finish(result: Stream?) {
                     if (!finished.compareAndSet(false, true)) return
                     main.post {
-                        dialog?.setOnDismissListener(null)
-                        dialog?.setOnCancelListener(null)
-                        runCatching { dialog?.dismiss() }
-                        dialog = null
+                        probe?.let(main::removeCallbacks)
+                        probe = null
                         web?.let { view ->
                             runCatching { view.stopLoading() }
                             runCatching { (view.parent as? ViewGroup)?.removeView(view) }
@@ -85,6 +77,7 @@ object AnimeWatchBrowser {
                         browser.settings.apply {
                             javaScriptEnabled = true
                             domStorageEnabled = true
+                            mediaPlaybackRequiresUserGesture = false
                             allowFileAccess = false
                             allowContentAccess = false
                             allowFileAccessFromFileURLs = false
@@ -97,62 +90,87 @@ object AnimeWatchBrowser {
                             savePassword = false
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) safeBrowsingEnabled = true
                         }
+                        browser.alpha = 0f
+                        browser.isFocusable = false
+                        browser.isFocusableInTouchMode = false
+                        browser.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                             browser.importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS
                         }
                         browser.webChromeClient = WebChromeClient()
-                        // Keep the browser's normal first-party cookie policy. Do not copy AnimeWatch cookies.
                         CookieManager.getInstance().setAcceptThirdPartyCookies(browser, false)
                         browser.setDownloadListener { _, _, _, _, _ -> }
                         browser.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
                             override fun onViewAttachedToWindow(view: View) = Unit
                             override fun onViewDetachedFromWindow(view: View) { finish(null) }
                         })
+
+                        fun stream(url: String, headers: Map<String, String>, source: String, type: String = ""): Stream {
+                            val captured = headers.filterKeys {
+                                it.lowercase() !in setOf("host", "connection", "content-length", "accept-encoding", "range", "referer", "cookie")
+                            }.toMutableMap()
+                            if (captured.keys.none { it.equals("User-Agent", true) }) {
+                                captured["User-Agent"] = browser.settings.userAgentString
+                            }
+                            // Carry only cookies applicable to the media URL, never the page's cookies.
+                            CookieManager.getInstance().getCookie(url)?.takeIf(String::isNotBlank)?.let {
+                                captured["Cookie"] = it
+                            }
+                            return Stream(url, captured.toMap(), source, AnimeWatchPlayback.isHls(url, type))
+                        }
+
+                        probe = object : Runnable {
+                            override fun run() {
+                                if (finished.get() || !continuation.isActive) return
+                                browser.evaluateJavascript(AnimeWatchPlayback.playerScript) { raw ->
+                                    if (finished.get() || !continuation.isActive) return@evaluateJavascript
+                                    val json = tryParseJson<String>(raw)
+                                    val candidate = json?.let { tryParseJson<PlayerSource>(it) }
+                                    val source = candidate?.referer?.let(AnimeWatchPlayback::publicHttps)
+                                    if (candidate != null && AnimeWatchPlayback.publicHttps(candidate.url) != null &&
+                                        source != null && AnimeWatchPlayback.sameOrigin(player, source)) {
+                                        finish(stream(candidate.url, emptyMap(), candidate.referer, candidate.type))
+                                    } else {
+                                        main.postDelayed(this, 400L)
+                                    }
+                                }
+                            }
+                        }
+
                         browser.webViewClient = object : WebViewClient() {
                             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
-                                val target = publicHttps(request.url.toString()) ?: return true
-                                return request.isForMainFrame && !sameOrigin(player, target)
+                                val target = AnimeWatchPlayback.publicHttps(request.url.toString()) ?: return true
+                                return request.isForMainFrame && !AnimeWatchPlayback.sameOrigin(player, target)
                             }
 
                             override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {
-                                val target = publicHttps(url) ?: return true
-                                return !sameOrigin(player, target)
+                                val target = AnimeWatchPlayback.publicHttps(url) ?: return true
+                                return !AnimeWatchPlayback.sameOrigin(player, target)
                             }
 
                             override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
                                 val url = request.url.toString()
-                                val target = publicHttps(url) ?: return blocked()
-                                if (request.isForMainFrame && !sameOrigin(player, target)) return blocked()
+                                val target = AnimeWatchPlayback.publicHttps(url) ?: return blocked()
+                                if (request.isForMainFrame && !AnimeWatchPlayback.sameOrigin(player, target)) return blocked()
                                 val headers = request.requestHeaders.toMap()
                                 val source = headers.entries.firstOrNull { it.key.equals("Referer", true) }?.value
-                                val sourceOrigin = source?.let(::publicHttps)
-                                // A cross-origin advertisement iframe must not become the selected movie.
-                                if (request.method == "GET" && mediaPath.containsMatchIn(target.path.orEmpty()) &&
-                                    sourceOrigin != null && sameOrigin(player, sourceOrigin)) {
-                                    main.post capture@{
-                                        if (finished.get() || !continuation.isActive) return@capture
-                                        val captured = headers.filterKeys {
-                                            it.lowercase() !in setOf("host", "connection", "content-length", "accept-encoding", "range")
-                                        }.toMutableMap()
-                                        val ua = headers.entries.firstOrNull { it.key.equals("User-Agent", true) }?.value
-                                            ?: browser.settings.userAgentString
-                                        if (captured.keys.none { it.equals("User-Agent", true) }) captured["User-Agent"] = ua
-                                        if (captured.keys.none { it.equals("Cookie", true) }) {
-                                            // Only cookies applicable to this exact captured media URL are returned.
-                                            CookieManager.getInstance().getCookie(url)?.takeIf(String::isNotBlank)?.let {
-                                                captured["Cookie"] = it
-                                            }
-                                        }
-                                        finish(Stream(url, captured.toMap(), ua, source))
+                                val sourceOrigin = source?.let(AnimeWatchPlayback::publicHttps)
+                                if (request.method == "GET" && AnimeWatchPlayback.isMedia(url) && source != null &&
+                                    sourceOrigin != null && AnimeWatchPlayback.sameOrigin(player, sourceOrigin)) {
+                                    main.post {
+                                        if (!finished.get() && continuation.isActive) finish(stream(url, headers, source))
                                     }
                                 }
-                                // Native WebView handles requests, POST bodies, scripts and site verification.
+                                // Keep native handling of POST bodies, scripts and the host's session.
                                 return null
+                            }
+
+                            override fun onPageFinished(view: WebView, url: String) {
+                                if (url.substringBefore('?').endsWith("/blocked.html")) finish(null)
                             }
 
                             override fun onReceivedSslError(view: WebView?, handler: SslErrorHandler?, error: SslError?) {
                                 handler?.cancel()
-                                Toast.makeText(activity, "Odtwarzacz zgłosił błąd certyfikatu HTTPS.", Toast.LENGTH_LONG).show()
                                 finish(null)
                             }
 
@@ -165,33 +183,17 @@ object AnimeWatchBrowser {
                                 return true
                             }
                         }
-                        val content = FrameLayout(activity).apply {
-                            minimumHeight = (activity.resources.displayMetrics.heightPixels * 0.60).toInt()
-                            addView(browser, FrameLayout.LayoutParams(
-                                ViewGroup.LayoutParams.MATCH_PARENT,
-                                ViewGroup.LayoutParams.MATCH_PARENT
-                            ))
+                        // Attach behind the app's content so layout-dependent players can initialise.
+                        val root = activity.findViewById<ViewGroup>(android.R.id.content)
+                        if (root == null) {
+                            finish(null)
+                            return@open
                         }
-                        val window = AlertDialog.Builder(activity)
-                            .setTitle("AnimeWatch — uruchom odtwarzacz")
-                            .setMessage("Naciśnij odtwarzanie na stronie. Jeśli odtwarzacz wymaga weryfikacji, wykonaj ją samodzielnie. Po wykryciu filmu okno zamknie się automatycznie.")
-                            .setView(content)
-                            .setNegativeButton("Anuluj") { _, _ -> finish(null) }
-                            .create()
-                        dialog = window
-                        window.setOnCancelListener { finish(null) }
-                        window.setOnDismissListener { finish(null) }
-                        window.show()
-                        window.window?.apply {
-                            setLayout(
-                                ViewGroup.LayoutParams.MATCH_PARENT,
-                                (activity.resources.displayMetrics.heightPixels * 0.92).toInt()
-                            )
-                            setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
-                            clearFlags(WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM)
-                        }
-                        browser.requestFocus()
+                        root.addView(browser, 0, ViewGroup.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
+                        ))
                         browser.loadUrl(embedUrl, mapOf("Referer" to referer))
+                        probe?.let { main.postDelayed(it, 400L) }
                     } catch (_: Exception) {
                         finish(null)
                     }
@@ -199,17 +201,6 @@ object AnimeWatchBrowser {
             }
         }
     }
-
-    private fun publicHttps(url: String): URI? = runCatching {
-        val uri = URI(url)
-        val host = uri.host?.lowercase()?.trimEnd('.') ?: return null
-        if (uri.scheme != "https" || uri.userInfo != null || uri.port !in setOf(-1, 443) ||
-            host.length > 253 || !publicHost.matches(host) || localSuffixes.any(host::endsWith)) return null
-        uri
-    }.getOrNull()
-
-    private fun sameOrigin(first: URI, second: URI): Boolean =
-        first.host.equals(second.host, ignoreCase = true)
 
     private fun blocked() = WebResourceResponse(
         "text/plain", "UTF-8", 403, "Blocked", emptyMap(), ByteArrayInputStream(ByteArray(0))

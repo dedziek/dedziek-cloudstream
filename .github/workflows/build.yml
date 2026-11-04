@@ -2,6 +2,10 @@ name: Build and publish CloudStream repository
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [main, master]
+    paths-ignore:
+      - '**.md'
   push:
     branches: [main, master]
     paths-ignore:
@@ -11,7 +15,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: cloudstream-publication
+  group: cloudstream-${{ github.event.pull_request.number || 'publication' }}
   cancel-in-progress: false
 
 jobs:
@@ -41,6 +45,9 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Test background player script
+        run: node --test scripts/test-animewatch-playback.mjs
+
       - name: Compile and test
         run: sh gradlew :FilmanProvider:make :AnimeWatchProvider:make testDebugUnitTest makePluginsJson --no-daemon --console=plain
 
@@ -55,6 +62,7 @@ jobs:
           if-no-files-found: error
 
       - name: Publish builds branch
+        if: github.event_name != 'pull_request'
         shell: bash
         run: |
           set -euo pipefail
