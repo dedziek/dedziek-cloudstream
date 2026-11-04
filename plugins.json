@@ -1,9 +1,9 @@
 [
   {
-    "fileHash": "sha256-8641d2f1895bd55612f5692c589a8d75ef5f0a094241baf6c2d3d53b14702841",
+    "fileHash": "sha256-7c2df514761cccdbb34a76032eaafaacf10105abe000495e9dfb50dac35b48b8",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/dedziek/dedziek-cloudstream",
-    "fileSize": 62315,
+    "fileSize": 69526,
     "status": 3,
     "language": "pl",
     "authors": [
@@ -12,9 +12,9 @@
     "tvTypes": [
       "Anime"
     ],
-    "version": 7,
+    "version": 8,
     "internalName": "AnimeGateProvider",
-    "description": "AnimeGate: logowanie Discord, sesja i test struktury API. Prototyp nie udostępnia jeszcze katalogu ani odtwarzania w CloudStream.",
+    "description": "AnimeGate: logowanie Discord oraz test parserów katalogu, szczegółów i odcinków. Prototyp nie udostępnia jeszcze katalogu ani odtwarzania w CloudStream.",
     "url": "https://raw.githubusercontent.com/dedziek/dedziek-cloudstream/builds/AnimeGateProvider.cs3",
     "name": "AnimeGateProvider"
   },
