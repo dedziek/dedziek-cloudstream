@@ -1,4 +1,4 @@
-# AnimeWatch dla CloudStream — wersja testowa 4
+# AnimeWatch dla CloudStream — wersja testowa 5
 
 Dodatek **AnimeWatchProvider** korzysta z publicznych stron `https://animewatch.pl`. Udostępnia katalog, wyszukiwanie, opisy, plakaty, gatunki, filmy anime i listy odcinków. Materiał na stronie jest opisywany jako polski lektor IVO; w CloudStream odcinki znajdują się pod wariantem „Dubbing”. Logowanie nie jest wymagane.
 
@@ -22,9 +22,13 @@ Obserwator źródeł jest dołączany do żądania skryptu startowego `/assets/i
 
 Wersja 4 może ustalić adres ramki także z normalnej odpowiedzi metadanych otrzymanej przez stronę nadrzędną w WebView. Nie zależy wtedy wyłącznie od wcześniejszego, osobnego żądania dodatku. Odpowiedź jest odczytywana z kopii, bez zmiany oryginalnej odpowiedzi, nagłówków, ciasteczek ani treści żądań POST. Ramka musi odpowiadać temu samemu kodowi filmu; zgłoszenie jej adresu jest przyjmowane wyłącznie od właściwej strony nadrzędnej i z identyfikatorem bieżącej próby.
 
-Dodatek nie klika reklam ani weryfikacji. Jeżeli Byse wyświetla bramkę CAPTCHA, zwykła próba odtwarzania kończy się komunikatem wskazującym ręczną weryfikację. Nie otwiera dodatkowego okna automatycznie.
+Dodatek nie klika reklam ani weryfikacji. Od wersji 5, jeżeli Byse zgłosi bramkę CAPTCHA, dodatek otwiera właściwą stronę weryfikacji podczas tej samej próby odtwarzania. Użytkownik naciska przycisk strony i samodzielnie wykonuje wymagane potwierdzenie. Po uzyskaniu źródła okno zamyka się, a wynik trafia bezpośrednio do CloudStream. Nie trzeba otwierać ustawień, ponownie wybierać odcinka ani korzystać z minutowego limitu zapisanego wyniku.
 
-### Ręczna weryfikacja na żądanie
+Okno pojawia się dopiero po rozpoznaniu wymogu weryfikacji. Zwykły brak źródła, HTTP 403 i błędy połączenia nie otwierają go automatycznie. Anulowanie przerywa bieżącą próbę; dodatek nie ponawia okna po anulowaniu. Przeglądarka i przycisk anulowania mają własny układ zajmujący dostępną wysokość okna.
+
+### Awaryjne otwarcie odtwarzacza z ustawień
+
+Ta ścieżka pozostaje dostępna, gdy automatyczne rozpoznanie weryfikacji lub inicjalizacja odtwarzacza się nie powiedzie. Przy normalnie rozpoznanej bramce wersja 5 otwiera weryfikację bez tych kroków.
 
 1. Spróbuj odtworzyć wybrany odcinek. Dodatek zapamięta ostatnią próbę Byse, także gdy zakończy się oczekiwaniem 45 sekund bez wykrycia CAPTCHA.
 2. Otwórz ustawienia zainstalowanego **AnimeWatchProvider** i wybierz **Otwórz weryfikację**.
@@ -36,6 +40,10 @@ Uzyskany adres wraz z nagłówkami jest przekazywany jednorazowo przez pamięć 
 Wymagany jest aktualny **CloudStream pre-release** z ekstraktorem ByseSX. Starsza aplikacja może nie załadować dodatku. Android 6.0 / API 23 jest minimalną wersją kompilacji.
 
 ## Weryfikacja i ograniczenia
+
+Wersja 5 przekazuje wynik wymaganej weryfikacji bezpośrednio do pierwotnego wywołania pobierającego źródło. Okno otwiera się najwyżej raz dla rozpoznanej bramki w danej próbie; zwykłe błędy i anulowanie nie uruchamiają tej ścieżki. Hint limitu pobierania linków CloudStream ustawiono na pięć minut, aby standardowy limit dwóch minut nie skracał oczekiwania na użytkownika. Poszczególne próby WebView zachowują ograniczenia 45 sekund w tle i 180 sekund z interakcją. Nadrzędna aplikacja może nadal anulować próbę.
+
+Nowe testy sprawdzają wynik bez okna, brak źródła bez okna, oczekiwanie na użytkownika i zwrócenie wyniku temu samemu wywołaniu, błędy i anulowanie bez ponawiania oraz pomiary okna w pionie, poziomie i przy zmniejszonej wysokości na API 28 i 35. W testach układu zwykły widok Androida zajmuje miejsce przeglądarki, ponieważ atrapa WebView w Robolectric nie wykonuje pomiaru. Testy nie potwierdzają renderowania strony ani rzeczywistej weryfikacji i odtwarzania na urządzeniu.
 
 Wersja 4 usuwa lukę, w której niedostępna odpowiedź osobnego żądania metadanych pozostawiała obserwator wyłącznie w stronie nadrzędnej, bez dostępu do źródła w ramce. Adres ramki może teraz zostać zgłoszony przed utworzeniem jej przez stronę. Komunikat po upływie czasu wskazuje opcjonalną ręczną próbę w ustawieniach. Zwykłe odtwarzanie nadal nie otwiera okna ani nie klika przycisków strony.
 

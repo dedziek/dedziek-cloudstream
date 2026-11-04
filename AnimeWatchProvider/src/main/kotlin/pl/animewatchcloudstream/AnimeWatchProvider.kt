@@ -19,6 +19,8 @@ class AnimeWatchProvider(private val verification: AnimeWatchPlaybackSession = A
     override var lang = "pl"
     override val supportedTypes = setOf(TvType.Anime, TvType.AnimeMovie, TvType.OVA)
     override val hasMainPage = true
+    // Allow time for the user's verification as part of this same playback request.
+    override val loadLinksTimeoutMs = 300_000L
     override val mainPage = mainPageOf("update" to "Ostatnio zaktualizowane", "title" to "Lista anime")
 
     private suspend fun sitePage(url: String): Document {
@@ -101,7 +103,6 @@ class AnimeWatchProvider(private val verification: AnimeWatchPlaybackSession = A
         if (targets.isEmpty()) throw ErrorLoadingException("AnimeWatch: brak odtwarzacza na stronie odcinka.")
         var found = false
         var playerError: String? = null
-        var verificationError: String? = null
         for (target in targets.take(12)) {
             try {
                 loadExtractor(target, "$mainUrl/", subtitleCallback) { link ->
@@ -124,21 +125,21 @@ class AnimeWatchProvider(private val verification: AnimeWatchPlaybackSession = A
                     // The site's own JavaScript handles the current playback API and session.
                     // Read its ready playlist in the background rather than asking for a tap.
                     // The /e/ parent must initialise its cross-origin player iframe.
-                    val stream = AnimeWatchBrowser.resolve(target, data, frame) ?: continue
+                    val stream = AnimeWatchPlayback.resolveWithVerification { interactive ->
+                        AnimeWatchBrowser.resolve(target, data, frame, interactive)
+                    } ?: continue
                     emitStream(stream, callback)
                     found = true
                     break
                 } catch (error: CancellationException) {
                     throw error
-                } catch (error: AnimeWatchBrowser.VerificationRequired) {
-                    verificationError = error.message
                 } catch (error: Exception) {
                     playerError = error.message
                     // Continue with another mirror if this host or WebView cannot initialise.
                 }
             }
         }
-        if (!found) throw ErrorLoadingException((verificationError ?: playerError)?.let { "AnimeWatch: $it" }
+        if (!found) throw ErrorLoadingException(playerError?.let { "AnimeWatch: $it" }
             ?: "AnimeWatch: nie uzyskano wideo. Sprawdź odcinek na stronie; hosting może być chwilowo niedostępny.")
         return true
     }

@@ -1,14 +1,13 @@
 package pl.animewatchcloudstream
 
 import android.annotation.SuppressLint
-import android.app.AlertDialog
+import android.app.Dialog
 import android.net.http.SslError
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.view.View
 import android.view.ViewGroup
-import android.view.WindowManager
 import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
 import android.webkit.JsPromptResult
@@ -22,7 +21,6 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import android.widget.FrameLayout
 import com.lagradost.cloudstream3.CommonActivity
 import com.lagradost.cloudstream3.ErrorLoadingException
 import com.lagradost.cloudstream3.app
@@ -38,10 +36,8 @@ import kotlin.coroutines.resume
 import java.util.concurrent.CancellationException
 import pl.animewatchcloudstream.AnimeWatchPlayback.Stream
 
-/** Lets the hosting's own scripts initialise the player without opening a dialog. */
+/** Resolve in the background, or show the hosting for a user-required verification. */
 object AnimeWatchBrowser {
-    class VerificationRequired : Exception("Byse wymaga ręcznej weryfikacji. Otwórz ustawienia rozszerzenia AnimeWatch i wybierz „Otwórz weryfikację”.")
-
     class SourceBridge(private val receive: (String, String) -> Unit) {
         @JavascriptInterface
         fun postSource(nonce: String, payload: String) {
@@ -65,7 +61,7 @@ object AnimeWatchBrowser {
                 val finished = AtomicBoolean(false)
                 var web: WebView? = null
                 var probe: Runnable? = null
-                var dialog: AlertDialog? = null
+                var dialog: Dialog? = null
 
                 fun finish(result: Stream?) {
                     if (!finished.compareAndSet(false, true)) return
@@ -290,28 +286,16 @@ object AnimeWatchBrowser {
                             }
                         }
                         if (interactive) {
-                            val content = FrameLayout(activity).apply {
-                                minimumHeight = (activity.resources.displayMetrics.heightPixels * 0.65).toInt()
-                                addView(browser, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-                            }
-                            val window = AlertDialog.Builder(activity)
-                                .setTitle("Byse — ręczna weryfikacja")
-                                .setMessage("Dokończ weryfikację na stronie. Po uzyskaniu źródła wideo okno zamknie się automatycznie.")
-                                .setView(content)
-                                .setNegativeButton("Anuluj") { _, _ -> cancelledByUser.set(true); finish(null) }
-                                .create()
+                            val window = AnimeWatchVerificationDialog(activity, browser)
                             dialog = window
+                            window.cancelButton.setOnClickListener { cancelledByUser.set(true); finish(null) }
                             window.setOnCancelListener { cancelledByUser.set(true); finish(null) }
                             window.setOnDismissListener { cancelledByUser.set(true); finish(null) }
                             window.show()
-                            window.window?.apply {
-                                setLayout(ViewGroup.LayoutParams.MATCH_PARENT, (activity.resources.displayMetrics.heightPixels * 0.92).toInt())
-                                clearFlags(WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM)
-                            }
                             browser.requestFocus()
                         } else {
-                            // No playback attempt can open a dialog. Manual verification is
-                            // available only through the plugin's settings action.
+                            // Start without UI; the caller may request an interactive retry
+                            // only after the hosting reports its verification gate.
                             val root = activity.findViewById<ViewGroup>(android.R.id.content)
                             if (root == null) {
                                 failure.set("Byse: brak widoku CloudStream do uruchomienia odtwarzacza.")
@@ -332,7 +316,7 @@ object AnimeWatchBrowser {
             }
         }
         if (cancelledByUser.get()) throw CancellationException("Anulowano ręczną weryfikację Byse.")
-        if (result == null && verificationRequired.get() && !interactive) throw VerificationRequired()
+        if (result == null && verificationRequired.get() && !interactive) throw AnimeWatchPlayback.VerificationRequired()
         return result ?: throw ErrorLoadingException(if (interactive) "Byse: nie uzyskano wideo podczas ręcznej weryfikacji."
             else failure.get() + " Możesz otworzyć odtwarzacz ręcznie w ustawieniach AnimeWatch: „Otwórz weryfikację”.")
     }
