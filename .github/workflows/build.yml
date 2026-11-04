@@ -41,6 +41,9 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Test background player script
+        run: node --test scripts/test-animewatch-playback.mjs
+
       - name: Compile and test
         run: sh gradlew :FilmanProvider:make :AnimeWatchProvider:make testDebugUnitTest makePluginsJson --no-daemon --console=plain
 

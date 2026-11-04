@@ -7,13 +7,13 @@ Repozytorium dodatków do **CloudStream na Androidzie i Android TV / Google TV**
 | Dodatek | Źródło w CloudStream | Wymagania |
 |---|---|---|
 | **FilmanProvider** | **Filman — konto darmowe (test)** | Darmowe konto Filman, Android 6.0 lub nowszy i działający Android System WebView do logowania |
-| **AnimeWatchProvider** | **AnimeWatch** | Aktualny CloudStream Beta, Android 6.0 lub nowszy; WebView do awaryjnego okna odtwarzacza |
+| **AnimeWatchProvider** | **AnimeWatch** | Aktualny CloudStream Beta, Android 6.0 lub nowszy; WebView do pobierania źródeł w tle |
 
 Filman obsługuje katalog filmów i seriali, wyszukiwanie, listę odcinków oraz zwykłe zewnętrzne odtwarzacze przez ekstraktory CloudStream. Dodatek ma status wersji testowej. Dostępność odtwarzania zależy również od wybranego hostingu i aktualnego działania strony.
 
 Od wersji **FilmanProvider 2** nazwy źródeł w odtwarzaczu zawierają wersję językową i jakość ze strony, np. **Voe · Lektor_AI · 720p** lub **Streamtape · Napisy · 1080p**. Oznaczenia takie jak `ENG`, `Lektor`, `Lektor_AI`, `Napisy` i `Napisy_Tansl` są zachowywane zgodnie z opisem Filmana. Jeśli strona nie podaje wersji, dodatek jej nie zgaduje.
 
-**AnimeWatchProvider** udostępnia katalog anime, wyszukiwanie, filmy i listy odcinków z animewatch.pl bez logowania. Ma 18 poprawnych testów parsera i odczytu odtwarzaczy; wymaga jeszcze próby odtwarzania na urządzeniu. Przy problemie z ekstraktorem Byse otwiera zwykły odtwarzacz strony do ręcznego uruchomienia. [Szczegóły i ograniczenia](ANIMEWATCH.md).
+**AnimeWatchProvider** udostępnia katalog anime, wyszukiwanie, filmy i listy odcinków z animewatch.pl bez logowania. Wersja 2 usuwa dodatkowe okno Byse: przy problemie z bezpośrednim ekstraktorem odczytuje gotowe źródła odtwarzacza w tle. Pełne odtwarzanie wymaga jeszcze próby na urządzeniu. [Szczegóły i ograniczenia](ANIMEWATCH.md).
 
 ## Instalacja repozytorium
 

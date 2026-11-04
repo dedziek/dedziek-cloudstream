@@ -112,19 +112,23 @@ class AnimeWatchProvider : MainAPI() {
             }
         }
         if (!found) {
-            val target = targets.firstOrNull(AnimeWatchPlayers::isByse)
-            if (target != null) {
-                // The public details response identifies the actual iframe displayed by Byse.
-                // Load it normally so the user can play the video and handle verification.
-                val frame = byseFrame(target)
-                val stream = AnimeWatchBrowser.resolve(frame ?: target, if (frame != null) target else "$mainUrl/")
-                if (stream != null) {
-                    val kind = if (URI(stream.url).path.endsWith(".m3u8", true)) ExtractorLinkType.M3U8 else ExtractorLinkType.VIDEO
+            for (target in targets.filter(AnimeWatchPlayers::isByse).take(3)) {
+                try {
+                    // The site's own JavaScript handles the current playback API and session.
+                    // Read its ready playlist in the background rather than asking for a tap.
+                    val frame = byseFrame(target)
+                    val stream = AnimeWatchBrowser.resolve(frame ?: target, if (frame != null) target else "$mainUrl/") ?: continue
+                    val kind = if (stream.isHls) ExtractorLinkType.M3U8 else ExtractorLinkType.VIDEO
                     callback(newExtractorLink("AnimeWatch", "Byse — AnimeWatch", stream.url, kind) {
-                        referer = stream.referer.orEmpty()
+                        referer = stream.referer
                         headers = stream.headers
                     })
                     found = true
+                    break
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (_: Exception) {
+                    // Continue with another mirror if this host or WebView cannot initialise.
                 }
             }
         }
@@ -139,10 +143,7 @@ class AnimeWatchProvider : MainAPI() {
             if (!code.matches(Regex("[A-Za-z0-9]+"))) return null
             val response = app.get("https://${uri.host}/api/videos/$code/embed/details", referer = "$mainUrl/")
             if (response.code !in 200..299) return null
-            tryParseJson<ByseDetails>(response.text)?.frameUrl?.takeIf {
-                val frame = URI(it)
-                frame.scheme == "https" && frame.host != null && frame.userInfo == null && frame.port in setOf(-1, 443)
-            }
+            tryParseJson<ByseDetails>(response.text)?.frameUrl?.takeIf { AnimeWatchPlayback.publicHttps(it) != null }
         } catch (error: CancellationException) {
             throw error
         } catch (_: Exception) {
