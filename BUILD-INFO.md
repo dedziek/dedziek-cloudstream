@@ -1,5 +1,13 @@
 # Weryfikacja Filmana
 
+## Wersja 4 — widoczny obszar logowania
+
+4 listopada 2026: zastąpiono panel logowania `AlertDialog` własnym układem w `Dialog`. Poprzedni układ umieszczał WebView o wysokości `0` i wadze `1` wewnątrz panelu, który zależnie od motywu nie przydzielał mu wolnej przestrzeni. Zrzut z urządzenia pokazywał nagłówek, stan strony i przyciski nad pustą częścią okna.
+
+Nowy układ zajmuje całą dostępną wysokość okna, przydziela pozostałe miejsce przeglądarce i umieszcza przyciski pod nią. Zachowano dostosowanie do klawiatury przez `SOFT_INPUT_ADJUST_RESIZE`. Długi komunikat stanu zajmuje najwyżej trzy wiersze. Ustawienia sieci, weryfikacji Cloudflare i zapisu sesji pochodzą z wersji 3.
+
+Testy Robolectric sprawdzają rzeczywiste pomiary widoków Androida w pionie, poziomie i przy zmniejszonej wysokości okna z długim błędem, na API 28 i 35. Obejmują widoczny obszar przeglądarki, położenie przycisków oraz zamknięcie okna. Nie potwierdzają logowania kontem ani działania serwisu na fizycznym urządzeniu.
+
 ## Wersja 3 — zgodność okna logowania z Cloudflare
 
 4 listopada 2026: kompilacja kodu Androida i **37 testów Filmana, 0 błędów** zakończone poprawnie. Dodano cztery testy polityki nawigacji ramek i zakresu przekazywania zapisanych ciasteczek. Parametry lokalnego sprawdzenia: JDK 21.0.13, Android SDK 35, Kotlin 2.3.0.

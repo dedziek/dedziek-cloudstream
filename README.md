@@ -41,6 +41,8 @@ Komunikat zapisu potwierdza zapis ciasteczek; poprawność logowania sprawdzisz,
 
 Wersja 3 Filmana obsługuje ciasteczka osadzonej weryfikacji Cloudflare i zachowuje identyfikator przeglądarki przez całą sesję. Okno pokazuje błędy połączenia oraz odpowiedzi HTTP i udostępnia przycisk **Odśwież** do ręcznego ponowienia ładowania.
 
+Wersja 4 naprawia niewidoczny obszar strony w oknie logowania. Formularz zajmuje dostępną część okna, a przyciski pozostają pod nim. Okno dostosowuje się do miejsca pozostałego po otwarciu klawiatury.
+
 ## Telefon i telewizor
 
 Na Android TV / Google TV dodaj ten sam link repozytorium. Do logowania potrzebny jest działający **Android System WebView** i możliwość wpisania danych konta; część urządzeń TV nie udostępnia odpowiedniego WebView. Zgodność z konkretnymi modelami telewizorów nie została przetestowana.

@@ -11,7 +11,6 @@ import android.os.Handler
 import android.os.Looper
 import android.view.View
 import android.view.ViewGroup
-import android.view.WindowManager
 import android.webkit.CookieManager
 import android.webkit.SslErrorHandler
 import android.webkit.WebResourceError
@@ -20,7 +19,6 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import java.io.ByteArrayInputStream
@@ -151,29 +149,9 @@ object FilmanLoginUi {
             }
             // Default WebView certificate and Safe Browsing handling is retained.
         }
-        val content = LinearLayout(activity).apply {
-            orientation = LinearLayout.VERTICAL
-            addView(TextView(activity).apply {
-                text = "Zaloguj się w formularzu Filmana. Sam zapis ciasteczek nie potwierdza poprawnego logowania."
-                setPadding(padding, padding / 2, padding, padding / 2)
-            }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-            addView(status, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-            addView(web, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
-        }
-        val dialog = AlertDialog.Builder(activity)
-            .setTitle("Logowanie — filman.cc")
-            .setView(content)
-            .setPositiveButton("Zapisz sesję", null)
-            .setNeutralButton("Odśwież", null)
-            .setNegativeButton("Zamknij", null)
-            .create()
+        val dialog = FilmanLoginDialog(activity, web, status)
         dialog.setOnShowListener {
-            dialog.window?.apply {
-                setLayout(ViewGroup.LayoutParams.MATCH_PARENT, (activity.resources.displayMetrics.heightPixels * 0.92).toInt())
-                setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
-                clearFlags(WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM)
-            }
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            dialog.saveButton.setOnClickListener {
                 val currentUrl = web.url.orEmpty()
                 if (!FilmanSession.isFilmanUrl(currentUrl)) {
                     toast(activity, "Otwórz stronę Filmana przed zapisaniem sesji.")
@@ -194,7 +172,7 @@ object FilmanLoginUi {
                     toast(activity, "Nie udało się zapisać sesji na urządzeniu. Spróbuj ponownie.")
                 }
             }
-            dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
+            dialog.refreshButton.setOnClickListener {
                 if (FilmanSession.isFilmanUrl(web.url.orEmpty())) web.reload()
                 else web.loadUrl("${FilmanSession.BASE_URL}/logowanie")
             }

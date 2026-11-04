@@ -1,4 +1,8 @@
-version = 3
+version = 4
+
+dependencies {
+    add("testImplementation", "org.robolectric:robolectric:4.16.1")
+}
 cloudstream {
     description = "Filman: darmowe konto, logowanie w oknie strony. Wersja testowa; wymaga weryfikacji na urządzeniu."
     authors = listOf("FilmanCloudStream contributors")
