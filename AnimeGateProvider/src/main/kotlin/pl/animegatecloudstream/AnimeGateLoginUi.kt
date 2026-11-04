@@ -58,6 +58,7 @@ object AnimeGateLoginUi {
         val dialog = AnimeGateLoginDialog(activity, web, status)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
         val sessionApi = AtomicBoolean(false)
+        val apiSeen = AtomicBoolean(false)
         val redirects = AnimeGateRedirectDiagnostics()
         val routes = linkedSetOf<String>()
         var sawDiscord = false
@@ -70,8 +71,9 @@ object AnimeGateLoginUi {
             dialog.saveButton.isEnabled = !value; dialog.checkButton.isEnabled = !value; dialog.clearButton.isEnabled = !value
         }
         fun report(): String = buildString {
-            appendLine("AnimeGate login prototype v2")
+            appendLine("AnimeGate login prototype v3")
             appendLine("browser_state=$browserState")
+            appendLine("api_seen=${apiSeen.get()}")
             appendLine("discord_seen=$sawDiscord")
             appendLine("returned_to_animegate=$returned")
             appendLine("session_api_observed=${sessionApi.get()}")
@@ -139,8 +141,12 @@ object AnimeGateLoginUi {
             }
             override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
                 val url = request.url.toString()
+                if (AnimeGateAuthPolicy.isApi(url)) apiSeen.set(true)
                 if (request.method == "GET" && AnimeGateAuthPolicy.observedSessionApi(url)) sessionApi.set(true)
-                AnimeGateAuthPolicy.safeApiPath(url)?.let { route -> synchronized(routes) { if (routes.size < 32) routes.add(route) } }
+                AnimeGateAuthPolicy.safeApiPath(url)?.let { route ->
+                    val host = if (AnimeGateAuthPolicy.isApi(url)) "api.animegate.pl" else "animegate.pl"
+                    synchronized(routes) { if (routes.size < 32) routes.add("$host$route") }
+                }
                 if (request.isForMainFrame && blocked(url, AnimeGateRedirectDiagnostics.Source.MAIN_REQUEST)) {
                     return WebResourceResponse("text/plain", "UTF-8", 403, "Blocked", emptyMap(), ByteArrayInputStream("Niedozwolone przekierowanie logowania.".toByteArray()))
                 }
@@ -148,6 +154,7 @@ object AnimeGateLoginUi {
             }
             override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
                 browserState = "LOADING"
+                if (AnimeGateAuthPolicy.isApi(url)) apiSeen.set(true)
                 if (AnimeGateAuthPolicy.isDiscord(url)) sawDiscord = true
                 if (sawDiscord && AnimeGateAuthPolicy.isSite(url)) returned = true
                 status.text = if (AnimeGateAuthPolicy.isDiscord(url)) "Dokończ logowanie i zgodę na stronie Discorda." else "Ładowanie AnimeGate…"

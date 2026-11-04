@@ -23,6 +23,26 @@ import org.robolectric.shadows.ShadowDialog
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], manifest = Config.NONE)
 class AnimeGateLoginUiTest {
+    @Test fun backendDiscordAndFrontendLoginFlowDoesNotTriggerABlock() = withLogin { activity, dialog, web ->
+        val client = web.webViewClient
+        val backend = "https://api.animegate.pl/api/v1/auth/discord"
+        val discord = "https://discord.com/oauth2/authorize?redirect_uri=https%3A%2F%2Fapi.animegate.pl%2Fapi%2Fv1%2Fauth%2Fdiscord%2Fcallback&state=SECRET"
+        val callback = "$backend/callback?code=SECRET&state=PRIVATE"
+        for (url in listOf(backend, discord, callback, AnimeGateAuthPolicy.ROOT)) {
+            assertFalse(url.substringBefore('?'), client.shouldOverrideUrlLoading(web, request(url)))
+            assertNull(client.shouldInterceptRequest(web, request(url)))
+            client.onPageStarted(web, url, null)
+        }
+        client.onPageFinished(web, AnimeGateAuthPolicy.ROOT)
+        val report = report(activity, dialog)
+        assertTrue(report.contains("AnimeGate login prototype v3"))
+        assertTrue(report.contains("api_seen=true"))
+        assertTrue(report.contains("discord_seen=true"))
+        assertTrue(report.contains("returned_to_animegate=true"))
+        assertTrue(report.contains("blocked_count=0"))
+        assertTrue(report.contains("api_route=api.animegate.pl/api/{param}/auth/discord"))
+        assertFalse(report.contains("SECRET")); assertFalse(report.contains("PRIVATE"))
+    }
     @Test fun blankNavigationContinuesAndBlockedNavigationCanBeDiagnosedFromTheReport() = withLogin { activity, dialog, web ->
         val client = web.webViewClient
         assertFalse(client.shouldOverrideUrlLoading(web, request("about:blank")))

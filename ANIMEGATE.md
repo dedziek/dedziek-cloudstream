@@ -1,4 +1,4 @@
-# AnimeGateProvider v2 — prototyp logowania
+# AnimeGateProvider v3 — prototyp logowania
 
 Pierwszy etap [planu wdrożenia](ANIMEGATE-PLAN.md). Ta wersja dodaje ustawienia logowania i test sesji. **Nie rejestruje źródła katalogu ani odtwarzania**, ponieważ dostęp po Discord OAuth trzeba najpierw potwierdzić na urządzeniu. Publiczne żądanie z środowiska programistycznego otrzymało HTTP 403/1010; nie próbowano obchodzić tej odmowy.
 
@@ -14,6 +14,12 @@ Pierwszy etap [planu wdrożenia](ANIMEGATE-PLAN.md). Ta wersja dodaje ustawienia
 Do normalnego logowania użytkownik używa własnego konta w formularzu strony. Nie przekazuje hasła ani tokenu Discorda w czacie.
 
 ## Co oznacza wynik
+
+W v3 naprawiono blokadę `HOST_NOT_ALLOWED` dla `api.animegate.pl`, wykazaną w raporcie z telefonu. Przeglądarka dopuszcza tę dokładną domenę HTTPS podczas przejścia do Discorda i jako domenę callbacku OAuth. Pozostałe niepotwierdzone subdomeny pozostają zablokowane. Parametry autoryzacji nie są przepisywane ani odczytywane do raportu.
+
+Pole `api_seen` wskazuje, że przeglądarka dotarła do serwera API. Wiersze `api_route` obejmują teraz również obserwowane żądania do tej domeny i wskazują, czy trasa pochodzi z `animegate.pl`, czy `api.animegate.pl`. Wartości query i fragmenty są usuwane, a zmienne segmenty ścieżek maskowane. Nie wysyła się na tej podstawie zgadywanych żądań do API.
+
+Rozszerzenie listy domen logowania nie rozszerza zakresu zapisanych nagłówków klienta HTTP. Dane cookies API pozostają obsługiwane przez WebView zgodnie z regułami przeglądarki; prototyp nie kopiuje zapisanego nagłówka strony głównej do serwera API. Działanie logowania i użytecznej sesji po restarcie wymaga ponownej próby na urządzeniu.
 
 W v2 poprawiono obsługę pustej strony pośredniej `about:blank` w głównej ramce WebView. Taka strona nie jest traktowana jako domena AnimeGate i nigdy nie służy do pobierania cookies ani zapisu sesji. Nadal nie potwierdzono rzeczywistego logowania na urządzeniu.
 
@@ -34,7 +40,7 @@ Endpoint sesji nie jest zakładany jako istniejący: żądanie do niego jest doz
 
 Zapis obejmuje cookie stosowne do jednego dokładnego adresu testu, rzeczywisty User-Agent WebView i czas zapisu. Jest zaszyfrowany AES-GCM kluczem Android Keystore w osobnym pliku poza kopią zapasową. Po zmianie User-Agent test wymaga nowego logowania zamiast podszywania się pod poprzednią wersję przeglądarki.
 
-Nie są eksportowane tokeny konta Discord, jego cookies ani zawartość formularzy. Cookie AnimeGate nie jest wysyłane do Discorda, innych domen ani innych ścieżek. Usunięcie sesji dotyczy pliku prototypu i cookies AnimeGate dla obsługiwanych ścieżek; nie czyści całego magazynu cookies CloudStream. Pełny model wygaśnięcia i rotacji sesji będzie zależeć od potwierdzonego interfejsu serwisu.
+Nie są eksportowane tokeny konta Discord, jego cookies ani zawartość formularzy. Zapisany nagłówek cookies klienta HTTP nie jest wysyłany do Discorda, serwera API, innych domen ani innych ścieżek. Usunięcie sesji dotyczy pliku prototypu i cookies strony głównej AnimeGate dla obsługiwanych ścieżek; nie czyści całego magazynu cookies CloudStream ani oddzielnych cookies serwera API. Pełny model wygaśnięcia, usuwania i rotacji sesji będzie zależeć od potwierdzonego interfejsu serwisu.
 
 Raport zawiera stałe kategorie stanu, kody HTTP, wartości logiczne, domeny zablokowanych przekierowań oraz uproszczone ścieżki API i nawigacji. Nie zachowuje pełnych adresów ani danych użytkownika w adresie. Segmenty ścieżek spoza zamkniętego słownika są zastępowane `{param}`; query i fragmenty nie są kopiowane. Konsola JavaScript stron logowania nie jest przekazywana do logów dodatku. Nie ma mostka JavaScript ani wstrzykiwania kodu na stronach Discorda.
 

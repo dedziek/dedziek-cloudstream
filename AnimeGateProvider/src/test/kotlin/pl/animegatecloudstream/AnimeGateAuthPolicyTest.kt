@@ -4,6 +4,32 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class AnimeGateAuthPolicyTest {
+    @Test fun apiLoginAndItsDiscordCallbackAreAllowedWithoutGrantingCookieCapture() {
+        val start = "https://api.animegate.pl/api/v1/auth/discord"
+        val callback = "https://api.animegate.pl/api/v1/auth/discord/callback?code=SECRET&state=PRIVATE"
+        assertTrue(AnimeGateAuthPolicy.allowMainNavigation(start))
+        assertTrue(AnimeGateAuthPolicy.allowLegacyNavigation(start))
+        assertTrue(AnimeGateAuthPolicy.allowMainNavigation(callback))
+        assertTrue(AnimeGateAuthPolicy.allowMainNavigation("https://discord.com/oauth2/authorize?redirect_uri=https%3A%2F%2Fapi.animegate.pl%2Fapi%2Fv1%2Fauth%2Fdiscord%2Fcallback&state=PRIVATE"))
+        assertTrue(AnimeGateAuthPolicy.allowMainNavigation(AnimeGateAuthPolicy.ROOT))
+        for (url in listOf(start, callback, "https://api.animegate.pl/", "https://api.animegate.pl/api/auth/session")) {
+            assertFalse(AnimeGateAuthPolicy.isSite(url))
+            assertFalse(AnimeGateAuthPolicy.canCapture(url))
+            assertFalse(AnimeGateAuthPolicy.isProbeUrl(url))
+            assertFalse(AnimeGateAuthPolicy.observedSessionApi(url))
+        }
+    }
+    @Test fun apiLoginTrustDoesNotIncludeLookalikesOrOtherSubdomains() {
+        for (url in listOf("http://api.animegate.pl/", "https://api.animegate.pl.evil.com/", "https://other.animegate.pl/", "https://private@api.animegate.pl/", "https://api.animegate.pl:444/")) {
+            assertFalse(url, AnimeGateAuthPolicy.allowMainNavigation(url))
+        }
+        assertFalse(AnimeGateAuthPolicy.allowMainNavigation("https://discord.com/oauth2/authorize?redirect_uri=https%3A%2F%2Fapi.animegate.pl.evil.com%2Fcallback"))
+    }
+    @Test fun backendRouteDiagnosticsRemainRedacted() {
+        assertEquals("/api/{param}/auth/discord", AnimeGateAuthPolicy.safeApiPath("https://api.animegate.pl/api/v1/auth/discord?code=SECRET#PRIVATE"))
+        assertEquals("/api/users/{param}", AnimeGateAuthPolicy.safeApiPath("https://api.animegate.pl/api/users/private-user?token=SECRET"))
+        assertNull(AnimeGateAuthPolicy.safeApiPath("https://api.animegate.pl.evil.com/api/users/private-user"))
+    }
     @Test fun allowsOnlyExactHttpsAuthOrigins() {
         for (url in listOf(AnimeGateAuthPolicy.LOGIN, "https://discord.com/login", "https://discordapp.com/oauth2/authorize", "https://animegate.pl:443/")) assertTrue(url, AnimeGateAuthPolicy.allowMainNavigation(url))
         for (url in listOf("http://animegate.pl/", "https://animegate.pl.evil.com/", "https://other.animegate.pl/", "https://evil@animegate.pl/", "https://animegate.pl:444/", "javascript:alert(1)", "https://127.0.0.1/", "intent://discord")) assertFalse(url, AnimeGateAuthPolicy.allowMainNavigation(url))

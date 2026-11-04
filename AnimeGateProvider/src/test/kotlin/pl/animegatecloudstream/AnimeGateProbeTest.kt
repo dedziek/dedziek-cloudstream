@@ -27,6 +27,7 @@ class AnimeGateProbeTest {
     }
     @Test fun refusesCredentialRequestsToOtherUrlsBeforeOpeningTheNetwork() {
         assertThrows(IllegalArgumentException::class.java) { AnimeGateProbe.request("https://discord.com/", "secret=value", "WebView") }
+        assertThrows(IllegalArgumentException::class.java) { AnimeGateProbe.request("https://api.animegate.pl/api/v1/auth/discord", "secret=value", "WebView") }
         assertThrows(IllegalArgumentException::class.java) { AnimeGateProbe.request(AnimeGateAuthPolicy.ROOT, "secret=value\r\nInjected: yes", "WebView") }
     }
 }

@@ -2,7 +2,7 @@
 
 Data: 4 listopada 2026. Repozytorium: `dedziek/dedziek-cloudstream`.
 
-Status: realizacja etapu 1. Prototyp AnimeGateProvider v1 zatrzymał na urządzeniu przekierowanie przed otwarciem Discorda; raport nie zawierał jego celu. W v2 poprawiono obsługę pustej strony pośredniej i dodano bezpieczną diagnostykę blokady. Logowanie i sesja pozostają niepotwierdzone; katalog i odtwarzanie czekają na wynik próby. Instrukcja prototypu: [ANIMEGATE.md](ANIMEGATE.md).
+Status: realizacja etapu 1. Raport v2 wskazał blokadę domeny `api.animegate.pl` podczas nawigacji logowania. W v3 dopuszczono tę dokładną domenę HTTPS w przeglądarce i jako cel callbacku Discord OAuth, zachowując odrębne reguły zapisu sesji klienta HTTP. Logowanie i sesja pozostają niepotwierdzone; katalog i odtwarzanie czekają na wynik próby. Instrukcja prototypu: [ANIMEGATE.md](ANIMEGATE.md).
 
 ## Cel i docelowa obsługa
 

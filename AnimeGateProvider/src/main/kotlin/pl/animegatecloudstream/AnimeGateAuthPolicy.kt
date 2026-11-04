@@ -19,6 +19,10 @@ object AnimeGateAuthPolicy {
     }.getOrNull()
 
     fun isSite(url: String): Boolean = https(url)?.host.equals("animegate.pl", true)
+    // The real-device login flow redirects here before reaching Discord.
+    // Navigation trust does not grant the HTTP probe access to this origin's cookies.
+    fun isApi(url: String): Boolean = https(url)?.host.equals("api.animegate.pl", true)
+    fun isLoginOrigin(url: String): Boolean = isSite(url) || isApi(url)
     fun isDiscord(url: String): Boolean = https(url)?.host?.lowercase() in setOf("discord.com", "discordapp.com")
 
     // A blank interstitial is not an authenticated origin and can never supply cookies.
@@ -33,12 +37,12 @@ object AnimeGateAuthPolicy {
         if (uri.userInfo != null) return BlockReason.USER_INFO
         if (uri.port !in setOf(-1, 443)) return BlockReason.UNSUPPORTED_PORT
         if (uri.host.isNullOrBlank()) return BlockReason.MALFORMED_URL
-        if (isSite(url)) return null
+        if (isLoginOrigin(url)) return null
         if (!isDiscord(url)) return BlockReason.HOST_NOT_ALLOWED
         return try {
             if (uri.path.trimEnd('/') !in setOf("/oauth2/authorize", "/api/oauth2/authorize")) return null
             val callbacks = uri.rawQuery.orEmpty().split('&').filter { URLDecoder.decode(it.substringBefore('='), "UTF-8") == "redirect_uri" }
-            if (callbacks.isEmpty() || (callbacks.size == 1 && isSite(URLDecoder.decode(callbacks.first().substringAfter('='), "UTF-8")))) null
+            if (callbacks.isEmpty() || (callbacks.size == 1 && isLoginOrigin(URLDecoder.decode(callbacks.first().substringAfter('='), "UTF-8")))) null
             else BlockReason.OAUTH_CALLBACK_ORIGIN
         } catch (_: Exception) { BlockReason.MALFORMED_OAUTH }
     }
@@ -69,7 +73,7 @@ object AnimeGateAuthPolicy {
 
     /** Only fixed route vocabulary; no query, identifiers, usernames or arbitrary path values. */
     fun safeApiPath(url: String): String? {
-        if (!isSite(url)) return null
+        if (!isLoginOrigin(url)) return null
         val path = runCatching { URI(url).path }.getOrNull() ?: return null
         if (!path.startsWith("/api/")) return null
         val vocabulary = setOf("api", "auth", "session", "signin", "signout", "callback", "discord", "user", "users",
