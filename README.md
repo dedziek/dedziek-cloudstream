@@ -9,6 +9,7 @@ Repozytorium dodatków do **CloudStream na Androidzie i Android TV / Google TV**
 | **FilmanProvider** | **Filman — konto darmowe (test)** | Darmowe konto Filman, Android 6.0 lub nowszy i działający Android System WebView do logowania |
 | **AnimeWatchProvider** | **AnimeWatch** | Aktualny CloudStream Beta, Android 6.0 lub nowszy; WebView do pobierania źródeł w tle |
 | **ObejrzyjTo** | Dodatek do `obejrzyj.to` autorstwa **Phisher98** | Oryginalna paczka z Phisher Repo; aktualizacje zgodne z wersjami autora |
+| **AnimeGateProvider v1** | **Prototyp logowania w ustawieniach dodatku** | Discord i wymagany dostęp AnimeGate; katalog i odtwarzanie nie są jeszcze udostępnione |
 
 Filman obsługuje katalog filmów i seriali, wyszukiwanie, listę odcinków oraz zwykłe zewnętrzne odtwarzacze przez ekstraktory CloudStream. Dodatek ma status wersji testowej. Dostępność odtwarzania zależy również od wybranego hostingu i aktualnego działania strony.
 
@@ -25,7 +26,7 @@ Od wersji **FilmanProvider 2** nazwy źródeł w odtwarzaczu zawierają wersję 
    https://github.com/dedziek/dedziek-cloudstream/raw/refs/heads/main/repo.json
    ```
 
-3. Otwórz dodane repozytorium i zainstaluj wybrany dodatek: **FilmanProvider**, **AnimeWatchProvider** lub **ObejrzyjTo**.
+3. Otwórz dodane repozytorium i zainstaluj wybrany dodatek: **FilmanProvider**, **AnimeWatchProvider**, **ObejrzyjTo** lub prototyp **AnimeGateProvider**.
 4. Dla Filmana skonfiguruj logowanie według instrukcji poniżej i wybierz źródło **Filman — konto darmowe (test)**. Dla AnimeWatch wybierz źródło **AnimeWatch** — konfiguracja konta nie jest wymagana.
 
 Jeśli repozytorium jest już dodane i działa, wystarczy odświeżyć jego listę dodatków. Ponowne dodawanie repozytorium nie jest potrzebne. Aktualizacje dodatków są publikowane pod tym samym adresem.
@@ -43,6 +44,8 @@ Przed publikacją sprawdzane są źródło, autor, API, rozmiar, SHA-256 oraz na
 Jeżeli masz już ObejrzyjTo zainstalowany z Phisher Repo, korzystaj z jednej instalacji tego źródła; CloudStream rozróżnia instalacje po repozytorium.
 
 ## Logowanie do Filmana
+
+Dla prototypu AnimeGate dostępna jest osobna [instrukcja logowania Discord i raportu sesji](ANIMEGATE.md).
 
 1. Otwórz ustawienia **FilmanProvider** — ikonę zębatki przy rozszerzeniu.
 2. Wybierz **Otwórz logowanie**.

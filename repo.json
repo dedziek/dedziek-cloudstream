@@ -1,6 +1,6 @@
 {
   "name": "Dedziek CloudStream — polskie źródła",
-  "description": "Filman i AnimeWatch oraz ObejrzyjTo autorstwa Phisher98.",
+  "description": "Filman, AnimeWatch, test logowania AnimeGate oraz ObejrzyjTo autorstwa Phisher98.",
   "manifestVersion": 1,
   "pluginLists": [
     "https://raw.githubusercontent.com/dedziek/dedziek-cloudstream/builds/plugins.json",
