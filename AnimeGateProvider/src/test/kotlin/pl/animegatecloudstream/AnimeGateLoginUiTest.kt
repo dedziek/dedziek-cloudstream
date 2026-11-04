@@ -24,6 +24,17 @@ import org.robolectric.shadows.ShadowDialog
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], manifest = Config.NONE)
 class AnimeGateLoginUiTest {
+    @Test fun catalogTestRequiresObservedRoutesAndAValidCandidateBeforeMakingRequests() = withLogin { activity, dialog, web ->
+        dialog.catalogButton.performClick()
+        assertTrue(report(activity, dialog).contains("catalog_state=NO_ROUTES"))
+        web.webViewClient.shouldInterceptRequest(web, request("https://api.animegate.pl/api/v1/anime/search?q=PRIVATE_QUERY"))
+        dialog.catalogButton.performClick()
+        val text = report(activity, dialog)
+        assertTrue(text.contains("catalog_state=SESSION_REQUIRED"))
+        assertTrue(text.contains("catalog_observed=1"))
+        assertTrue(text.contains("catalog_tested=0"))
+        assertFalse(text.contains("PRIVATE_QUERY"))
+    }
     @Test fun backendDiscordAndFrontendLoginFlowDoesNotTriggerABlock() = withLogin { activity, dialog, web ->
         val client = web.webViewClient
         val backend = "https://api.animegate.pl/api/v1/auth/discord"
@@ -38,7 +49,7 @@ class AnimeGateLoginUiTest {
         }
         client.onPageFinished(web, AnimeGateAuthPolicy.ROOT)
         val report = report(activity, dialog)
-        assertTrue(report.contains("AnimeGate login prototype v5"))
+        assertTrue(report.contains("AnimeGate discovery prototype v6"))
         assertTrue(report.contains("api_seen=true"))
         assertTrue(report.contains("auth_seen=true"))
         assertTrue(report.contains("session_api_observed=true"))

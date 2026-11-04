@@ -1,6 +1,21 @@
-# AnimeGateProvider v5 — prototyp logowania
+# AnimeGateProvider v6 — sesja i rozpoznanie katalogu
 
-Pierwszy etap [planu wdrożenia](ANIMEGATE-PLAN.md). Ta wersja dodaje ustawienia logowania i test sesji. **Nie rejestruje źródła katalogu ani odtwarzania**, ponieważ ponowne użycie sesji przez klienta HTTP trzeba najpierw potwierdzić na urządzeniu. Publiczne żądanie z środowiska programistycznego otrzymało HTTP 403/1010; nie próbowano obchodzić tej odmowy.
+Etap rozpoznania katalogu z [planu wdrożenia](ANIMEGATE-PLAN.md). Raporty v5 potwierdziły zwykłe logowanie Discord oraz poprawną sesję klienta HTTP przez `/auth/me`. V6 dodaje test struktury katalogu, wyszukiwania i odcinków. **Nie rejestruje jeszcze źródła katalogu ani odtwarzania w CloudStream**, ponieważ format tych odpowiedzi trzeba ustalić na urządzeniu. Publiczne żądanie ze środowiska programistycznego otrzymało HTTP 403/1010; nie próbowano obchodzić tej odmowy.
+
+## Test katalogu w v6
+
+1. Zaktualizuj dodatek i otwórz jego zębatkę. W razie potrzeby wybierz **Zapisz i sprawdź**; działającej sesji nie trzeba usuwać.
+2. W widocznej stronie AnimeGate wyszukaj dowolne anime, otwórz jego kartę, listę odcinków i jeden odcinek. Nie musisz uruchamiać wideo.
+3. Bez zamykania okna wybierz **Test katalogu** i poczekaj na wynik.
+4. Wybierz **Raport** i przekaż skopiowany tekst. Początek nowego raportu: `AnimeGate discovery prototype v6`.
+
+Test najpierw ponownie potwierdza sesję, następnie wykonuje do ośmiu wcześniej zaobserwowanych GET z dozwolonych tras katalogu API. Nie zgaduje adresów. W oknie trzyma najwyżej 24 różne wzorce tras; dla powtarzanej trasy zachowuje ostatnie żądanie, np. ostatnie wyszukiwanie, a na czas testu zamraża wybór. Żądania uwierzytelniania, historii, list i ustawień użytkownika nie są częścią katalogu.
+
+Każdy adres otrzymuje cookies z własnego zakresu przeglądarki. Nagłówek zapisany dla `/auth/me` nie jest kopiowany do katalogu. Klient nie podąża za przekierowaniami; po 401, 403, 429 lub błędzie połączenia przerywa serię bez automatycznych ponowień. Zamknięcie okna anuluje kolejne żądania.
+
+W raporcie `catalog_*_route` pokazuje wzorzec trasy z identyfikatorami zamienionymi na `{param}`, a `catalog_*_query_keys` wyłącznie dozwolone nazwy parametrów. `catalog_*_shape` zawiera nazwy pól i typy, także strukturę pierwszego elementu tablicy, bez wartości tytułów, identyfikatorów, adresów obrazów/wideo, danych konta i tokenów. Nieznane klucze zastępuje `{field}`. Rozmiar struktury, liczba pól i głębokość są ograniczone. Pełne adresy zaobserwowanych żądań i ich parametry pozostają jedynie w pamięci okna, bez zapisu na dysk lub eksportu do raportu.
+
+`DONE` oznacza ukończenie testu, nie gotowy katalog CloudStream. `NO_ROUTES` wymaga odwiedzenia karty anime i odcinka w tym samym oknie; `SESSION_REQUIRED` wymaga ponownego sprawdzenia logowania. Wyniki struktury posłużą do napisania rzeczywistego parsera i klienta katalogu.
 
 ## Próba na telefonie
 
@@ -27,7 +42,7 @@ Pola `api_seen` i `auth_seen` wskazują, że przeglądarka dotarła do odpowiedn
 
 Prototyp zapamiętuje dokładny adres endpointu sesji lub bieżącego użytkownika, jeżeli WebView faktycznie wysłał do niego GET, a adres nie zawiera query ani fragmentu. Zaobserwowane `/auth/me` ma pierwszeństwo przed sesją API, a sesja API przed frontendem. Numer wersji ani adres API nie są zgadywane lub konstruowane. Nagłówek cookies jest pobierany dla właściwego adresu API; nagłówek strony głównej nie jest tam przekazywany.
 
-Pola `observed_session_origin` i `saved_session_origin` przyjmują `API`, `SITE` albo `NONE`. Pierwsze opisuje obserwacje bieżącego okna, drugie zapis używany po restarcie. Obserwacja endpointu nie oznacza zalogowania. Działanie logowania i użytecznej sesji po restarcie wymaga ponownej próby na urządzeniu.
+Pola `observed_session_origin` i `saved_session_origin` przyjmują `API`, `SITE` albo `NONE`. Pierwsze opisuje obserwacje bieżącego okna, drugie zapis używany po restarcie. Sama obserwacja endpointu nie oznacza zalogowania; w raportach v5 użyteczną sesję potwierdziła odpowiedź `VERIFIED_SESSION_API`.
 
 W v2 poprawiono obsługę pustej strony pośredniej `about:blank` w głównej ramce WebView. Taka strona nie jest traktowana jako domena AnimeGate i nigdy nie służy do pobierania cookies ani zapisu sesji.
 
