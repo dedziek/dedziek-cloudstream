@@ -16,6 +16,7 @@ internal class AnimeGateLoginDialog(activity: Activity, browser: View, status: T
     val saveButton = Button(context).apply { text = "Zapisz i sprawdź" }
     val checkButton = Button(context).apply { text = "Sprawdź zapis" }
     val reportButton = Button(context).apply { text = "Raport" }
+    val catalogButton = Button(context).apply { text = "Test katalogu" }
     val clearButton = Button(context).apply { text = "Usuń sesję" }
     val closeButton = Button(context).apply { text = "Zamknij" }
     init {
@@ -24,17 +25,17 @@ internal class AnimeGateLoginDialog(activity: Activity, browser: View, status: T
         val root = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             addView(TextView(context).apply {
-                text = "AnimeGate — test logowania"; textSize = 20f; setTypeface(typeface, Typeface.BOLD)
+                text = "AnimeGate — testy"; textSize = 20f; setTypeface(typeface, Typeface.BOLD)
                 setPadding(pad, pad, pad, pad / 2)
             }, LinearLayout.LayoutParams(-1, -2))
             addView(TextView(context).apply {
-                text = "Zaloguj się przez Discord. Po powrocie do AnimeGate wybierz „Zapisz i sprawdź”. To prototyp bez katalogu i odtwarzania."
+                text = "Zapisz i sprawdź sesję. Otwórz na stronie wyszukiwanie, tytuł i odcinek, a potem wybierz „Test katalogu”."
                 textSize = 14f; setPadding(pad, 0, pad, pad / 2)
             }, LinearLayout.LayoutParams(-1, -2))
             status.maxLines = 3; status.ellipsize = TextUtils.TruncateAt.END; status.textSize = 14f
             addView(status, LinearLayout.LayoutParams(-1, -2))
             addView(browser, LinearLayout.LayoutParams(-1, 0, 1f))
-            for (buttons in listOf(listOf(saveButton, checkButton), listOf(reportButton, clearButton, closeButton))) {
+            for (buttons in listOf(listOf(saveButton, checkButton), listOf(catalogButton, reportButton), listOf(clearButton, closeButton))) {
                 addView(LinearLayout(context).apply {
                     orientation = LinearLayout.HORIZONTAL
                     for (button in buttons) {

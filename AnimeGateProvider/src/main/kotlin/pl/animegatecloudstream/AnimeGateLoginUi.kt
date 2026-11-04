@@ -62,6 +62,7 @@ object AnimeGateLoginUi {
         val apiSeen = AtomicBoolean(false)
         val authSeen = AtomicBoolean(false)
         val redirects = AnimeGateRedirectDiagnostics()
+        val catalog = AnimeGateCatalogContract()
         val routes = linkedSetOf<String>()
         var sawDiscord = false
         var returned = false
@@ -72,10 +73,10 @@ object AnimeGateLoginUi {
         var postLoginExternalBlocks = 0
 
         fun busy(value: Boolean) {
-            dialog.saveButton.isEnabled = !value; dialog.checkButton.isEnabled = !value; dialog.clearButton.isEnabled = !value
+            dialog.saveButton.isEnabled = !value; dialog.checkButton.isEnabled = !value; dialog.clearButton.isEnabled = !value; dialog.catalogButton.isEnabled = !value
         }
         fun report(): String = buildString {
-            appendLine("AnimeGate login prototype v5")
+            appendLine("AnimeGate discovery prototype v6")
             appendLine("browser_state=$browserState")
             appendLine("api_seen=${apiSeen.get()}")
             appendLine("auth_seen=${authSeen.get()}")
@@ -97,6 +98,7 @@ object AnimeGateLoginUi {
             appendLine("signout_control=${evidence.signOut}")
             appendLine("catalog_links=${evidence.catalogLinks}")
             append(redirects.report())
+            append(catalog.report())
             synchronized(routes) { routes.forEach { appendLine("api_route=$it") } }
         }
 
@@ -162,6 +164,7 @@ object AnimeGateLoginUi {
                 if (AnimeGateAuthPolicy.isApi(url)) apiSeen.set(true)
                 if (AnimeGateAuthPolicy.isAuth(url)) authSeen.set(true)
                 observedSession.observe(request.method, url)
+                catalog.observe(request.method, url)
                 AnimeGateAuthPolicy.safeApiPath(url)?.let { route ->
                     val host = when { AnimeGateAuthPolicy.isApi(url) -> "api.animegate.pl"; AnimeGateAuthPolicy.isAuth(url) -> "auth.animegate.pl"; else -> "animegate.pl" }
                     synchronized(routes) { if (routes.size < 32) routes.add("$host$route") }
@@ -213,6 +216,47 @@ object AnimeGateLoginUi {
         dialog.reportButton.setOnClickListener {
             (activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("AnimeGate — raport logowania", report()))
             toast(activity, "Skopiowano raport bez haseł, tokenów i wartości ciasteczek.")
+        }
+        dialog.catalogButton.setOnClickListener {
+            val requests = catalog.requests()
+            if (requests.isEmpty()) {
+                catalog.finish("NO_ROUTES")
+                status.text = "Najpierw otwórz na stronie wyszukiwanie, kartę anime i odcinek, potem wybierz „Test katalogu”."
+                return@setOnClickListener
+            }
+            val authUrl = session.requestUrl()
+            if (authUrl == null || session.agent() != agent) {
+                catalog.finish("SESSION_REQUIRED"); status.text = "Najpierw wybierz „Zapisz i sprawdź”, aby zapisać bieżącą sesję."; return@setOnClickListener
+            }
+            val authCookies = manager.getCookie(authUrl).orEmpty().ifBlank { session.cookieHeader(authUrl) }
+            if (authCookies.isBlank()) {
+                catalog.finish("SESSION_REQUIRED"); status.text = "Brak sesji do testu. Zaloguj się i wybierz „Zapisz i sprawdź”."; return@setOnClickListener
+            }
+            busy(true); catalog.start(); status.text = "Sprawdzanie sesji przed testem katalogu…"
+            scope.launch {
+                try {
+                    val proof = withContext(Dispatchers.IO) { AnimeGateProbe.request(authUrl, authCookies, agent) }
+                    checked = true; checkedEndpoint = AnimeGateAuthPolicy.probeKind(authUrl); evidence = proof.evidence
+                    proof.applyCookies { manager.setCookie(authUrl, it) }; manager.flush()
+                    if (proof.evidence.outcome != AnimeGateProbe.Outcome.VERIFIED_SESSION_API) {
+                        catalog.finish("SESSION_REQUIRED"); status.text = "Sesja nie została potwierdzona (${evidence.outcome.name}). Wybierz „Raport”."; return@launch
+                    }
+                    var finalState = "DONE"
+                    for ((index, request) in requests.withIndex()) {
+                        status.text = "Test katalogu: ${index + 1}/${requests.size}…"
+                        // Read the browser's proper domain/path cookie scope, never reuse auth/me's header here.
+                        val cookies = manager.getCookie(request.url).orEmpty()
+                        val result = withContext(Dispatchers.IO) { catalog.request(request, cookies, agent) }
+                        if (result.status == 403 || result.status == 429) { finalState = "STOPPED_${result.status}"; break }
+                        if (result.status == 401) { finalState = "SESSION_REQUIRED"; break }
+                        if (result.status == 0) { finalState = "ERROR"; break }
+                    }
+                    catalog.finish(finalState)
+                    status.text = "Test katalogu: $finalState. Wybierz „Raport” — zawiera tylko trasy i strukturę odpowiedzi."
+                } catch (error: CancellationException) { catalog.finish("CANCELLED"); throw error
+                } catch (_: Exception) { catalog.finish("ERROR"); status.text = "Nie udało się ukończyć testu katalogu. Wybierz „Raport”."
+                } finally { busy(false) }
+            }
         }
         dialog.clearButton.setOnClickListener {
             val targets = listOfNotNull(AnimeGateAuthPolicy.ROOT, AnimeGateAuthPolicy.SESSION, session.requestUrl(), observedSession.url()).distinct()

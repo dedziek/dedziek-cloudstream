@@ -2,7 +2,7 @@
 
 Data: 4 listopada 2026. Repozytorium: `dedziek/dedziek-cloudstream`.
 
-Status: realizacja etapu 1. Raport v4 potwierdził przejście przeglądarki przez Discord i powrót, lecz klient HTTP nie potwierdził sesji mimo HTTP 200. Zaobserwowano również endpoint bieżącego użytkownika `/auth/me`. V5 nadaje mu pierwszeństwo, obsługuje rozpoznawalne profile i raportuje wyłącznie bezpieczną strukturę JSON. Ponowne użycie sesji przez klienta pozostaje do potwierdzenia; katalog i odtwarzanie czekają na ten wynik. Instrukcja prototypu: [ANIMEGATE.md](ANIMEGATE.md).
+Status: logowanie i sesja potwierdzone raportami v5 (`VERIFIED_SESSION_API`, `API_ME`, HTTP 200), zarówno z istniejącą sesją, jak i po pełnym przejściu Discord OAuth. Rozpoczęto etap katalogu. V6 zbiera ograniczoną strukturę odpowiedzi z rzeczywiście zaobserwowanych tras katalogu i odcinków; parser oraz odtwarzanie czekają na te dane. Instrukcja: [ANIMEGATE.md](ANIMEGATE.md).
 
 ## Cel i docelowa obsługa
 
@@ -13,9 +13,9 @@ MVP obejmuje katalog anime, wyszukiwanie, opis tytułu, odcinki i odtwarzanie w 
 ## Co jest ustalone, a czego jeszcze nie potwierdzono
 
 - Publiczna strona logowania informuje o Discord OAuth i wymaganym członkostwie na serwerze Discord AnimeGate. Użytkownik musi spełniać warunki dostępu serwisu.
-- Publiczne wejście kieruje do `/auth/login?next=/`. To jedyna potwierdzona w tym rozpoznaniu ścieżka logowania; adresów API i callbacku nie należy zgadywać.
+- Publiczne wejście kieruje do `/auth/login?next=/`. Raporty urządzenia potwierdziły również serwery `api.animegate.pl`, `auth.animegate.pl`, callback Discorda i wersjonowane trasy `/auth/session` oraz `/auth/me`. Dokładne adresy testów pochodzą z rzeczywistych żądań WebView; nie są zgadywane.
 - Bezpośrednie żądanie z obecnego środowiska otrzymało HTTP 403 z tekstem `error code: 1010`. Nie wykonano kolejnych prób obchodzenia tej odmowy dostępu.
-- Nie ustalono rodzaju sesji AnimeGate, jej czasu życia, zakresu cookie, działania Discord OAuth w WebView ani struktury katalogu i odtwarzaczy po zalogowaniu.
+- Potwierdzono Discord OAuth w WebView i użyteczny, szyfrowany zapis cookies dla dokładnego adresu testu. Serwerowy czas życia i pełna rotacja pozostają do ustalenia; prototyp ogranicza zapis do jednej godziny. Nie ustalono jeszcze struktury katalogu i odtwarzaczy po zalogowaniu.
 - Custom Tabs korzystają ze stanu zwykłej przeglądarki, a WebView nie współdzieli z nią automatycznie sesji. Samo zalogowanie w Chrome nie zapewnia więc sesji dodatku.
 
 ## Kolejność i warunki przejścia

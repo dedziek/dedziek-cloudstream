@@ -33,6 +33,8 @@ class AnimeGateLoginDialogTest {
             assertTrue((dialog.saveButton.parent as ViewGroup).top >= page.bottom)
             assertTrue((dialog.closeButton.parent as ViewGroup).bottom <= height)
             assertTrue(dialog.closeButton.isShown)
+            assertTrue(dialog.catalogButton.isShown)
+            assertTrue((dialog.catalogButton.parent as ViewGroup).bottom <= height)
             dialog.closeButton.performClick(); assertFalse(dialog.isShowing)
         } finally { dialog.dismiss(); controller.pause().stop().destroy() }
     }
