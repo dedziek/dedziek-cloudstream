@@ -1,9 +1,9 @@
 [
   {
-    "fileHash": "sha256-6ae6589877981bb44c6d9d8d036889ea50d65eff4d9f7b81c9ff97ae79c0fb01",
+    "fileHash": "sha256-d799e354771d3d7f4c2ccda76f8cb0564c0bf8278bee453cfcee0b4a454268b7",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/dedziek/dedziek-cloudstream",
-    "fileSize": 43171,
+    "fileSize": 46033,
     "status": 3,
     "language": "pl",
     "authors": [
@@ -14,7 +14,7 @@
       "AnimeMovie",
       "OVA"
     ],
-    "version": 1,
+    "version": 2,
     "internalName": "AnimeWatchProvider",
     "description": "AnimeWatch.pl: katalog anime, wyszukiwanie i odcinki z polskim lektorem IVO. Wersja testowa.",
     "url": "https://raw.githubusercontent.com/dedziek/dedziek-cloudstream/builds/AnimeWatchProvider.cs3",
