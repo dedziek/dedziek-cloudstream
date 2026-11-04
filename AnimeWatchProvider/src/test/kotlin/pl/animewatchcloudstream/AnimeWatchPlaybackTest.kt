@@ -51,6 +51,32 @@ class AnimeWatchPlaybackTest {
         assertFalse(AnimeWatchPlayback.acceptsMessage(nonce, nonce, message.copy(referer = "https://advert.example/"), pages))
     }
 
+    @Test fun discoversTheFrameFromTheTrustedParentWithoutAnInitialMetadataHint() {
+        val source = AnimeWatchPlayback.PlayerSource(frame, "embed_frame", parent)
+        val discovered = AnimeWatchPlayback.discoveredFrame(nonce, nonce, source, pages.first())
+        assertEquals(AnimeWatchPlayback.publicHttps(frame), discovered)
+        val sourceInFrame = AnimeWatchPlayback.PlayerSource("https://cdn.example/master.m3u8", "hls", frame)
+        assertFalse(AnimeWatchPlayback.acceptsSource(nonce, nonce, sourceInFrame, pages.take(1)))
+        assertTrue(AnimeWatchPlayback.acceptsSource(nonce, nonce, sourceInFrame, listOf(pages.first(), discovered!!)))
+        assertTrue(AnimeWatchPlayback.isPlayerScript("https://frame.example/assets/index-DocunfmE.js", frame,
+            listOf(pages.first(), discovered)))
+    }
+
+    @Test fun rejectsFrameDiscoveryFromOtherDocumentsOrForOtherVideos() {
+        val source = AnimeWatchPlayback.PlayerSource(frame, "embed_frame", parent)
+        assertNull(AnimeWatchPlayback.discoveredFrame("wrong", nonce, source, pages.first()))
+        for (referer in listOf(frame, "https://advert.example/e/code", "https://host.example/e/another", "https://host.example/")) {
+            assertNull(referer, AnimeWatchPlayback.discoveredFrame(nonce, nonce, source.copy(referer = referer), pages.first()))
+        }
+        for (url in listOf("https://frame.example/ooa4/another", "https://frame.example/advertisement", parent,
+            "https://frame.example/api/videos/code/embed/details", "http://frame.example/ooa4/code",
+            "https://user:pass@frame.example/ooa4/code", "https://localhost/ooa4/code", "https://127.0.0.1/ooa4/code")) {
+            assertNull(url, AnimeWatchPlayback.discoveredFrame(nonce, nonce, source.copy(url = url), pages.first()))
+        }
+        assertNull(AnimeWatchPlayback.discoveredFrame(nonce, nonce, source.copy(type = "hls"), pages.first()))
+        assertNull(AnimeWatchPlayback.discoveredFrame(nonce, nonce, source.copy(error = "captcha_required"), pages.first()))
+    }
+
     @Test fun recognisesSignedMediaWithoutTreatingTheQueryAsTheExtension() {
         assertTrue(AnimeWatchPlayback.isMedia("https://cdn.example/master.m3u8?token=a%2Fb&expires=123"))
         assertTrue(AnimeWatchPlayback.isHls("https://cdn.example/MASTER.M3U8?token=123"))

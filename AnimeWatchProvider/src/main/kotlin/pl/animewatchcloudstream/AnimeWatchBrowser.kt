@@ -54,7 +54,7 @@ object AnimeWatchBrowser {
     suspend fun resolve(embedUrl: String, referer: String, frameUrl: String? = null, interactive: Boolean = false): Stream? {
         val player = AnimeWatchPlayback.publicHttps(embedUrl) ?: return null
         if (AnimeWatchPlayback.publicHttps(referer) == null) return null
-        val pages = listOfNotNull(player, frameUrl?.let(AnimeWatchPlayback::publicHttps)).distinct()
+        val pages = AtomicReference(listOfNotNull(player, frameUrl?.let(AnimeWatchPlayback::publicHttps)).distinct())
         val nonce = UUID.randomUUID().toString()
         val failure = AtomicReference("Byse: odtwarzacz nie zakończył inicjalizacji w ciągu 45 sekund.")
         val verificationRequired = AtomicBoolean(false)
@@ -164,13 +164,19 @@ object AnimeWatchBrowser {
                         browser.addJavascriptInterface(SourceBridge { token, payload ->
                             if (finished.get() || token != nonce) return@SourceBridge
                             val candidate = tryParseJson<AnimeWatchPlayback.PlayerSource>(payload) ?: return@SourceBridge
-                            if (!AnimeWatchPlayback.acceptsMessage(token, nonce, candidate, pages)) return@SourceBridge
+                            if (candidate.type == "embed_frame") {
+                                AnimeWatchPlayback.discoveredFrame(token, nonce, candidate, player)?.let { frame ->
+                                    synchronized(pages) { pages.set((pages.get() + frame).distinct().take(4)) }
+                                }
+                                return@SourceBridge
+                            }
+                            if (!AnimeWatchPlayback.acceptsMessage(token, nonce, candidate, pages.get())) return@SourceBridge
                             if (candidate.error == "captcha_required") {
                                 verificationRequired.set(true)
                                 if (!interactive) finish(null)
                                 return@SourceBridge
                             }
-                            if (!AnimeWatchPlayback.acceptsSource(token, nonce, candidate, pages)) return@SourceBridge
+                            if (!AnimeWatchPlayback.acceptsSource(token, nonce, candidate, pages.get())) return@SourceBridge
                             main.post {
                                 if (!finished.get() && continuation.isActive) {
                                     finish(stream(candidate.url, emptyMap(), candidate.referer, candidate.type))
@@ -185,7 +191,7 @@ object AnimeWatchBrowser {
                                     if (finished.get() || !continuation.isActive) return@evaluateJavascript
                                     val json = tryParseJson<String>(raw)
                                     val candidate = json?.let { tryParseJson<AnimeWatchPlayback.PlayerSource>(it) }
-                                    if (candidate != null && AnimeWatchPlayback.acceptsSource(nonce, nonce, candidate, pages)) {
+                                    if (candidate != null && AnimeWatchPlayback.acceptsSource(nonce, nonce, candidate, pages.get())) {
                                         finish(stream(candidate.url, emptyMap(), candidate.referer, candidate.type))
                                     } else {
                                         main.postDelayed(this, 400L)
@@ -202,14 +208,14 @@ object AnimeWatchBrowser {
 
                             override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {
                                 val target = AnimeWatchPlayback.publicHttps(url) ?: return true
-                                return pages.none { AnimeWatchPlayback.sameOrigin(it, target) }
+                                return pages.get().none { AnimeWatchPlayback.sameOrigin(it, target) }
                             }
 
                             override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
                                 val url = request.url.toString()
                                 val target = AnimeWatchPlayback.publicHttps(url) ?: return blocked()
                                 if (request.isForMainFrame && !AnimeWatchPlayback.sameOrigin(player, target)) return blocked()
-                                if (target.path == "/blocked.html" && pages.any { AnimeWatchPlayback.sameOrigin(it, target) }) {
+                                if (target.path == "/blocked.html" && pages.get().any { AnimeWatchPlayback.sameOrigin(it, target) }) {
                                     failure.set("Byse: hosting odrzucił dostęp do odtwarzacza (blocked.html).")
                                     finish(null)
                                     return blocked()
@@ -217,7 +223,7 @@ object AnimeWatchBrowser {
                                 val headers = request.requestHeaders.toMap()
                                 val source = headers.entries.firstOrNull { it.key.equals("Referer", true) }?.value
                                 val sourceOrigin = source?.let(AnimeWatchPlayback::publicHttps)
-                                if (request.method == "GET" && AnimeWatchPlayback.isPlayerScript(url, source, pages)) {
+                                if (request.method == "GET" && AnimeWatchPlayback.isPlayerScript(url, source, pages.get())) {
                                     // Keep the complete parent/iframe handshake. Only augment the
                                     // public entry-script GET; native WebView still handles all POSTs.
                                     return try {
@@ -231,7 +237,7 @@ object AnimeWatchBrowser {
                                             failure.set("Byse: błąd HTTP ${response.code} podczas ładowania skryptu odtwarzacza.")
                                             return null
                                         }
-                                        failure.set("Byse: ramka odtwarzacza została uruchomiona, ale nie udostępniła źródła wideo w ciągu 45 sekund.")
+                                        failure.set("Byse: skrypt odtwarzacza został wczytany, ale nie udostępnił źródła wideo w ciągu 45 sekund.")
                                         val script = response.text + "\n" + AnimeWatchPlayback.frameScript(nonce)
                                         WebResourceResponse("application/javascript", "UTF-8", 200, "OK",
                                             mapOf("Cache-Control" to "no-store"), ByteArrayInputStream(script.toByteArray(Charsets.UTF_8)))
@@ -241,7 +247,7 @@ object AnimeWatchBrowser {
                                     }
                                 }
                                 if (request.method == "GET" && AnimeWatchPlayback.isMedia(url) && source != null &&
-                                    sourceOrigin != null && pages.any { AnimeWatchPlayback.sameOrigin(it, sourceOrigin) }) {
+                                    sourceOrigin != null && pages.get().any { AnimeWatchPlayback.sameOrigin(it, sourceOrigin) }) {
                                     main.post {
                                         if (!finished.get() && continuation.isActive) finish(stream(url, headers, source))
                                     }
@@ -258,7 +264,7 @@ object AnimeWatchBrowser {
                             }
 
                             override fun onReceivedHttpError(view: WebView, request: WebResourceRequest, response: WebResourceResponse) {
-                                if (request.isForMainFrame || AnimeWatchPlayback.isPlayerPage(request.url.toString(), pages)) {
+                                if (request.isForMainFrame || AnimeWatchPlayback.isPlayerPage(request.url.toString(), pages.get())) {
                                     failure.set("Byse: błąd HTTP ${response.statusCode} podczas ładowania ramki odtwarzacza.")
                                     finish(null)
                                 }
@@ -271,7 +277,7 @@ object AnimeWatchBrowser {
                             }
 
                             override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
-                                if (request.isForMainFrame || AnimeWatchPlayback.isPlayerPage(request.url.toString(), pages)) {
+                                if (request.isForMainFrame || AnimeWatchPlayback.isPlayerPage(request.url.toString(), pages.get())) {
                                     failure.set("Byse: błąd połączenia z ramką odtwarzacza (${error.errorCode}).")
                                     finish(null)
                                 }
@@ -327,7 +333,8 @@ object AnimeWatchBrowser {
         }
         if (cancelledByUser.get()) throw CancellationException("Anulowano ręczną weryfikację Byse.")
         if (result == null && verificationRequired.get() && !interactive) throw VerificationRequired()
-        return result ?: throw ErrorLoadingException(if (interactive) "Byse: nie uzyskano wideo podczas ręcznej weryfikacji." else failure.get())
+        return result ?: throw ErrorLoadingException(if (interactive) "Byse: nie uzyskano wideo podczas ręcznej weryfikacji."
+            else failure.get() + " Możesz otworzyć odtwarzacz ręcznie w ustawieniach AnimeWatch: „Otwórz weryfikację”.")
     }
 
     private fun blocked() = WebResourceResponse(

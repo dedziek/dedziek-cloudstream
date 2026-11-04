@@ -1,6 +1,6 @@
 package pl.animewatchcloudstream
 
-/** The last verification request and one media result, kept in memory for at most a minute. */
+/** Last Byse attempt plus a single-use media result that expires after one minute. */
 class AnimeWatchPlaybackSession(private val now: () -> Long = { System.nanoTime() / 1_000_000L }) {
     data class Request(val episodeUrl: String, val embedUrl: String, val frameUrl: String?)
     private var request: Request? = null

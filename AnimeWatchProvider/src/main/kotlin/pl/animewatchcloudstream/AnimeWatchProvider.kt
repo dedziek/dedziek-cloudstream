@@ -117,6 +117,9 @@ class AnimeWatchProvider(private val verification: AnimeWatchPlaybackSession = A
         if (!found) {
             for (target in targets.filter(AnimeWatchPlayers::isByse).take(3)) {
                 val frame = byseFrame(target)
+                // Keep the manual recovery action available even when the frame never
+                // initialises far enough to render a recognisable CAPTCHA gate.
+                verification.remember(AnimeWatchPlaybackSession.Request(data, target, frame))
                 try {
                     // The site's own JavaScript handles the current playback API and session.
                     // Read its ready playlist in the background rather than asking for a tap.
@@ -128,7 +131,6 @@ class AnimeWatchProvider(private val verification: AnimeWatchPlaybackSession = A
                 } catch (error: CancellationException) {
                     throw error
                 } catch (error: AnimeWatchBrowser.VerificationRequired) {
-                    verification.remember(AnimeWatchPlaybackSession.Request(data, target, frame))
                     verificationError = error.message
                 } catch (error: Exception) {
                     playerError = error.message
