@@ -27,9 +27,9 @@ class AnimeGateProvider(private val session: AnimeGateSession) : MainAPI() {
     private fun get(url: String): String = request(url)
 
     private fun request(url: String, body: String? = null): String {
-        require(if (body == null) AnimeGateAuthPolicy.isApi(url) && AnimeGateCatalogContract.eligible(url)
+        require(if (body == null) AnimeGateCatalogApi.isGetUrl(url)
             else AnimeGatePlaybackApi.isPostUrl(url))
-        if (!session.hasSession()) throw ErrorLoadingException("AnimeGate: otwórz ustawienia dodatku, zaloguj się i wybierz „Zapisz i sprawdź”.")
+        if (!session.hasSession()) throw ErrorLoadingException("AnimeGate: otwórz ustawienia dodatku, zaloguj się i wybierz „Zapisz”.")
         // Ask the browser cookie store for THIS exact destination. Never widen the saved
         // auth/me snapshot or forward it to catalogue requests or external image/video hosts.
         val cookies = CookieManager.getInstance().getCookie(url).orEmpty()

@@ -1,8 +1,6 @@
 package pl.animegatecloudstream
 
 import android.app.Activity
-import android.content.ClipboardManager
-import android.content.Context
 import android.net.Uri
 import android.os.Looper
 import android.view.View
@@ -24,18 +22,12 @@ import org.robolectric.shadows.ShadowDialog
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], manifest = Config.NONE)
 class AnimeGateLoginUiTest {
-    @Test fun catalogTestRequiresObservedRoutesAndAValidCandidateBeforeMakingRequests() = withLogin { activity, dialog, web ->
-        dialog.catalogButton.performClick()
-        assertTrue(report(activity, dialog).contains("catalog_state=NO_ROUTES"))
-        web.webViewClient.shouldInterceptRequest(web, request("https://api.animegate.pl/api/v1/anime/search?q=PRIVATE_QUERY"))
-        dialog.catalogButton.performClick()
-        val text = report(activity, dialog)
-        assertTrue(text.contains("catalog_state=SESSION_REQUIRED"))
-        assertTrue(text.contains("catalog_observed=1"))
-        assertTrue(text.contains("catalog_tested=0"))
-        assertFalse(text.contains("PRIVATE_QUERY"))
+    @Test fun saveRequiresReturningFromTheLoginPage() = withLogin { _, dialog, _ ->
+        dialog.saveButton.performClick()
+        assertTrue(dialog.status.text.toString().contains("Najpierw zakończ logowanie"))
     }
-    @Test fun backendDiscordAndFrontendLoginFlowDoesNotTriggerABlock() = withLogin { activity, dialog, web ->
+
+    @Test fun backendDiscordAndFrontendLoginFlowDoesNotTriggerABlock() = withLogin { _, dialog, web ->
         val client = web.webViewClient
         val backend = "https://api.animegate.pl/api/v1/auth/discord"
         val auth = "https://auth.animegate.pl/api/auth/discord/start"
@@ -48,34 +40,25 @@ class AnimeGateLoginUiTest {
             client.onPageStarted(web, url, null)
         }
         client.onPageFinished(web, AnimeGateAuthPolicy.ROOT)
-        val report = report(activity, dialog)
-        assertTrue(report.contains("AnimeGate discovery prototype v10"))
-        assertTrue(report.contains("api_seen=true"))
-        assertTrue(report.contains("auth_seen=true"))
-        assertTrue(report.contains("session_api_observed=true"))
-        assertTrue(report.contains("observed_session_origin=API"))
-        assertTrue(report.contains("discord_seen=true"))
-        assertTrue(report.contains("returned_to_animegate=true"))
-        assertTrue(report.contains("blocked_count=0"))
-        assertTrue(report.contains("api_route=api.animegate.pl/api/{param}/auth/discord"))
-        assertFalse(report.contains("SECRET")); assertFalse(report.contains("PRIVATE"))
+        val text = dialog.status.text.toString()
+        assertTrue(text.contains("Zapisz"))
+        assertFalse(text.contains("SECRET")); assertFalse(text.contains("PRIVATE"))
     }
-    @Test fun externalLinksAfterReturningDoNotReplaceThePageStateAndForeignCallbacksStillBlock() = withLogin { activity, dialog, web ->
+
+    @Test fun externalLinksAfterReturningDoNotReplaceThePageStateAndForeignCallbacksStillBlock() = withLogin { _, dialog, web ->
         val client = web.webViewClient
         client.onPageStarted(web, "https://discord.com/login", null)
         web.loadUrl(AnimeGateAuthPolicy.ROOT)
         client.onPageStarted(web, AnimeGateAuthPolicy.ROOT, null)
         client.onPageFinished(web, AnimeGateAuthPolicy.ROOT)
+        val previousStatus = dialog.status.text.toString()
         for (url in listOf("https://lo.doveyzoetic.qpon/private?token=SECRET", "https://tryedesign.com/private"))
             assertTrue(client.shouldOverrideUrlLoading(web, request(url)))
-        val text = report(activity, dialog)
-        assertTrue(text.contains("browser_state=PAGE_LOADED"))
-        assertTrue(text.contains("post_login_external_blocks=2"))
-        assertTrue(text.contains("blocked_count=2"))
-        assertFalse(text.contains("SECRET"))
+        assertEquals(previousStatus, dialog.status.text.toString())
         assertTrue(client.shouldOverrideUrlLoading(web, request("https://discord.com/oauth2/authorize?redirect_uri=https%3A%2F%2Fevil.example%2F")))
-        assertTrue(report(activity, dialog).contains("browser_state=REDIRECT_BLOCKED"))
+        assertTrue(dialog.status.text.toString().contains("Niedozwolone przekierowanie"))
     }
+
     @Test fun clearingObservedBackendCookiesPreservesDiscordCookies() = withLogin { _, dialog, web ->
         val backend = "https://api.animegate.pl/api/v7/auth/session"
         val manager = CookieManager.getInstance()
@@ -88,18 +71,16 @@ class AnimeGateLoginUiTest {
         assertFalse(manager.getCookie(backend).orEmpty().contains("PRIVATE_API"))
         assertTrue(manager.getCookie("https://discord.com/").orEmpty().contains("PRIVATE_DISCORD"))
     }
-    @Test fun blankNavigationContinuesAndBlockedNavigationCanBeDiagnosedFromTheReport() = withLogin { activity, dialog, web ->
+    @Test fun blankNavigationContinuesAndBlockedNavigationHasASafeMessage() = withLogin { _, dialog, web ->
         val client = web.webViewClient
         assertFalse(client.shouldOverrideUrlLoading(web, request("about:blank")))
         assertTrue(client.shouldOverrideUrlLoading(web, request("https://auth.example.com/login?state=SECRET")))
-        val report = report(activity, dialog)
-        assertTrue(report.contains("browser_state=REDIRECT_BLOCKED"))
-        assertTrue(report.contains("first_block_source=MAIN_NAVIGATION"))
-        assertTrue(report.contains("first_block_host=auth.example.com"))
-        assertFalse(report.contains("SECRET"))
+        val text = dialog.status.text.toString()
+        assertTrue(text.contains("Niedozwolone przekierowanie"))
+        assertFalse(text.contains("SECRET"))
     }
 
-    @Test fun aPostNavigationBlockedOnTheRequestThreadAlsoAppearsInTheReport() = withLogin { activity, dialog, web ->
+    @Test fun aPostNavigationBlockedOnTheRequestThreadUpdatesStatusOnMain() = withLogin { _, dialog, web ->
         val response = AtomicReference<WebResourceResponse?>()
         val client = web.webViewClient
         val worker = Thread { response.set(client.shouldInterceptRequest(web, request("https://auth.example.com/callback?code=SECRET", "POST"))) }
@@ -107,11 +88,9 @@ class AnimeGateLoginUiTest {
         assertFalse(worker.isAlive)
         shadowOf(Looper.getMainLooper()).idle()
         assertEquals(403, response.get()!!.statusCode)
-        val report = report(activity, dialog)
-        assertTrue(report.contains("browser_state=REDIRECT_BLOCKED"))
-        assertTrue(report.contains("first_block_source=MAIN_REQUEST"))
-        assertTrue(report.contains("first_block_host=auth.example.com"))
-        assertFalse(report.contains("SECRET"))
+        val text = dialog.status.text.toString()
+        assertTrue(text.contains("Niedozwolone przekierowanie"))
+        assertFalse(text.contains("SECRET"))
     }
 
     private fun request(url: String, method: String = "GET") = object : WebResourceRequest {
@@ -121,11 +100,6 @@ class AnimeGateLoginUiTest {
         override fun hasGesture() = true
         override fun getMethod() = method
         override fun getRequestHeaders(): MutableMap<String, String> = mutableMapOf()
-    }
-    private fun report(activity: Activity, dialog: AnimeGateLoginDialog): String {
-        dialog.reportButton.performClick()
-        val clipboard = activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        return clipboard.primaryClip!!.getItemAt(0).text.toString()
     }
     private fun withLogin(test: (Activity, AnimeGateLoginDialog, WebView) -> Unit) {
         val controller = Robolectric.buildActivity(Activity::class.java)

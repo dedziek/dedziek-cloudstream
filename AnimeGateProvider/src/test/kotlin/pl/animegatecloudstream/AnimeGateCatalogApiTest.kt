@@ -4,6 +4,22 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class AnimeGateCatalogApiTest {
+    @Test fun allowsOnlyTheThreeCatalogueGetContracts() {
+        val api = AnimeGateCatalogApi { url ->
+            assertTrue(url, AnimeGateCatalogApi.isGetUrl(url))
+            fixture(when { url.contains("/episodes/") -> "episodes"; url.contains("/slug/") -> "anime-detail"; else -> "catalog-preview" })
+        }
+        api.catalog("A&B #日本語")
+        api.details("https://animegate.pl/anime/fixture-anime")
+        api.episodes("anime-fixture-1")
+        for (url in listOf("https://api.animegate.pl/api/v1/auth/me",
+            "https://api.animegate.pl/api/v1/episodes/id/playback", "https://api.animegate.pl/api/v1/me/history",
+            "https://api.animegate.pl/api/v1/anime/slug/title?token=x", "https://evil.example/api/v1/anime/slug/title",
+            "https://api.animegate.pl/api/v1/episodes/anime/id?publicOnly=true&token=x",
+            "https://api.animegate.pl/api/v1/anime/catalog-search?mode=preview&page=1&limit=8&search=x&sortBy=rating&sortOrder=desc&token=x")) {
+            assertFalse(url, AnimeGateCatalogApi.isGetUrl(url))
+        }
+    }
     private fun fixture(name: String) = requireNotNull(javaClass.getResource("/animegate/$name.json")).readText()
 
     @Test fun resolvesWatchPageToMatchingEpisodeAndLabel() {

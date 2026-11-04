@@ -33,5 +33,20 @@ internal class AnimeGateCatalogApi(private val get: (String) -> String) {
         return requireNotNull(episodes(details.anime.id).firstOrNull { it.number.compareTo(number) == 0 })
     }
 
-    companion object { private const val BASE = "https://api.animegate.pl/api/v1" }
+    companion object {
+        private const val BASE = "https://api.animegate.pl/api/v1"
+        fun isGetUrl(url: String): Boolean = runCatching {
+            val uri = URI(url)
+            if (url.length > 4096 || !AnimeGateAuthPolicy.isApi(url) || uri.rawFragment != null) return false
+            when {
+                uri.rawPath == "/api/v1/anime/catalog-search" -> {
+                    val keys = uri.rawQuery.orEmpty().split('&').map { it.substringBefore('=') }
+                    keys.size == 6 && keys.toSet() == setOf("mode", "page", "limit", "search", "sortBy", "sortOrder")
+                }
+                uri.rawPath.matches(Regex("/api/v1/anime/slug/[a-z0-9]+(?:-[a-z0-9]*)*")) -> uri.rawQuery == null
+                uri.rawPath.matches(Regex("/api/v1/episodes/anime/[A-Za-z0-9_-]+")) -> uri.rawQuery == "publicOnly=true"
+                else -> false
+            }
+        }.getOrDefault(false)
+    }
 }
