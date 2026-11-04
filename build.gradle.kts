@@ -26,7 +26,11 @@ subprojects {
         setRepo(System.getenv("GITHUB_REPOSITORY") ?: "dedziek/dedziek-cloudstream")
     }
     extensions.configure<BaseExtension>("android") {
-        namespace = if (project.name == "AnimeWatchProvider") "pl.animewatchcloudstream" else "pl.filmancloudstream"
+        namespace = when (project.name) {
+            "AnimeWatchProvider" -> "pl.animewatchcloudstream"
+            "AnimeGateProvider" -> "pl.animegatecloudstream"
+            else -> "pl.filmancloudstream"
+        }
         compileSdkVersion(35)
         defaultConfig { minSdk = 23; targetSdk = 35 }
         compileOptions {

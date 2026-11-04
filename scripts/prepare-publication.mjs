@@ -13,12 +13,13 @@ const rawBase = `https://raw.githubusercontent.com/${repository}/builds/`;
 const expectedPlugins = new Map([
   ['FilmanProvider', 'pl.filmancloudstream.FilmanPlugin'],
   ['AnimeWatchProvider', 'pl.animewatchcloudstream.AnimeWatchPlugin'],
+  ['AnimeGateProvider', 'pl.animegatecloudstream.AnimeGatePlugin'],
 ]);
 const entries = JSON.parse(await readFile(path.join(root, 'build', 'plugins.json'), 'utf8'));
 if (!Array.isArray(entries) || entries.length !== expectedPlugins.size ||
     new Set(entries.map(entry => entry.internalName)).size !== expectedPlugins.size ||
     entries.some(entry => !expectedPlugins.has(entry.internalName))) {
-  throw new Error('Oczekiwano dokładnie dodatków FilmanProvider i AnimeWatchProvider.');
+  throw new Error('Lista własnych dodatków nie pasuje do konfiguracji publikacji.');
 }
 const packages = [];
 for (const [pluginName, pluginClassName] of expectedPlugins) {

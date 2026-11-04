@@ -2,7 +2,7 @@
 
 Data: 4 listopada 2026. Repozytorium: `dedziek/dedziek-cloudstream`.
 
-Status: plan do realizacji. Nie dodano jeszcze działającego rozszerzenia ani nie wykonano logowania kontem użytkownika.
+Status: realizacja etapu 1. Przygotowano prototyp AnimeGateProvider v1 do logowania i sprawdzania sesji na urządzeniu. Nie wykonano jeszcze logowania kontem użytkownika; katalog i odtwarzanie czekają na wynik próby. Instrukcja prototypu: [ANIMEGATE.md](ANIMEGATE.md).
 
 ## Cel i docelowa obsługa
 
