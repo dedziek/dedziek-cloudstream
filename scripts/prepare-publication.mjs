@@ -2,6 +2,7 @@ import { readFile, writeFile, mkdir, copyFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { repositoryManifest } from './repository-config.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const repository = process.argv[2] ?? process.env.GITHUB_REPOSITORY;
@@ -37,12 +38,7 @@ for (const [pluginName, pluginClassName] of expectedPlugins) {
   }
   packages.push({ pluginName, compiled, hash });
 }
-const repo = {
-  name: 'Dedziek CloudStream — Filman i AnimeWatch',
-  description: 'Dodatki Filman dla darmowego konta i AnimeWatch. Wersje testowe; sesja Filmana pozostaje na urządzeniu użytkownika.',
-  manifestVersion: 1,
-  pluginLists: [`${rawBase}plugins.json`],
-};
+const repo = repositoryManifest(repository);
 const out = path.join(root, 'build', 'publication');
 await mkdir(out, { recursive: true });
 for (const { pluginName, compiled } of packages) {

@@ -1,0 +1,45 @@
+name: Update ObejrzyjTo from Phisher
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 * * * *'
+
+permissions:
+  contents: write
+
+# Serialize all writes to builds with the normal repository publication.
+concurrency:
+  group: cloudstream-publication
+  cancel-in-progress: false
+
+jobs:
+  synchronize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout updater
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Test updater
+        run: python3 -m unittest discover -s scripts -p 'test_*.py'
+
+      - name: Synchronize and publish selected catalogue
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin builds
+          publication="$RUNNER_TEMP/phisher-publication"
+          git worktree add --detach "$publication" origin/builds
+          python3 scripts/sync-phisher.py --output "$publication/phisher-plugins.json"
+          git -C "$publication" config user.name 'github-actions[bot]'
+          git -C "$publication" config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git -C "$publication" add phisher-plugins.json
+          if ! git -C "$publication" diff --cached --quiet; then
+            git -C "$publication" commit -m "Sync ObejrzyjTo catalogue from Phisher"
+            git -C "$publication" push origin HEAD:builds
+          fi
