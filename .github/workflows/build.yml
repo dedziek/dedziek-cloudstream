@@ -16,11 +16,11 @@ permissions:
 
 concurrency:
   group: cloudstream-${{ github.event.pull_request.number || 'publication' }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - name: Checkout source
