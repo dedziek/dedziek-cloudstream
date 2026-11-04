@@ -12,7 +12,7 @@ import java.net.URI
 import java.net.URLEncoder
 import java.util.concurrent.CancellationException
 
-class AnimeWatchProvider : MainAPI() {
+class AnimeWatchProvider(private val verification: AnimeWatchPlaybackSession = AnimeWatchPlaybackSession()) : MainAPI() {
     private data class ByseDetails(@param:JsonProperty("embed_frame_url") val frameUrl: String? = null)
     override var mainUrl = "https://animewatch.pl"
     override var name = "AnimeWatch"
@@ -96,9 +96,12 @@ class AnimeWatchProvider : MainAPI() {
     override suspend fun loadLinks(data: String, isCasting: Boolean,
                                    subtitleCallback: (SubtitleFile) -> Unit,
                                    callback: (ExtractorLink) -> Unit): Boolean {
+        verification.take(data)?.let { stream -> emitStream(stream, callback); return true }
         val targets = AnimeWatchPlayers.targets(sitePage(data), data)
         if (targets.isEmpty()) throw ErrorLoadingException("AnimeWatch: brak odtwarzacza na stronie odcinka.")
         var found = false
+        var playerError: String? = null
+        var verificationError: String? = null
         for (target in targets.take(12)) {
             try {
                 loadExtractor(target, "$mainUrl/", subtitleCallback) { link ->
@@ -113,27 +116,37 @@ class AnimeWatchProvider : MainAPI() {
         }
         if (!found) {
             for (target in targets.filter(AnimeWatchPlayers::isByse).take(3)) {
+                val frame = byseFrame(target)
                 try {
                     // The site's own JavaScript handles the current playback API and session.
                     // Read its ready playlist in the background rather than asking for a tap.
-                    val frame = byseFrame(target)
-                    val stream = AnimeWatchBrowser.resolve(frame ?: target, if (frame != null) target else "$mainUrl/") ?: continue
-                    val kind = if (stream.isHls) ExtractorLinkType.M3U8 else ExtractorLinkType.VIDEO
-                    callback(newExtractorLink("AnimeWatch", "Byse — AnimeWatch", stream.url, kind) {
-                        referer = stream.referer
-                        headers = stream.headers
-                    })
+                    // The /e/ parent must initialise its cross-origin player iframe.
+                    val stream = AnimeWatchBrowser.resolve(target, data, frame) ?: continue
+                    emitStream(stream, callback)
                     found = true
                     break
                 } catch (error: CancellationException) {
                     throw error
-                } catch (_: Exception) {
+                } catch (error: AnimeWatchBrowser.VerificationRequired) {
+                    verification.remember(AnimeWatchPlaybackSession.Request(data, target, frame))
+                    verificationError = error.message
+                } catch (error: Exception) {
+                    playerError = error.message
                     // Continue with another mirror if this host or WebView cannot initialise.
                 }
             }
         }
-        if (!found) throw ErrorLoadingException("AnimeWatch: nie uzyskano wideo. Sprawdź odcinek na stronie; hosting może być chwilowo niedostępny.")
+        if (!found) throw ErrorLoadingException((verificationError ?: playerError)?.let { "AnimeWatch: $it" }
+            ?: "AnimeWatch: nie uzyskano wideo. Sprawdź odcinek na stronie; hosting może być chwilowo niedostępny.")
         return true
+    }
+
+    private suspend fun emitStream(stream: AnimeWatchPlayback.Stream, callback: (ExtractorLink) -> Unit) {
+        val kind = if (stream.isHls) ExtractorLinkType.M3U8 else ExtractorLinkType.VIDEO
+        callback(newExtractorLink("AnimeWatch", "Byse — AnimeWatch", stream.url, kind) {
+            referer = stream.referer
+            headers = stream.headers
+        })
     }
 
     private suspend fun byseFrame(target: String): String? {

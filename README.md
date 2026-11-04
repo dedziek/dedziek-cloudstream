@@ -13,7 +13,7 @@ Filman obsługuje katalog filmów i seriali, wyszukiwanie, listę odcinków oraz
 
 Od wersji **FilmanProvider 2** nazwy źródeł w odtwarzaczu zawierają wersję językową i jakość ze strony, np. **Voe · Lektor_AI · 720p** lub **Streamtape · Napisy · 1080p**. Oznaczenia takie jak `ENG`, `Lektor`, `Lektor_AI`, `Napisy` i `Napisy_Tansl` są zachowywane zgodnie z opisem Filmana. Jeśli strona nie podaje wersji, dodatek jej nie zgaduje.
 
-**AnimeWatchProvider** udostępnia katalog anime, wyszukiwanie, filmy i listy odcinków z animewatch.pl bez logowania. Wersja 2 usuwa dodatkowe okno Byse: przy problemie z bezpośrednim ekstraktorem odczytuje gotowe źródła odtwarzacza w tle. Pełne odtwarzanie wymaga jeszcze próby na urządzeniu. [Szczegóły i ograniczenia](ANIMEWATCH.md).
+**AnimeWatchProvider** udostępnia katalog anime, wyszukiwanie, filmy i listy odcinków z animewatch.pl bez logowania. Wersja 3 zachowuje inicjalizację ramki Byse przez stronę nadrzędną i odczytuje źródła we właściwej ramce w tle. Dodatkowe okno nie otwiera się automatycznie. Gdy hosting wymaga CAPTCHA, ręczną weryfikację można otworzyć z ustawień dodatku. Pełne odtwarzanie wymaga jeszcze próby na urządzeniu. [Szczegóły i ograniczenia](ANIMEWATCH.md).
 
 ## Instalacja repozytorium
 
