@@ -7,7 +7,8 @@ buildscript {
     repositories { google(); mavenCentral(); maven("https://jitpack.io") }
     dependencies {
         classpath("com.android.tools.build:gradle:8.7.3")
-        classpath("com.github.recloudstream:gradle:-SNAPSHOT")
+        // Resolve the published plugin module directly; the JitPack aggregate POM is unavailable.
+        classpath("com.github.recloudstream.gradle:gradle:-SNAPSHOT")
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:2.3.0")
     }
 }
