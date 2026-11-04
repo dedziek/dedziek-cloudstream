@@ -6,7 +6,9 @@
 
 Nowy układ zajmuje całą dostępną wysokość okna, przydziela pozostałe miejsce przeglądarce i umieszcza przyciski pod nią. Zachowano dostosowanie do klawiatury przez `SOFT_INPUT_ADJUST_RESIZE`. Długi komunikat stanu zajmuje najwyżej trzy wiersze. Ustawienia sieci, weryfikacji Cloudflare i zapisu sesji pochodzą z wersji 3.
 
-Testy Robolectric sprawdzają rzeczywiste pomiary widoków Androida w pionie, poziomie i przy zmniejszonej wysokości okna z długim błędem, na API 28 i 35. Obejmują widoczny obszar przeglądarki, położenie przycisków oraz zamknięcie okna. Nie potwierdzają logowania kontem ani działania serwisu na fizycznym urządzeniu.
+Testy Robolectric sprawdzają rzeczywiste pomiary widoków Androida w pionie, poziomie i przy zmniejszonej wysokości okna z długim błędem, na API 28 i 35. W miejscu przeglądarki używają zwykłego widoku Androida, ponieważ atrapa silnika WebView w Robolectric nie wykonuje pomiaru. Obejmują miejsce przydzielone stronie, położenie przycisków oraz zamknięcie okna. Nie potwierdzają renderowania strony, logowania kontem ani działania serwisu na fizycznym urządzeniu.
+
+[GitHub Actions](https://github.com/dedziek/dedziek-cloudstream/actions/runs/41799645278): kompilacja obu dodatków, testy i walidacja paczek zakończone poprawnie. Filman: **43 testy, 0 błędów**, w tym sześć prób układu na dwóch wersjach Androida. Po dwóch nieudanych próbach pobrania agregującego POM JitPack konfiguracja wskazuje bezpośrednio opublikowany moduł narzędzia CloudStream (`com.github.recloudstream.gradle:gradle:-SNAPSHOT`).
 
 ## Wersja 3 — zgodność okna logowania z Cloudflare
 
@@ -51,7 +53,7 @@ Publikacja na GitHubie została zakończona: [kompilacja, testy i publikacja w A
 | Android compile/target SDK | 35 |
 | Android min SDK | 23 |
 | CloudStream Android API | oficjalny `classes.jar` z wydania `pre-release` |
-| CloudStream Gradle plugin | `com.github.recloudstream:gradle:-SNAPSHOT` |
+| CloudStream Gradle plugin | `com.github.recloudstream.gradle:gradle:-SNAPSHOT` |
 
 API CloudStream pobrano z [oficjalnego wydania](https://github.com/recloudstream/cloudstream/releases/download/pre-release/classes.jar).
 SHA-256 użytego API:
