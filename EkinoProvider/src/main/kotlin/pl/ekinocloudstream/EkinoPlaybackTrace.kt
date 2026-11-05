@@ -61,7 +61,7 @@ internal class EkinoPlaybackTrace(savedSession: Boolean, savedAgent: Boolean) {
     @Synchronized fun report(): String {
         val lines = events.toMutableList()
         if (omitted > 0) lines.add(6, "… pominięto $omitted wpisów …")
-        return "Ekino v12 · raport odtwarzania\n" + lines.joinToString("\n") + "\nwynik=$result; żądania=$requests"
+        return "Ekino v13 · raport odtwarzania\n" + lines.joinToString("\n") + "\nwynik=$result; żądania=$requests"
     }
 
     enum class Outcome(val label: String) { VIDEO("znaleziono wideo"), EMPTY("brak wideo"), ERROR("błąd"), CANCELLED("anulowano") }

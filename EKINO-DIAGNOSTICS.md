@@ -1,5 +1,16 @@
 # Próba Ekino, 5 listopada 2026
 
+## V13 — ograniczenie zbędnych ramek
+
+Próba z jedną sesją PHP i odliczaniem strony: trzy pobrania strony Gang-over, po dwa zwykłe odtwarzacze. Pierwszych pięć ramek zwróciło HTTP 200 bez CAPTCHA; szósta (upzone) zwróciła Turnstile. PHP pozostało to samo. Nie odczytywano hostingów ani mediów. Zatrzymano próbę przy pierwszej bramce, bez wysyłania tokenów. To odtworzenie pojawienia się weryfikacji, nie interaktywnej pętli ani stałego limitu liczby odczytów.
+
+V12 odwiedzała kolejne hostingi nawet po uzyskaniu wideo. V13 po sukcesie pomija pozostałe ramki z tą samą, niepustą etykietą języka. Zachowuje inne języki i alternatywy po nieudanym odczycie. Dla układu player/upzone o tej samej wersji językowej, przy działającym player, liczba odczytanych ramek spada z dwóch do jednej. Nie jest to usunięcie bieżącej pętli w Chrome.
+
+Odczytany skrypt Ekino POSTuje token do `/watch/verify.php`, następnie wykonuje reload w obu gałęziach odpowiedzi. Zielony stan widżetu nie potwierdza akceptacji tokenu przez serwer Ekino. Nie ustalono powodu odrzucenia ani braku utrwalenia stanu na telefonie użytkownika. Nie zapisano w repozytorium cookies, tokenów ani zaszyfrowanych identyfikatorów ramek.
+
+
+Walidacja v13: kompilacja i `:EkinoProvider:testDebugUnitTest` zakończone poprawnie — **97 testów, 0 błędów i pominięć**. Nowe testy obejmują pomijanie kolejnych ramek dopiero po sukcesie, alternatywy po niepowodzeniu, zachowanie różnych języków i pustych etykiet, niezależność kolejnych uruchomień oraz zatrzymanie przy odmowie. Paczka v13 ma 108 099 bajtów i SHA-256 `e6a1da4ef2af8fd608ba1878dea0f400cee6ac5a707e5aaae57502461660267a`.
+
 ## V12 — timeout przed wyborem odtwarzacza
 
 Nowy log urządzenia: start testu 17:07:30, timeout strony głównej 17:07:55, następnie próby wyszukiwania `over`, `iron`, `guy` i koniec 17:09:29 bez wyników. Nie dotarł do obsługi Byse ani pozostałych hostingów. Nie ma w nim kodu HTTP ani informacji, czy oczekiwanie zatrzymało się przy DNS, TCP, TLS czy odpowiedzi serwera. Nie potwierdza blokady IP ani błędu ekstraktora Byse.
