@@ -30,8 +30,7 @@ internal class EkinoTvProvider(private val browser: WebSession) : MainAPI() {
     private val metadata = linkedMapOf<String, Pair<Long, WebPage>>()
 
     private suspend fun <T> operation(block: suspend () -> T): T = browser.operations.withLock {
-        if (browser.state.paused) throw ErrorLoadingException(
-            "Ekino TV: ${browser.state.reason}. Otwórz ustawienia dodatku → Otwórz ostatni materiał. Po weryfikacji naciśnij „Sprawdź i zamknij”.")
+        browser.state.rejection()?.let { throw ErrorLoadingException(it) }
         try { block() }
         catch (error: CancellationException) { throw error }
         catch (error: ErrorLoadingException) { throw error }
