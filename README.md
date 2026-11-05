@@ -18,7 +18,7 @@ Od wersji **FilmanProvider 2** nazwy źródeł w odtwarzaczu zawierają wersję 
 
 **AnimeWatchProvider** udostępnia katalog anime, wyszukiwanie, filmy i listy odcinków z animewatch.pl bez logowania. Wersja 5 pobiera źródło w tle, a gdy Byse wymaga weryfikacji, otwiera jej stronę bezpośrednio podczas wybierania odcinka. Po wykonaniu weryfikacji wynik wraca do CloudStream — bez szukania ustawień i ponownego wybierania odcinka. Awaryjne otwarcie z ustawień pozostaje dostępne. Pełne odtwarzanie wymaga jeszcze próby na urządzeniu. [Szczegóły i ograniczenia](ANIMEWATCH.md).
 
-**EkinoProvider v1** obsługuje ekino-tv.pl, obecnie przekierowujące do oficjalnej domeny ekino.ws. Udostępnia filmy, seriale, wyszukiwanie i listy odcinków. Zwykłe odtwarzacze są przekazywane ekstraktorom CloudStream; odtwarzanie wymaga próby na urządzeniu. Logowanie jest opcjonalne i dostępne w zębatce dodatku. [Instrukcja i ograniczenia](EKINO.md).
+**EkinoProvider v2** obsługuje ekino-tv.pl, obecnie przekierowujące do oficjalnej domeny ekino.ws. Udostępnia filmy, seriale, wyszukiwanie i listy odcinków. Zwykłe odtwarzacze są przekazywane ekstraktorom CloudStream; odtwarzanie wymaga próby na urządzeniu. Logowanie jest opcjonalne i dostępne w zębatce dodatku. [Instrukcja i ograniczenia](EKINO.md).
 
 ## Instalacja repozytorium
 

@@ -1,6 +1,8 @@
-# EkinoProvider v1
+# EkinoProvider v2
 
 Dodatek CloudStream dla `https://ekino-tv.pl/`. Dnia 4 listopada 2026 adres przekierowywał do `https://ekino.ws/`, wskazanej przez stronę jako jej oficjalna domena. Moduł korzysta z tego dokładnego pochodzenia; nie wybiera automatycznie nowych domen z reklam lub zewnętrznych list.
+
+V2 naprawia błąd „brak zwykłych odtwarzaczy” dla stron takich jak **The List (33512)**. Ich funkcja `ShowPlayer` osadza ramkę od razu, bez licznika `time`; V1 błędnie odrzucała ten poprawny wariant. Parser rozpoznaje teraz zarówno natychmiastowe osadzenie, jak i ograniczone odliczanie podane przez stronę. Nieznany sposób odmierzania czasu lub zmieniona trasa nadal oznaczają brak obsługi, bez zgadywania opóźnienia.
 
 ## Instalacja i korzystanie
 
@@ -12,7 +14,7 @@ Wyszukiwanie korzysta z aktualnego formularza `POST /search/qf` i pola `q`. Wyni
 
 ## Odtwarzanie i ograniczenia
 
-Dodatek odczytuje wyłącznie zwykłe źródła `ShowPlayer` reklamowane przez stronę i ich publiczne ramki/odnośniki. Zachowuje wersję językową z zakładki odtwarzacza. Przed załadowaniem źródeł uwzględnia odliczanie podane przez stronę, więc wybór materiału może zająć kilkanaście sekund. Gdy układ funkcji odtwarzacza zmieni się, zgłasza brak obsługi zamiast zgadywać nowy adres.
+Dodatek odczytuje wyłącznie zwykłe źródła `ShowPlayer` reklamowane przez stronę i ich publiczne ramki/odnośniki. Zachowuje wersję językową z zakładki odtwarzacza. Przed załadowaniem źródeł uwzględnia odliczanie, jeśli strona je podaje; wariant bez licznika nie dodaje sztucznego oczekiwania. Gdy układ funkcji odtwarzacza zmieni się, zgłasza brak obsługi zamiast zgadywać nowy adres.
 
 Zewnętrzne hostingi obsługują ekstraktory CloudStream; ich dostępność i zgodność zależą również od hostingu. Opcjonalnie obsługiwane są bezpośrednie źródła HTML `<video>`/`<source>`. Moduł nie promuje odtwarzacza Premium ani ograniczonych podglądów do pełnych źródeł.
 

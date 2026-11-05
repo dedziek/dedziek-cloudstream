@@ -109,6 +109,30 @@ class EkinoParserTest {
         assertEquals(10, EkinoParser.playerDelaySeconds(doc(html)))
     }
 
+    @Test fun recognizesFiveImmediateFreePlayersWithoutInventingACountdown() {
+        val html = fixture("players-immediate")
+        val players = EkinoParser.players(doc(html), "$base/movie/show/the-list-hd-2023-lektor/33512")
+        assertEquals(0, EkinoParser.playerDelaySeconds(doc(html)))
+        assertEquals(listOf("player", "dood", "hqq", "mix", "upzone"), players.map { it.host })
+        assertTrue(players.all { it.language == "Lektor PL" })
+        assertEquals("$base/watch/f/player/TestPlayer", players[0].url)
+        assertEquals(5, EkinoParser.players(doc(html.replace("function ShowPlayer(", "function  ShowPlayer (")), base).size)
+    }
+
+    @Test fun preservesCountdownAndRejectsUnknownTimingInsteadOfTreatingItAsImmediate() {
+        assertEquals(10, EkinoParser.playerDelaySeconds(doc(fixture("players"))))
+        assertNull(EkinoParser.playerDelaySeconds(doc(fixture("players").replace("time = 10;", "time = configuredDelay;"))))
+        val unknown = fixture("players-immediate").replace("$('#over-player').hide();", "setTimeout(startPlayer, 5000);")
+        assertNull(EkinoParser.playerDelaySeconds(doc(unknown)))
+        assertTrue(EkinoParser.players(doc(unknown), base).isEmpty())
+    }
+
+    @Test fun immediatePlayersStillRequireTheRouteInTheShowPlayerScriptItself() {
+        val html = fixture("players-immediate").replace("/watch/f/", "/other/") + "<script>var unrelated = '/watch/f/';</script>"
+        assertNull(EkinoParser.playerDelaySeconds(doc(html)))
+        assertTrue(EkinoParser.players(doc(html), base).isEmpty())
+    }
+
     @Test fun refusesToInventPlayerRouteWhenPageScriptChanges() {
         val html = fixture("players").replace("/watch/f/", "/new-player/")
         assertTrue(EkinoParser.players(doc(html), base).isEmpty())

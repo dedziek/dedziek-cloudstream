@@ -100,15 +100,24 @@ object EkinoParser {
         return Details(title, poster, doc.selectFirst(".descriptionMovie")?.text()?.takeIf(String::isNotBlank), year, tags, episodes)
     }
 
+    private fun playerScript(doc: Document): String? = doc.select("script").map { it.data() }
+        .firstOrNull { Regex("""\bfunction\s+ShowPlayer\s*\(""").containsMatchIn(it) }
+
     fun playerDelaySeconds(doc: Document): Int? {
-        val script = doc.select("script").map { it.data() }.firstOrNull { it.contains("function ShowPlayer(") } ?: return null
-        val seconds = Regex("""\btime\s*=\s*(\d{1,3})\s*;""").find(script)?.groupValues?.get(1)?.toIntOrNull()
-        return seconds?.takeIf { it in 0..60 }
+        val script = playerScript(doc) ?: return null
+        val assignment = Regex("""\btime\s*=\s*([^;]+);""").find(script)
+        if (assignment != null) return assignment.groupValues[1].trim().toIntOrNull()?.takeIf { it in 0..60 }
+        // Some pages create the free iframe immediately, without a time assignment.
+        // Recognize that advertised variant; unknown asynchronous countdowns remain unsupported.
+        val immediate = script.contains("/watch/f/") && script.contains("<iframe") &&
+            Regex("""\.html\s*\(""").containsMatchIn(script) &&
+            !Regex("""\b(setTimeout|setInterval|countDown|requestAnimationFrame|await|Promise)\b""").containsMatchIn(script)
+        return if (immediate) 0 else null
     }
 
     fun players(doc: Document, url: String): List<Player> {
         // Construct only the free-player route literally advertised by the page's own ShowPlayer function.
-        if (doc.select("script").none { it.data().contains("/watch/f/") } || playerDelaySeconds(doc) == null) return emptyList()
+        if (playerScript(doc)?.contains("/watch/f/") != true || playerDelaySeconds(doc) == null) return emptyList()
         return doc.select(".playerContainer [onclick]").filter { it.parents().none { parent -> parent.id() == "premium" } }.mapNotNull { anchor ->
             val match = showPlayer.matchEntire(anchor.attr("onclick").trim().removeSuffix(";")) ?: return@mapNotNull null
             val (host, id) = match.destructured
