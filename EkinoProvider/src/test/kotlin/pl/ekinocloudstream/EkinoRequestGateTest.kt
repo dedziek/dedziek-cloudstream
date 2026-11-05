@@ -76,4 +76,28 @@ class EkinoRequestGateTest {
         try { gate.request { error("Must not send a request") }; fail("Expected pause") }
         catch (_: EkinoRequestGate.Paused) { }
     }
+
+    @Test fun transportFailurePersistsPauseAndPreventsSubsequentRequests() = runBlocking {
+        var marker = false
+        val gate = EkinoRequestGate(false) { marker = it }
+        try { gate.request { throw java.net.SocketTimeoutException("fixture") }; fail("Expected timeout") }
+        catch (_: java.net.SocketTimeoutException) { }
+        assertTrue(marker)
+        val reopened = EkinoRequestGate(marker)
+        try { reopened.request { error("Must not contact the site") }; fail("Expected pause") }
+        catch (_: EkinoRequestGate.Paused) { }
+    }
+
+    @Test fun aCancelledCoroutineDoesNotTurnTheCancelledSocketIntoAPersistentPause() = runBlocking {
+        val gate = EkinoRequestGate()
+        val child = launch {
+            try { gate.request {
+                currentCoroutineContext().cancel()
+                throw java.io.IOException("cancelled socket fixture")
+            } } catch (_: CancellationException) { }
+        }
+        child.join()
+        assertFalse(gate.isPaused)
+        gate.request { }
+    }
 }

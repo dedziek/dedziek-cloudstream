@@ -1,5 +1,21 @@
 # Próba Ekino, 5 listopada 2026
 
+## V12 — timeout przed wyborem odtwarzacza
+
+Nowy log urządzenia: start testu 17:07:30, timeout strony głównej 17:07:55, następnie próby wyszukiwania `over`, `iron`, `guy` i koniec 17:09:29 bez wyników. Nie dotarł do obsługi Byse ani pozostałych hostingów. Nie ma w nim kodu HTTP ani informacji, czy oczekiwanie zatrzymało się przy DNS, TCP, TLS czy odpowiedzi serwera. Nie potwierdza blokady IP ani błędu ekstraktora Byse.
+
+Sprawdzono publiczny katalog i zapytanie `over` z tego środowiska: HTTP 200, odpowiednio około 0,11 s i 0,26 s w próbie urllib. Oddzielna próba rzeczywistej klasy `EkinoSiteHttp` z nowym obserwatorem połączenia i parserem dodatku dała katalog HTTP 200, 10 pozycji, około 2,04 s razem z parsowaniem. Wyszukiwanie zwróciło zwykłe HTTP 302 na tym samym pochodzeniu, a po obsłużeniu przekierowania jak w providerze: HTTP 200, 21 pozycji, około 0,39 s. DNS/TCP/TLS zakończyły się poprawnie; jedno User-Agent w żądaniu. To inna sieć i środowisko niż urządzenie użytkownika, więc nie odtwarza jego timeoutu.
+
+V12 dodaje pasywny `EventListener` dla natywnych żądań Ekino i strony pośredniej. Zapisuje kategorie i czasy etapów bez URL, adresów IP, cookies i surowych komunikatów wyjątków. Raport **ostatniego połączenia** można skopiować w ustawieniach niezależnie od raportu odtwarzania. Pozostaje w pamięci procesu; kopiowanie nie uruchamia żadnego sprawdzenia sieci. Pierwszy błąd I/O zapisuje wstrzymanie przed zwolnieniem kolejki, więc dalsze katalogi/wyszukiwania nie wykonują kolejnych 25-sekundowych prób. Anulowanie coroutine nie powoduje zapisania wstrzymania. Nie dodano ponowień, wymuszania IPv4 ani alternatywnego DNS.
+
+Porównano też wskazaną przez użytkownika obsługę Byse w AnimeWatch. `AnimeWatchByse` dziedziczy `ByseSX`; provider ma dodatkowy mechanizm przeglądarkowy. Odczytany upstream `ByseSX` używa GET `details`, `embed_frame_url`, GET `playback` i pierwszych dwóch fragmentów klucza. Zaobserwowany w Ekino `mfw09.org` używał POST inicjalizacji oraz payloadu wersji 5 z 30 fragmentami klucza. Wspólna nazwa hostingu nie oznacza identycznego wariantu API. Nie zmieniano AnimeWatch w ramach diagnostyki timeoutu katalogu Ekino.
+
+Do ustalenia przyczyny na urządzeniu potrzebny jest teraz **Raport ostatniego połączenia** po jednej próbie oraz informacja, czy równocześnie ta sama strona otwiera się w Chrome w tej samej sieci. Poniżej pozostawiono wcześniejsze wyniki v11 i v10.
+
+Po pytaniu o identyfikator z widżetu dodano także odczyt nagłówka `cf-ray`, ograniczony do formatu Ray ID. Sam identyfikator służy do korelacji z logami administratora; nie jest diagnozą. Nie zapisano rzeczywistego identyfikatora użytkownika w testach ani kodzie. Gdy żądanie nie otrzyma nagłówków HTTP, raport wskazuje brak Ray ID.
+
+Walidacja v12: `sh gradlew :EkinoProvider:testDebugUnitTest :EkinoProvider:make --no-daemon --console=plain` — **92 testy, 0 błędów i pominięć**. Nowe testy używają prawdziwego lokalnego serwera HTTP: jedna opóźniona odpowiedź kończy się timeoutem, kolejna oczekująca operacja nie dochodzi do sieci. Obejmują także błąd DNS, etap TLS, zachowanie po anulowaniu coroutine, trwałość wstrzymania i kopiowanie raportu przed jakąkolwiek próbą odtwarzania na Android API 28/35. Paczka: wersja 12, 112 170 bajtów, SHA-256 `12248d2a5c5382c1c11afdf4821a36fd0f5e7af17a7699cc2f2407e8b7fa4b24`. To naprawa kolejki po błędzie i diagnostyka; przyczyna timeoutu na urządzeniu nadal nie jest potwierdzona.
+
 ## V11 — Powrót: potwierdzone źródło Byse
 
 Raport urządzenia z v10 dla filmu **Powrót (26101)** potwierdził HTTP 200 bez CAPTCHA dla strony filmu, wszystkich czterech ramek i strony pośredniej. Sesja PHP docierała do ramek i nie była zmieniana. Nie był to błąd CAPTCHA w tej konkretnej próbie: problem dotyczył kolejnych hostingów.

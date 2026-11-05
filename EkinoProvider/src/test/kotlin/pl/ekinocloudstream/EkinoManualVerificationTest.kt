@@ -111,6 +111,33 @@ class EkinoManualVerificationTest {
         }
     }
 
+    @Test fun connectionReportCanBeCopiedWithoutAnyPlaybackAttemptOrResumingTheGate() {
+        val controller = Robolectric.buildActivity(Activity::class.java).setup()
+        val activity = controller.get()
+        val session = EkinoSession(activity)
+        try {
+            session.requestGate.pause()
+            val call = okhttp3.OkHttpClient().newCall(okhttp3.Request.Builder().url("https://ekino.ws/search/qf").build())
+            val observer = session.networkJournal.factory().create(call)
+            observer.callStart(call)
+            observer.dnsStart(call, "ekino.ws")
+            observer.callFailed(call, java.net.UnknownHostException("PRIVATE_FIXTURE"))
+            assertNull(session.lastPlaybackReport)
+            EkinoLoginUi.show(activity, session)
+            shadowOf(ShadowAlertDialog.getLatestAlertDialog()).clickOnItem(5)
+            val dialog = ShadowAlertDialog.getLatestAlertDialog()
+            assertNull(findBrowser(dialog.window!!.decorView))
+            dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick()
+            shadowOf(Looper.getMainLooper()).idle()
+            val clipboard = activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            assertEquals(session.networkJournal.report(), clipboard.primaryClip!!.getItemAt(0).text.toString())
+            assertTrue(session.requestGate.isPaused)
+        } finally {
+            session.requestGate.resume()
+            controller.pause().stop().destroy()
+        }
+    }
+
     private fun findBrowser(view: View): WebView? {
         if (view is WebView) return view
         if (view is ViewGroup) for (index in 0 until view.childCount) {
