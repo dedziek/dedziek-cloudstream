@@ -1,6 +1,7 @@
 package pl.ekinocloudstream
 
 internal object EkinoMessages {
+    const val REQUESTS_PAUSED = "Ekino: żądania są wstrzymane po blokadzie lub CAPTCHA. Kolejne testy nie łączą się z serwisem. Odczekaj i sprawdź stronę ręcznie. Gdy znów działa, w ustawieniach dodatku wybierz „Wznów żądania po przerwie”."
     const val CLOUDFLARE = "Ekino: strona wymaga weryfikacji Cloudflare. Jeśli weryfikacja się zapętla, spróbuj zmienić sieć (Wi-Fi / dane komórkowe) i uruchom materiał ponownie."
     const val BRIDGE_VERIFICATION = "Ekino: strona pośrednia wymaga ręcznej weryfikacji CAPTCHA. Sprawdź materiał w przeglądarce. Jeśli weryfikacja się zapętla, spróbuj innej sieci (Wi-Fi / dane komórkowe)."
     const val ACCESS_DENIED = "Ekino: hosting odmówił dostępu (HTTP 403). Jeśli Cloudflare nie przechodzi, spróbuj innej sieci (Wi-Fi / dane komórkowe)."

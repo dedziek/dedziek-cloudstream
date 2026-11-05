@@ -23,6 +23,11 @@ class EkinoSession(context: Context) {
     private val lock = Any()
     @Volatile private var snapshot: Snapshot = read()
     @Volatile private var pendingVerificationPage: String? = null
+    private val pauseFile = File(context.applicationContext.noBackupFilesDir, "ekino-requests-paused")
+    internal val requestGate = EkinoRequestGate(pauseFile.exists()) { paused ->
+        if (paused) pauseFile.writeText("1\n")
+        else check(!pauseFile.exists() || pauseFile.delete()) { "Nie udało się wznowić żądań Ekino." }
+    }
 
     private class Snapshot(val cookies: String = "", val agent: String = "")
 

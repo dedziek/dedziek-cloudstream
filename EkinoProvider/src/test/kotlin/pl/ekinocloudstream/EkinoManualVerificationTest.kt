@@ -63,6 +63,28 @@ class EkinoManualVerificationTest {
         } finally { controller.pause().stop().destroy() }
     }
 
+    @Test fun pauseSurvivesSessionRecreationAndOpeningSettingsDoesNotResumeIt() {
+        val controller = Robolectric.buildActivity(Activity::class.java).setup()
+        val activity = controller.get()
+        val session = EkinoSession(activity)
+        try {
+            session.requestGate.pause()
+            val reopened = EkinoSession(activity)
+            assertTrue(reopened.requestGate.isPaused)
+            reopened.clear()
+            assertTrue(reopened.requestGate.isPaused)
+            EkinoLoginUi.show(activity, reopened)
+            val settings = ShadowAlertDialog.getLatestAlertDialog()
+            assertTrue(reopened.requestGate.isPaused)
+            shadowOf(settings).clickOnItem(2)
+            assertFalse(reopened.requestGate.isPaused)
+            assertFalse(EkinoSession(activity).requestGate.isPaused)
+        } finally {
+            session.requestGate.resume()
+            controller.pause().stop().destroy()
+        }
+    }
+
     private fun findBrowser(view: View): WebView? {
         if (view is WebView) return view
         if (view is ViewGroup) for (index in 0 until view.childCount) {

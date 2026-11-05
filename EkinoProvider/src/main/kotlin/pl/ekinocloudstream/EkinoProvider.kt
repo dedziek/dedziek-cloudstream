@@ -21,9 +21,15 @@ class EkinoProvider(private val session: EkinoSession) : MainAPI() {
     override val mainPage = mainPageOf("/movie/cat/" to "Najnowsze filmy", "/serie/" to "Seriale")
     private data class Page(val url: String, val doc: org.jsoup.nodes.Document)
 
+    private suspend fun <T> guardedRequest(block: suspend () -> T): T = try {
+        session.requestGate.request(block)
+    } catch (_: EkinoRequestGate.Paused) {
+        throw ErrorLoadingException(EkinoMessages.REQUESTS_PAUSED)
+    }
+
     private suspend fun sitePage(url: String, referer: String = "$mainUrl/", form: Map<String, String>? = null,
                                  allowMissing: Boolean = false,
-                                 cookies: EkinoRequestCookies = EkinoRequestCookies(session.cookieHeader(mainUrl))): Page? {
+                                 cookies: EkinoRequestCookies = EkinoRequestCookies(session.cookieHeader(mainUrl))): Page? = guardedRequest {
         var target = url
         repeat(6) { redirect ->
             if (!EkinoParser.isSiteUrl(target)) throw ErrorLoadingException("Ekino: nieobsługiwana domena przekierowania.")
@@ -43,51 +49,63 @@ class EkinoProvider(private val session: EkinoSession) : MainAPI() {
                     ?: throw ErrorLoadingException("Ekino: niepoprawne przekierowanie.")
                 if (URI(target).path.startsWith("/login")) throw ErrorLoadingException("Ekino: zaloguj się w ustawieniach dodatku i zapisz sesję.")
             } else {
+                if (response.code in listOf(403, 429)) session.requestGate.pause()
                 if (response.code in listOf(401, 403, 429)) throw ErrorLoadingException(when (response.code) {
                     401 -> "Ekino: wymagane logowanie. Otwórz zębatkę dodatku i zapisz sesję."
                     403 -> "Ekino: serwis odmówił dostępu (HTTP 403). Jeśli Cloudflare nie przechodzi, spróbuj zmienić internet (Wi-Fi / dane komórkowe)."
                     else -> "Ekino: zbyt wiele żądań (HTTP 429). Spróbuj później."
                 })
-                if (allowMissing && response.code in listOf(404, 410)) return null
+                if (allowMissing && response.code in listOf(404, 410)) return@guardedRequest null
                 if (response.code !in 200..299) throw ErrorLoadingException("Ekino: błąd serwera HTTP ${response.code}.")
                 val doc = EkinoParser.document(response.text, target)
-                if (EkinoParser.isChallenge(doc)) throw ErrorLoadingException(EkinoMessages.CLOUDFLARE)
+                if (EkinoParser.isChallenge(doc)) {
+                    session.requestGate.pause()
+                    throw ErrorLoadingException(EkinoMessages.CLOUDFLARE)
+                }
+                if (URI(target).path.startsWith("/watch/f/") && EkinoParser.isPlayerVerification(doc)) session.requestGate.pause()
                 if (EkinoParser.isLoginPage(doc)) throw ErrorLoadingException("Ekino: zaloguj się w ustawieniach dodatku i zapisz sesję.")
-                return Page(target, doc)
+                return@guardedRequest Page(target, doc)
             }
         }
         throw ErrorLoadingException("Ekino: zbyt wiele przekierowań.")
     }
 
     /** The public bridge has its own origin. It never receives the Ekino cookie jar. */
-    private suspend fun bridgeEmbeds(url: String): List<EkinoParser.Embed> {
+    private suspend fun bridgeEmbeds(url: String): List<EkinoParser.Embed> = guardedRequest {
         var target = url
         repeat(3) {
-            if (!EkinoParser.isBridgeUrl(target)) return emptyList()
+            if (!EkinoParser.isBridgeUrl(target)) return@guardedRequest emptyList()
             val response = app.get(target, headers = mapOf(
                 "User-Agent" to session.userAgent().ifBlank { USER_AGENT }, "Referer" to "$mainUrl/"),
                 allowRedirects = false, cacheTime = 0)
             if (response.code in listOf(301, 302, 303, 307, 308)) {
-                val next = response.headers["Location"]?.let { EkinoParser.absolute(target, it) } ?: return emptyList()
+                val next = response.headers["Location"]?.let { EkinoParser.absolute(target, it) } ?: return@guardedRequest emptyList()
                 if (!EkinoParser.isBridgeUrl(next)) {
                     // A redirect to a hosting URL is handed to its extractor, without our credentials.
-                    return if (EkinoParser.isSiteUrl(next)) emptyList() else listOf(EkinoParser.Embed(next, false, target))
+                    return@guardedRequest if (EkinoParser.isSiteUrl(next)) emptyList() else listOf(EkinoParser.Embed(next, false, target))
                 }
                 target = next
             } else {
+                if (response.code in listOf(403, 429)) session.requestGate.pause()
                 if (response.code in listOf(401, 403, 429)) {
                     val hint = if (response.code == 403) " Jeśli Cloudflare nie przechodzi, spróbuj zmienić internet (Wi-Fi / dane komórkowe)."
                         else " Sprawdź odtwarzanie na stronie; żądanie nie jest automatycznie ponawiane."
                     throw ErrorLoadingException("Ekino: strona pośrednia odmówiła dostępu (HTTP ${response.code}).$hint")
                 }
-                if (response.code !in 200..299) return emptyList()
+                if (response.code !in 200..299) return@guardedRequest emptyList()
                 val doc = EkinoParser.document(response.text, target)
-                if (EkinoParser.isChallenge(doc)) throw ErrorLoadingException(EkinoMessages.CLOUDFLARE)
-                if (EkinoParser.isPlayerVerification(doc)) throw ErrorLoadingException(EkinoMessages.BRIDGE_VERIFICATION)
-                return EkinoParser.embeds(doc, target).filterNot { EkinoParser.isSiteUrl(it.url) || EkinoParser.isBridgeUrl(it.url) }
+                if (EkinoParser.isChallenge(doc)) {
+                    session.requestGate.pause()
+                    throw ErrorLoadingException(EkinoMessages.CLOUDFLARE)
+                }
+                if (EkinoParser.isPlayerVerification(doc)) {
+                    session.requestGate.pause()
+                    throw ErrorLoadingException(EkinoMessages.BRIDGE_VERIFICATION)
+                }
+                return@guardedRequest EkinoParser.embeds(doc, target).filterNot { EkinoParser.isSiteUrl(it.url) || EkinoParser.isBridgeUrl(it.url) }
             }
         }
-        return emptyList()
+        return@guardedRequest emptyList()
     }
 
     private fun EkinoParser.Card.toResult(): SearchResponse = if (series) {
@@ -131,6 +149,7 @@ class EkinoProvider(private val session: EkinoSession) : MainAPI() {
                                    callback: (ExtractorLink) -> Unit): Boolean {
         val target = EkinoParser.siteUrl(mainUrl, data)?.takeIf(EkinoParser::isDetailUrl)
             ?: throw ErrorLoadingException("Ekino: niepoprawny adres odcinka.")
+        session.rememberVerificationPage(target)
         val cookies = EkinoRequestCookies(session.cookieHeader(mainUrl))
         val page = sitePage(target, cookies = cookies)!!
         val players = EkinoParser.players(page.doc, page.url).take(12)
@@ -188,7 +207,6 @@ class EkinoProvider(private val session: EkinoSession) : MainAPI() {
                 val wrapper = sitePage(player.url, page.url, allowMissing = true, cookies = cookies)
                 if (wrapper == null) { missing++; continue }
                 if (EkinoParser.isPlayerVerification(wrapper.doc)) {
-                    session.rememberVerificationPage(target)
                     throw ErrorLoadingException(EkinoMessages.playerVerification(player.host))
                 }
                 val first = EkinoParser.embeds(wrapper.doc, wrapper.url)
@@ -198,7 +216,6 @@ class EkinoProvider(private val session: EkinoSession) : MainAPI() {
                     if (EkinoParser.isSiteUrl(embed.url)) {
                         val nested = sitePage(embed.url, wrapper.url, allowMissing = true, cookies = cookies) ?: continue
                         if (EkinoParser.isPlayerVerification(nested.doc)) {
-                            session.rememberVerificationPage(target)
                             throw ErrorLoadingException(EkinoMessages.playerVerification(player.host))
                         }
                         embeds.addAll(EkinoParser.embeds(nested.doc, nested.url).filterNot { EkinoParser.isSiteUrl(it.url) })

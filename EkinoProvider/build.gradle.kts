@@ -1,4 +1,4 @@
-version = 8
+version = 9
 
 dependencies {
     add("compileOnly", "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.1")

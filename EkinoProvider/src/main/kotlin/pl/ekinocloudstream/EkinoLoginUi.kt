@@ -36,7 +36,7 @@ object EkinoLoginUi {
         }
         AlertDialog.Builder(activity)
             .setTitle("Ekino — ustawienia")
-            .setItems(arrayOf("Otwórz logowanie", "Otwórz materiał do weryfikacji", "Usuń zapisaną sesję")) { _, which ->
+            .setItems(arrayOf("Otwórz logowanie", "Otwórz materiał do weryfikacji", "Wznów żądania po przerwie", "Usuń zapisaną sesję")) { _, which ->
                 when (which) {
                     0 -> openBrowser(activity, session)
                     1 -> {
@@ -45,6 +45,12 @@ object EkinoLoginUi {
                         else openBrowser(activity, session, page)
                     }
                     2 -> {
+                        try {
+                            session.requestGate.resume()
+                            toast(activity, "Wznowiono żądania. Uruchom materiał ręcznie; blokada serwisu może nadal obowiązywać.")
+                        } catch (_: Exception) { toast(activity, "Nie udało się wznowić żądań Ekino.") }
+                    }
+                    3 -> {
                         session.clear()
                         toast(activity, "Usunięto zapisaną sesję Ekino na tym urządzeniu.")
                     }
@@ -176,6 +182,7 @@ object EkinoLoginUi {
                 try {
                     manager.flush()
                     session.save(cookies, userAgent)
+                    session.requestGate.resume()
                     toast(activity, if (verification) "Zapisano sesję. Uruchom materiał ponownie; sam zapis nie potwierdza przejścia CAPTCHA."
                         else "Zapisano sesję. Spróbuj wyszukiwania w dodatku.")
                     dialog.dismiss()

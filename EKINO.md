@@ -1,6 +1,10 @@
-# EkinoProvider v8
+# EkinoProvider v9
 
 Dodatek CloudStream dla `https://ekino-tv.pl/`. Dnia 4 listopada 2026 adres przekierowywał do `https://ekino.ws/`, wskazanej przez stronę jako jej oficjalna domena. Moduł korzysta z tego dokładnego pochodzenia; nie wybiera automatycznie nowych domen z reklam lub zewnętrznych list.
+
+V9 ogranicza powtarzanie natywnych żądań po wykryciu blokady. Żądania do Ekino i jego strony pośredniej są wykonywane pojedynczo. HTTP 403/429, strona ochronna Cloudflare lub CAPTCHA w ramce Ekino/na stronie pośredniej zapisuje lokalny stan wstrzymania; kolejka i następne wywołania katalogu, wyszukiwania i odtwarzania nie wykonują kolejnych żądań do tych serwisów. Stan pozostaje po restarcie aplikacji. Nie ma automatycznego odblokowania, timera ani prób sprawdzających dostępność. Otworzenie ustawień, usunięcie cookies i wewnętrzna rotacja cookies nie wznawiają żądań. Wznowienie następuje wyłącznie po wybraniu **Wznów żądania po przerwie** albo po ręcznym zapisaniu sesji w oknie strony; nie uruchamia samo odtwarzania ani żadnego żądania.
+
+Gdy po testach również zwykła przeglądarka ma problem z Cloudflare, wstrzymaj testy i sprawdź stronę ręcznie po przerwie. Dopiero gdy działa, świadomie wznów dodatek. To ograniczenie ruchu nie usuwa ewentualnej blokady po stronie serwisu. Sam objaw nie potwierdza ani „shadowbana”, ani tego, że wywołała go aplikacja. Ręcznie otwierany WebView pozostaje pod kontrolą użytkownika i nie podlega automatycznym próbom dodatku. Własne ekstraktory zewnętrznych hostingów mają oddzielne działanie; ten mechanizm dotyczy natywnych odczytów Ekino i play.ekino.link.
 
 V8 dodaje wyłącznie ręcznie otwierane okno **Otwórz materiał do weryfikacji** w ustawieniach dodatku. Po CAPTCHA wykrytej w ramce Ekino zapamiętuje w pamięci ostatnią publiczną stronę filmu/odcinka. Nie zapisuje zaszyfrowanego identyfikatora ShowPlayer ani adresu `/watch/f/`; takie adresy mogą być związane z poprzednią anonimową sesją. W oknie użytkownik wybiera odtwarzacz i wykonuje weryfikację normalnie na stronie, a następnie zapisuje cookies Ekino wraz z rzeczywistym identyfikatorem WebView. Dodatek nie otwiera okna ani nie ponawia odtwarzania automatycznie. Rozwiązanie CAPTCHA, utrzymanie jej stanu po zapisaniu sesji i pełne odtwarzanie wymagają próby na urządzeniu; zapis cookies sam ich nie potwierdza.
 
