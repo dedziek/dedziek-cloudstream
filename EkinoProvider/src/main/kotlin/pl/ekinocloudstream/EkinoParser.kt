@@ -34,9 +34,6 @@ object EkinoParser {
         doc.selectFirst(".cf-turnstile, .g-recaptcha, [data-sitekey]") != null ||
             doc.select("script").any { it.data().contains("turnstile.render") && it.data().contains("sitekey") }
 
-    fun requiresPlayerVerification(doc: Document, url: String): Boolean =
-        isPlayerVerification(doc) && embeds(doc, url).isEmpty()
-
     fun absolute(base: String, raw: String): String? = runCatching {
         // Square brackets are part of the site's ordinary season/page paths.
         val uri = URI(base).resolve(raw.trim().replace("\\/", "/").replace("[", "%5B").replace("]", "%5D"))
@@ -151,7 +148,6 @@ object EkinoParser {
             val raw = if (element.tagName() == "a") element.attr("href") else element.attr("src")
             val target = absolute(base, raw) ?: return@mapNotNull null
             if (raw.isBlank()) return@mapNotNull null
-            if (EkinoLoginPolicy.isVerificationFrame(target)) return@mapNotNull null
             if (isSiteUrl(target) && !URI(target).path.startsWith("/watch/f/")) return@mapNotNull null
             Embed(target, element.tagName() in setOf("video", "source"), base)
         }.distinctBy { it.url }

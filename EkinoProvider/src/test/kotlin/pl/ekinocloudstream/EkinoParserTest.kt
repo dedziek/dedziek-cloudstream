@@ -192,16 +192,6 @@ class EkinoParserTest {
         assertFalse(EkinoParser.isPlayerVerification(doc(fixture("players-immediate"))))
     }
 
-    @Test fun verificationFramesAreNotMistakenForVideoAndAvailableVideoDoesNotRequireADialog() {
-        val watch = "$base/watch/f/player/fixture"
-        val challenge = "<div class=cf-turnstile data-sitekey=fixture></div><iframe src='https://challenges.cloudflare.com/turnstile/fixture'></iframe>"
-        assertTrue(EkinoParser.embeds(doc(challenge), watch).isEmpty())
-        assertTrue(EkinoParser.requiresPlayerVerification(doc(challenge), watch))
-        val ready = challenge + "<a href='https://play.ekino.link/fixture' target='_blank'>Oglądaj</a>"
-        assertFalse(EkinoParser.requiresPlayerVerification(doc(ready), watch))
-        assertEquals(1, EkinoParser.embeds(doc(ready), watch).size)
-    }
-
     @Test fun distinguishesCloudflareDenialFromOrdinaryPageScripts() {
         assertTrue(EkinoParser.isChallenge(doc("<title>Attention Required! | Cloudflare</title>")))
         assertTrue(EkinoParser.isChallenge(doc("<div id=cf-error-details>Blocked</div>")))
