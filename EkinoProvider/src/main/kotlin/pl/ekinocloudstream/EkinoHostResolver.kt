@@ -11,13 +11,21 @@ internal class EkinoHostResolver(
     private val unpack: (String) -> String = { it }
 ) {
     enum class Dispatch { FOUND, EMPTY, UNSUPPORTED, ERROR }
+    enum class Verification { NONE, ACCESS_DENIED, CLOUDFLARE, CAPTCHA }
     data class Response(val status: Int, val body: String = "", val location: String? = null)
     private val visited = mutableSetOf<String>()
     private val blocked = mutableSetOf<String>()
     private val trace = linkedSetOf<String>()
     private var requests = 0
-    var requiresVerification = false
+    var verification = Verification.NONE
         private set
+
+    fun verificationHint(): String = when (verification) {
+        Verification.NONE -> ""
+        Verification.ACCESS_DENIED -> EkinoMessages.ACCESS_DENIED
+        Verification.CLOUDFLARE -> EkinoMessages.CLOUDFLARE
+        Verification.CAPTCHA -> EkinoMessages.playerVerification()
+    }
 
     fun nextPlayer() { visited.clear() }
 
@@ -47,7 +55,7 @@ internal class EkinoHostResolver(
         catch (error: CancellationException) { throw error }
         catch (_: Exception) { note(url, "błąd połączenia"); blocked.add(host); return }
         if (page.status in setOf(401, 403, 429)) {
-            if (page.status == 403) requiresVerification = true
+            if (page.status == 403) verification = Verification.ACCESS_DENIED
             blocked.add(host); note(url, "HTTP ${page.status}"); return
         }
         if (page.status in setOf(301, 302, 303, 307, 308)) {
@@ -57,8 +65,9 @@ internal class EkinoHostResolver(
         }
         if (page.status !in 200..299) { note(url, "HTTP ${page.status}"); return }
         val doc = EkinoParser.document(page.body, url)
-        if (EkinoParser.isChallenge(doc) || EkinoParser.isPlayerVerification(doc)) {
-            requiresVerification = true
+        val cloudflare = EkinoParser.isChallenge(doc)
+        if (cloudflare || EkinoParser.isPlayerVerification(doc)) {
+            verification = if (cloudflare) Verification.CLOUDFLARE else Verification.CAPTCHA
             blocked.add(host); note(url, "weryfikacja wymagana"); return
         }
         val expanded = runCatching { unpack(page.body) }.getOrDefault("")

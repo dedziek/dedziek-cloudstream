@@ -1,6 +1,8 @@
-# EkinoProvider v6
+# EkinoProvider v7
 
 Dodatek CloudStream dla `https://ekino-tv.pl/`. Dnia 4 listopada 2026 adres przekierowywał do `https://ekino.ws/`, wskazanej przez stronę jako jej oficjalna domena. Moduł korzysta z tego dokładnego pochodzenia; nie wybiera automatycznie nowych domen z reklam lub zewnętrznych list.
+
+V7 rozróżnia CAPTCHA w odtwarzaczu od strony ochronnej Cloudflare. Sam formularz CAPTCHA nie jest diagnozą problemu z internetem; wskazówka zmiany sieci dotyczy zapętlającej się weryfikacji. Błąd podaje krótki identyfikator hostingu z zakładki ShowPlayer, bez zaszyfrowanego identyfikatora źródła ani URL. Gdy wcześniejszy odtwarzacz zwrócił już wideo, późniejsza odmowa dostępu lub weryfikacja kończy pobieranie kolejnych źródeł i zachowuje znalezione linki. Nie ponawia się zablokowanego żądania ani nie rozwiązuje CAPTCHA automatycznie. Log użytkownika potwierdził znalezienie jednego źródła MixDrop dla **Bitwy o Pandorę (32972)**; dla **Powrotu (26101)** wskazał formularz weryfikacji w ramce. Nie potwierdzono odtwarzania Powrotu.
 
 V6 dodaje odczyt statycznych źródeł MP4/HLS i zagnieżdżonych ramek dla hostingów bez ekstraktora CloudStream, w tym domen Upzone. Rozpoznaje elementy HTML video/source i deklaracje file/src w konfiguracji odtwarzacza, także po statycznym rozpakowaniu skryptu. Nie wykonuje JavaScriptu ani kliknięć. Rozpoznany ekstraktor, który nie zwrócił wideo, nie powoduje ponownego pobrania strony innym klientem. Odczyt ma ograniczenie liczby stron i głębokości ramek; odmowy dostępu zatrzymują dalsze żądania do danego hostingu. Cookies hostingów mają osobny, tymczasowy magazyn. Komunikat błędu pokazuje wyłącznie domeny hostingów i etap niepowodzenia, bez ścieżek, parametrów i danych sesji. Dla filmu **5x2 (43318)** potwierdzono zakładki player i upzone, ale nie potwierdzono odtwarzania w środowisku programistycznym. Przykłady formatów źródeł oraz przepływ żądań zweryfikowano testami.
 

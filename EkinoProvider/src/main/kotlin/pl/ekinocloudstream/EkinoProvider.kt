@@ -82,7 +82,8 @@ class EkinoProvider(private val session: EkinoSession) : MainAPI() {
                 }
                 if (response.code !in 200..299) return emptyList()
                 val doc = EkinoParser.document(response.text, target)
-                if (EkinoParser.isChallenge(doc) || EkinoParser.isPlayerVerification(doc)) throw ErrorLoadingException(EkinoMessages.CLOUDFLARE)
+                if (EkinoParser.isChallenge(doc)) throw ErrorLoadingException(EkinoMessages.CLOUDFLARE)
+                if (EkinoParser.isPlayerVerification(doc)) throw ErrorLoadingException(EkinoMessages.BRIDGE_VERIFICATION)
                 return EkinoParser.embeds(doc, target).filterNot { EkinoParser.isSiteUrl(it.url) || EkinoParser.isBridgeUrl(it.url) }
             }
         }
@@ -179,45 +180,51 @@ class EkinoProvider(private val session: EkinoSession) : MainAPI() {
                 })
             },
             unpack = { getAndUnpack(it) })
-        for (player in players) {
-            activePlayer = player
-            hostResolver.nextPlayer()
-            // Site denials abort the whole operation; they are never swallowed as extractor failures.
-            val wrapper = sitePage(player.url, page.url, allowMissing = true, cookies = cookies)
-            if (wrapper == null) { missing++; continue }
-            if (EkinoParser.isPlayerVerification(wrapper.doc)) throw ErrorLoadingException(EkinoMessages.CLOUDFLARE)
-            val first = EkinoParser.embeds(wrapper.doc, wrapper.url)
-            if (first.isEmpty()) noEmbeds++
-            val embeds = mutableListOf<EkinoParser.Embed>()
-            for (embed in first.take(8)) {
-                if (EkinoParser.isSiteUrl(embed.url)) {
-                    val nested = sitePage(embed.url, wrapper.url, allowMissing = true, cookies = cookies) ?: continue
-                    if (EkinoParser.isPlayerVerification(nested.doc)) throw ErrorLoadingException(EkinoMessages.CLOUDFLARE)
-                    embeds.addAll(EkinoParser.embeds(nested.doc, nested.url).filterNot { EkinoParser.isSiteUrl(it.url) })
-                } else embeds.add(embed)
+        try {
+            for (player in players) {
+                activePlayer = player
+                hostResolver.nextPlayer()
+                // Site denials stop further requests; previously emitted links remain usable.
+                val wrapper = sitePage(player.url, page.url, allowMissing = true, cookies = cookies)
+                if (wrapper == null) { missing++; continue }
+                if (EkinoParser.isPlayerVerification(wrapper.doc)) throw ErrorLoadingException(EkinoMessages.playerVerification(player.host))
+                val first = EkinoParser.embeds(wrapper.doc, wrapper.url)
+                if (first.isEmpty()) noEmbeds++
+                val embeds = mutableListOf<EkinoParser.Embed>()
+                for (embed in first.take(8)) {
+                    if (EkinoParser.isSiteUrl(embed.url)) {
+                        val nested = sitePage(embed.url, wrapper.url, allowMissing = true, cookies = cookies) ?: continue
+                        if (EkinoParser.isPlayerVerification(nested.doc)) throw ErrorLoadingException(EkinoMessages.playerVerification(player.host))
+                        embeds.addAll(EkinoParser.embeds(nested.doc, nested.url).filterNot { EkinoParser.isSiteUrl(it.url) })
+                    } else embeds.add(embed)
+                }
+                val resolved = mutableListOf<EkinoParser.Embed>()
+                for (embed in embeds.distinctBy { it.url }.take(12)) {
+                    if (EkinoParser.isBridgeUrl(embed.url)) {
+                        val unwrapped = try { bridgeEmbeds(embed.url) }
+                        catch (error: CancellationException) { throw error }
+                        catch (error: ErrorLoadingException) { throw error }
+                        catch (_: Exception) { emptyList() }
+                        if (unwrapped.isEmpty()) failedBridges++
+                        resolved.addAll(unwrapped)
+                    } else resolved.add(embed)
+                }
+                for (embed in resolved.distinctBy { it.url }.take(12)) {
+                    if (embed.direct) {
+                        emitLink(newExtractorLink(name, player.host, embed.url,
+                            if (URI(embed.url).path.endsWith(".m3u8", true)) ExtractorLinkType.M3U8 else ExtractorLinkType.VIDEO) {
+                            referer = embed.referer
+                        })
+                    } else hostResolver.resolve(embed.url, embed.referer)
+                }
             }
-            val resolved = mutableListOf<EkinoParser.Embed>()
-            for (embed in embeds.distinctBy { it.url }.take(12)) {
-                if (EkinoParser.isBridgeUrl(embed.url)) {
-                    val unwrapped = try { bridgeEmbeds(embed.url) }
-                    catch (error: CancellationException) { throw error }
-                    catch (error: ErrorLoadingException) { throw error }
-                    catch (_: Exception) { emptyList() }
-                    if (unwrapped.isEmpty()) failedBridges++
-                    resolved.addAll(unwrapped)
-                } else resolved.add(embed)
-            }
-            for (embed in resolved.distinctBy { it.url }.take(12)) {
-                if (embed.direct) {
-                    emitLink(newExtractorLink(name, player.host, embed.url,
-                        if (URI(embed.url).path.endsWith(".m3u8", true)) ExtractorLinkType.M3U8 else ExtractorLinkType.VIDEO) {
-                        referer = embed.referer
-                    })
-                } else hostResolver.resolve(embed.url, embed.referer)
-            }
+        } catch (error: ErrorLoadingException) {
+            // Stop at a denial without further requests, but retain any source already emitted.
+            if (!found) throw error
+            return true
         }
         if (!found) throw ErrorLoadingException("Ekino: nie uzyskano wideo. Źródła: ${players.size}, niedostępne: $missing, bez odnośnika: $noEmbeds, błędy strony pośredniej: $failedBridges, próby ekstraktorów: $extractorAttempts. Hostingi: ${hostResolver.report().ifBlank { "brak" }}." +
-            if (hostResolver.requiresVerification) " ${EkinoMessages.CLOUDFLARE}" else "")
+            hostResolver.verificationHint().takeIf(String::isNotBlank)?.let { " $it" }.orEmpty())
         return true
     }
 }
