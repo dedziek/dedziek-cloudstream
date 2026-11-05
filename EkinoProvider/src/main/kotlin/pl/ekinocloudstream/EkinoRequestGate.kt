@@ -2,6 +2,9 @@ package pl.ekinocloudstream
 
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import java.io.IOException
 
 /** Serialize native site reads and stop queued/new reads after a denial. No timer or retry. */
 internal class EkinoRequestGate(initiallyPaused: Boolean = false,
@@ -13,7 +16,14 @@ internal class EkinoRequestGate(initiallyPaused: Boolean = false,
 
     suspend fun <T> request(block: suspend () -> T): T = mutex.withLock {
         if (isPaused) throw Paused()
-        block()
+        try { block() }
+        catch (error: IOException) {
+            // A cancelled player is not a failed connection. A transport failure, however,
+            // must stop queued catalogue/search calls instead of another 25-second attempt.
+            currentCoroutineContext().ensureActive()
+            pause()
+            throw error
+        }
     }
 
     @Synchronized fun pause() {

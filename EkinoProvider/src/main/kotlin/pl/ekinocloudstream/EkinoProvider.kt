@@ -10,6 +10,7 @@ import com.lagradost.cloudstream3.utils.extractorApis
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import java.net.URI
+import java.io.IOException
 
 class EkinoProvider(private val session: EkinoSession) : MainAPI() {
     override var mainUrl = EkinoParser.BASE
@@ -20,12 +21,15 @@ class EkinoProvider(private val session: EkinoSession) : MainAPI() {
     override val loadLinksTimeoutMs = 180_000L
     override val mainPage = mainPageOf("/movie/cat/" to "Najnowsze filmy", "/serie/" to "Seriale")
     private data class Page(val url: String, val doc: org.jsoup.nodes.Document)
-    private val siteHttp by lazy { EkinoSiteHttp.isolated(app.baseClient) }
+    private val siteHttp by lazy { EkinoSiteHttp.isolated(app.baseClient, session.networkJournal) }
 
     private suspend fun <T> guardedRequest(block: suspend () -> T): T = try {
         session.requestGate.request(block)
     } catch (_: EkinoRequestGate.Paused) {
         throw ErrorLoadingException(EkinoMessages.REQUESTS_PAUSED)
+    } catch (error: IOException) {
+        throw ErrorLoadingException("Ekino: ${EkinoNetworkJournal.failure(error)}. Żądania wstrzymano; w ustawieniach wybierz „Raport ostatniego połączenia”." +
+            session.networkJournal.report()?.let { "\n$it" }.orEmpty())
     }
 
     private suspend fun sitePage(url: String, referer: String = "$mainUrl/", form: Map<String, String>? = null,

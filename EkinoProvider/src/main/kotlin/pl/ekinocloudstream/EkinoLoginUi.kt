@@ -38,7 +38,7 @@ object EkinoLoginUi {
         }
         AlertDialog.Builder(activity)
             .setTitle("Ekino — ustawienia")
-            .setItems(arrayOf("Otwórz logowanie", "Otwórz materiał do weryfikacji", "Wznów żądania po przerwie", "Usuń zapisaną sesję", "Raport ostatniego odtwarzania")) { _, which ->
+            .setItems(arrayOf("Otwórz logowanie", "Otwórz materiał do weryfikacji", "Wznów żądania po przerwie", "Usuń zapisaną sesję", "Raport ostatniego odtwarzania", "Raport ostatniego połączenia")) { _, which ->
                 when (which) {
                     0 -> openBrowser(activity, session)
                     1 -> {
@@ -49,28 +49,30 @@ object EkinoLoginUi {
                     2 -> {
                         try {
                             session.requestGate.resume()
-                            toast(activity, "Wznowiono żądania. Uruchom materiał ręcznie; blokada serwisu może nadal obowiązywać.")
+                            toast(activity, "Wznowiono żądania. Uruchom materiał ręcznie; połączenie z serwisem może nadal nie działać.")
                         } catch (_: Exception) { toast(activity, "Nie udało się wznowić żądań Ekino.") }
                     }
                     3 -> {
                         session.clear()
                         toast(activity, "Usunięto zapisaną sesję Ekino na tym urządzeniu.")
                     }
-                    4 -> {
-                        val report = session.lastPlaybackReport
-                        if (report == null) toast(activity, "Brak raportu w tej sesji aplikacji.")
-                        else AlertDialog.Builder(activity)
-                            .setTitle("Ekino — raport odtwarzania")
-                            .setMessage(report)
-                            .setPositiveButton("Kopiuj") { _, _ ->
-                                val clipboard = activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                clipboard.setPrimaryClip(ClipData.newPlainText("Ekino", report))
-                                toast(activity, "Skopiowano raport odtwarzania.")
-                            }
-                            .setNegativeButton("Zamknij", null)
-                            .show()
-                    }
+                    4 -> showReport(activity, session.lastPlaybackReport, "Ekino — raport odtwarzania")
+                    5 -> showReport(activity, session.networkJournal.report(), "Ekino — raport połączenia")
                 }
+            }
+            .setNegativeButton("Zamknij", null)
+            .show()
+    }
+
+    private fun showReport(activity: Activity, report: String?, title: String) {
+        if (report == null) { toast(activity, "Brak raportu w tej sesji aplikacji."); return }
+        AlertDialog.Builder(activity)
+            .setTitle(title)
+            .setMessage(report)
+            .setPositiveButton("Kopiuj") { _, _ ->
+                val clipboard = activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                clipboard.setPrimaryClip(ClipData.newPlainText("Ekino", report))
+                toast(activity, "Skopiowano raport Ekino.")
             }
             .setNegativeButton("Zamknij", null)
             .show()

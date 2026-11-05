@@ -1,6 +1,12 @@
-# EkinoProvider v11
+# EkinoProvider v12
 
 Dodatek CloudStream dla `https://ekino-tv.pl/`. Dnia 4 listopada 2026 adres przekierowywał do `https://ekino.ws/`, wskazanej przez stronę jako jej oficjalna domena. Moduł korzysta z tego dokładnego pochodzenia; nie wybiera automatycznie nowych domen z reklam lub zewnętrznych list.
+
+V12 obsługuje również błędy połączenia występujące przed odtwarzaniem: katalog, wyszukiwanie i szczegóły. Pierwszy błąd I/O, w tym timeout, DNS lub TLS, wstrzymuje następne natywne żądania tak samo jak wcześniejsza odmowa dostępu. Anulowanie operacji przez użytkownika nie zapisuje takiego wstrzymania. Nie zmieniono 25-sekundowego limitu i nie dodano ponowień ani zmian sieci/domeny. Nowy błąd wskazuje ustawienia **Raport ostatniego połączenia**, dostępne także wtedy, gdy nie udało się wyszukać żadnego filmu.
+
+Jeżeli odpowiedź zawiera poprawny nagłówek `cf-ray`, raport zachowuje także Ray ID, aby administrator witryny mógł powiązać zgłoszenie z jej logami Cloudflare. [Ray ID jest identyfikatorem żądania](https://developers.cloudflare.com/fundamentals/reference/cloudflare-ray-id/); sam nie podaje przyczyny błędu ani nie potwierdza blokady. Gdy połączenie zakończy się przed nagłówkami HTTP, raport może nie zawierać tego identyfikatora.
+
+Raport jest pasywny: zapisuje kategorię żądania, czasy etapów DNS/TCP/TLS, liczbę adresów IPv4/IPv6 z DNS, wysłanie żądania, otrzymanie nagłówków/treści i kod HTTP. Nie zawiera samych adresów IP, pełnych URL, zapytań, cookies ani tekstu wyjątku. Kopiowanie raportu nie wysyła żądań i nie wznawia dodatku. Raport pozostaje w pamięci bieżącego procesu; skopiuj go w tej samej sesji CloudStream. Wstrzymanie żądań nadal pozostaje po restarcie. Ta poprawka zatrzymuje kolejne nieudane próby i ujawnia etap problemu; nie potwierdza usunięcia przyczyny timeoutu na urządzeniu.
 
 V11 dodaje obsługę publicznego odtwarzacza Byse rozpoznanego na `mfw09.org` po stronie pośredniej. Sam HTML tej strony zawierał jedynie aplikację JavaScript, więc v10 kończyła się komunikatem „brak źródła HTML”. Po rozpoznaniu rzeczywistego frontendu `Byse Frontend` na trasie `/e/{code}` dodatek wykonuje jedną sekwencję inicjalizacji publicznego API na tym samym pochodzeniu: pobranie zadania obliczeniowego, potwierdzenie wyniku i odczyt źródeł. Obliczenia mają limit 15 sekund, miliona prób i trudności 20; anulowanie jest przekazywane dalej. Odpowiedź źródeł jest uwierzytelniana AES-GCM, a nagłówki Origin i Referer zachowane dla odtwarzacza. Nie są używane zewnętrzne serwisy odszyfrowujące, API konta, klucze Premium, zmiana domen ani cudze sesje. Interaktywna CAPTCHA/Cloudflare i HTTP 401/403/429 przerywają ten przepływ bez ponowień.
 
