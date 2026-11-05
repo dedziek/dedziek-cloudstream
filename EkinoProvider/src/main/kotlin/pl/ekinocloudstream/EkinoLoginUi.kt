@@ -4,6 +4,8 @@ import android.app.Activity
 import android.app.AlertDialog
 import android.content.Context
 import android.content.ContextWrapper
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.graphics.Bitmap
 import android.net.http.SslError
 import android.os.Build
@@ -36,7 +38,7 @@ object EkinoLoginUi {
         }
         AlertDialog.Builder(activity)
             .setTitle("Ekino — ustawienia")
-            .setItems(arrayOf("Otwórz logowanie", "Otwórz materiał do weryfikacji", "Wznów żądania po przerwie", "Usuń zapisaną sesję")) { _, which ->
+            .setItems(arrayOf("Otwórz logowanie", "Otwórz materiał do weryfikacji", "Wznów żądania po przerwie", "Usuń zapisaną sesję", "Raport ostatniego odtwarzania")) { _, which ->
                 when (which) {
                     0 -> openBrowser(activity, session)
                     1 -> {
@@ -53,6 +55,20 @@ object EkinoLoginUi {
                     3 -> {
                         session.clear()
                         toast(activity, "Usunięto zapisaną sesję Ekino na tym urządzeniu.")
+                    }
+                    4 -> {
+                        val report = session.lastPlaybackReport
+                        if (report == null) toast(activity, "Brak raportu w tej sesji aplikacji.")
+                        else AlertDialog.Builder(activity)
+                            .setTitle("Ekino — raport odtwarzania")
+                            .setMessage(report)
+                            .setPositiveButton("Kopiuj") { _, _ ->
+                                val clipboard = activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                clipboard.setPrimaryClip(ClipData.newPlainText("Ekino", report))
+                                toast(activity, "Skopiowano raport odtwarzania.")
+                            }
+                            .setNegativeButton("Zamknij", null)
+                            .show()
                     }
                 }
             }

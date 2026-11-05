@@ -20,6 +20,7 @@ class EkinoProvider(private val session: EkinoSession) : MainAPI() {
     override val loadLinksTimeoutMs = 180_000L
     override val mainPage = mainPageOf("/movie/cat/" to "Najnowsze filmy", "/serie/" to "Seriale")
     private data class Page(val url: String, val doc: org.jsoup.nodes.Document)
+    private val siteHttp by lazy { EkinoSiteHttp.isolated(app.baseClient) }
 
     private suspend fun <T> guardedRequest(block: suspend () -> T): T = try {
         session.requestGate.request(block)
@@ -29,7 +30,8 @@ class EkinoProvider(private val session: EkinoSession) : MainAPI() {
 
     private suspend fun sitePage(url: String, referer: String = "$mainUrl/", form: Map<String, String>? = null,
                                  allowMissing: Boolean = false,
-                                 cookies: EkinoRequestCookies = EkinoRequestCookies(session.cookieHeader(mainUrl))): Page? = guardedRequest {
+                                 cookies: EkinoRequestCookies = EkinoRequestCookies(session.cookieHeader(mainUrl)),
+                                 trace: EkinoPlaybackTrace? = null): Page? = guardedRequest {
         var target = url
         repeat(6) { redirect ->
             if (!EkinoParser.isSiteUrl(target)) throw ErrorLoadingException("Ekino: nieobsługiwana domena przekierowania.")
@@ -38,10 +40,17 @@ class EkinoProvider(private val session: EkinoSession) : MainAPI() {
                 put("Referer", referer)
                 cookies.header(target).takeIf(String::isNotBlank)?.let { put("Cookie", it) }
             }
-            val response = if (form != null && redirect == 0) app.post(target, data = form, headers = headers,
-                allowRedirects = false, cacheTime = 0) else app.get(target, headers = headers, allowRedirects = false, cacheTime = 0)
+            trace?.request(target, headers["Cookie"].orEmpty())
+            val response = if (form != null && redirect == 0) siteHttp.post(target, data = form, headers = headers,
+                allowRedirects = false, cacheTime = 0) else siteHttp.get(target, headers = headers, allowRedirects = false, cacheTime = 0)
+            val doc = if (response.code in 200..299) EkinoParser.document(response.text, target) else {
+                response.body.close()
+                null
+            }
+            trace?.response(response.code, doc)
             val setCookie = response.headers.values("Set-Cookie")
             cookies.merge(target, setCookie)
+            trace?.cookiesUpdated(headers["Cookie"].orEmpty(), cookies.header(target))
             session.mergeResponseCookies(target, setCookie)
             if (response.code in listOf(301, 302, 303, 307, 308)) {
                 // No credentials are forwarded across domains, including unannounced mirror domains.
@@ -57,7 +66,7 @@ class EkinoProvider(private val session: EkinoSession) : MainAPI() {
                 })
                 if (allowMissing && response.code in listOf(404, 410)) return@guardedRequest null
                 if (response.code !in 200..299) throw ErrorLoadingException("Ekino: błąd serwera HTTP ${response.code}.")
-                val doc = EkinoParser.document(response.text, target)
+                requireNotNull(doc)
                 if (EkinoParser.isChallenge(doc)) {
                     session.requestGate.pause()
                     throw ErrorLoadingException(EkinoMessages.CLOUDFLARE)
@@ -71,13 +80,19 @@ class EkinoProvider(private val session: EkinoSession) : MainAPI() {
     }
 
     /** The public bridge has its own origin. It never receives the Ekino cookie jar. */
-    private suspend fun bridgeEmbeds(url: String): List<EkinoParser.Embed> = guardedRequest {
+    private suspend fun bridgeEmbeds(url: String, trace: EkinoPlaybackTrace? = null): List<EkinoParser.Embed> = guardedRequest {
         var target = url
         repeat(3) {
             if (!EkinoParser.isBridgeUrl(target)) return@guardedRequest emptyList()
-            val response = app.get(target, headers = mapOf(
+            trace?.request(target, "")
+            val response = siteHttp.get(target, headers = mapOf(
                 "User-Agent" to session.userAgent().ifBlank { USER_AGENT }, "Referer" to "$mainUrl/"),
                 allowRedirects = false, cacheTime = 0)
+            val doc = if (response.code in 200..299) EkinoParser.document(response.text, target) else {
+                response.body.close()
+                null
+            }
+            trace?.response(response.code, doc)
             if (response.code in listOf(301, 302, 303, 307, 308)) {
                 val next = response.headers["Location"]?.let { EkinoParser.absolute(target, it) } ?: return@guardedRequest emptyList()
                 if (!EkinoParser.isBridgeUrl(next)) {
@@ -93,7 +108,7 @@ class EkinoProvider(private val session: EkinoSession) : MainAPI() {
                     throw ErrorLoadingException("Ekino: strona pośrednia odmówiła dostępu (HTTP ${response.code}).$hint")
                 }
                 if (response.code !in 200..299) return@guardedRequest emptyList()
-                val doc = EkinoParser.document(response.text, target)
+                requireNotNull(doc)
                 if (EkinoParser.isChallenge(doc)) {
                     session.requestGate.pause()
                     throw ErrorLoadingException(EkinoMessages.CLOUDFLARE)
@@ -147,13 +162,38 @@ class EkinoProvider(private val session: EkinoSession) : MainAPI() {
 
     override suspend fun loadLinks(data: String, isCasting: Boolean, subtitleCallback: (SubtitleFile) -> Unit,
                                    callback: (ExtractorLink) -> Unit): Boolean {
+        val trace = EkinoPlaybackTrace(session.hasSession(), session.userAgent().isNotBlank())
+        var outcome = EkinoPlaybackTrace.Outcome.ERROR
+        try {
+            val found = loadPlayback(data, subtitleCallback, callback, trace)
+            outcome = if (found) EkinoPlaybackTrace.Outcome.VIDEO else EkinoPlaybackTrace.Outcome.EMPTY
+            return found
+        } catch (error: CancellationException) {
+            outcome = EkinoPlaybackTrace.Outcome.CANCELLED
+            throw error
+        } catch (error: ErrorLoadingException) {
+            trace.finish(outcome, session.requestGate.isPaused)
+            throw ErrorLoadingException("${error.message}\n${trace.report()}")
+        } catch (_: Exception) {
+            trace.finish(outcome, session.requestGate.isPaused)
+            throw ErrorLoadingException("Ekino: błąd połączenia lub odczytu odtwarzacza.\n${trace.report()}")
+        } finally {
+            trace.finish(outcome, session.requestGate.isPaused)
+            // A locally refused retry must not erase the response that caused the pause.
+            if (trace.hasRequests() || session.lastPlaybackReport == null) session.lastPlaybackReport = trace.report()
+        }
+    }
+
+    private suspend fun loadPlayback(data: String, subtitleCallback: (SubtitleFile) -> Unit,
+                                    callback: (ExtractorLink) -> Unit, trace: EkinoPlaybackTrace): Boolean {
         val target = EkinoParser.siteUrl(mainUrl, data)?.takeIf(EkinoParser::isDetailUrl)
             ?: throw ErrorLoadingException("Ekino: niepoprawny adres odcinka.")
         session.rememberVerificationPage(target)
         val cookies = EkinoRequestCookies(session.cookieHeader(mainUrl))
-        val page = sitePage(target, cookies = cookies)!!
+        val page = sitePage(target, cookies = cookies, trace = trace)!!
         val players = EkinoParser.players(page.doc, page.url).take(12)
         val delaySeconds = EkinoParser.playerDelaySeconds(page.doc)
+        trace.players(players.size, delaySeconds)
         if (players.isEmpty() || delaySeconds == null) throw ErrorLoadingException("Ekino: brak zwykłych odtwarzaczy lub zmieniony układ strony. Sprawdź materiał na stronie.")
         // Respect the countdown advertised by the free-player UI. Never automate verification or premium access.
         delay(delaySeconds * 1_000L)
@@ -175,6 +215,7 @@ class EkinoProvider(private val session: EkinoSession) : MainAPI() {
         }
         val hostResolver = EkinoHostResolver(
             extractor = { url, referer ->
+                trace.host(url)
                 extractorAttempts++
                 val links = mutableListOf<ExtractorLink>()
                 val hostname = URI(url).host
@@ -204,17 +245,18 @@ class EkinoProvider(private val session: EkinoSession) : MainAPI() {
                 activePlayer = player
                 hostResolver.nextPlayer()
                 // Site denials stop further requests; previously emitted links remain usable.
-                val wrapper = sitePage(player.url, page.url, allowMissing = true, cookies = cookies)
+                val wrapper = sitePage(player.url, page.url, allowMissing = true, cookies = cookies, trace = trace)
                 if (wrapper == null) { missing++; continue }
                 if (EkinoParser.isPlayerVerification(wrapper.doc)) {
                     throw ErrorLoadingException(EkinoMessages.playerVerification(player.host))
                 }
                 val first = EkinoParser.embeds(wrapper.doc, wrapper.url)
+                trace.embeds(first.size)
                 if (first.isEmpty()) noEmbeds++
                 val embeds = mutableListOf<EkinoParser.Embed>()
                 for (embed in first.take(8)) {
                     if (EkinoParser.isSiteUrl(embed.url)) {
-                        val nested = sitePage(embed.url, wrapper.url, allowMissing = true, cookies = cookies) ?: continue
+                        val nested = sitePage(embed.url, wrapper.url, allowMissing = true, cookies = cookies, trace = trace) ?: continue
                         if (EkinoParser.isPlayerVerification(nested.doc)) {
                             throw ErrorLoadingException(EkinoMessages.playerVerification(player.host))
                         }
@@ -224,7 +266,7 @@ class EkinoProvider(private val session: EkinoSession) : MainAPI() {
                 val resolved = mutableListOf<EkinoParser.Embed>()
                 for (embed in embeds.distinctBy { it.url }.take(12)) {
                     if (EkinoParser.isBridgeUrl(embed.url)) {
-                        val unwrapped = try { bridgeEmbeds(embed.url) }
+                        val unwrapped = try { bridgeEmbeds(embed.url, trace) }
                         catch (error: CancellationException) { throw error }
                         catch (error: ErrorLoadingException) { throw error }
                         catch (_: Exception) { emptyList() }
