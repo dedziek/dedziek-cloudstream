@@ -13,7 +13,8 @@ import android.widget.LinearLayout
 import android.widget.TextView
 
 /** Own the entire dialog content so a themed AlertDialog panel cannot collapse the browser. */
-internal class EkinoLoginDialog(activity: Activity, browser: View, status: TextView) : Dialog(activity) {
+internal class EkinoLoginDialog(activity: Activity, browser: View, status: TextView,
+                                verification: Boolean = false) : Dialog(activity) {
     val saveButton = Button(context).apply { text = "Zapisz sesję" }
     val refreshButton = Button(context).apply { text = "Odśwież" }
     val closeButton = Button(context).apply { text = "Zamknij" }
@@ -24,13 +25,14 @@ internal class EkinoLoginDialog(activity: Activity, browser: View, status: TextV
         val content = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             addView(TextView(context).apply {
-                text = "Logowanie — ekino.ws"
+                text = if (verification) "Weryfikacja — ekino.ws" else "Logowanie — ekino.ws"
                 textSize = 20f
                 setTypeface(typeface, Typeface.BOLD)
                 setPadding(padding, padding, padding, padding / 2)
             }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             addView(TextView(context).apply {
-                text = "Zaloguj się w formularzu strony i wybierz „Zapisz sesję”."
+                text = if (verification) "Wybierz odtwarzacz, wykonaj CAPTCHA i wybierz „Zapisz sesję”."
+                    else "Zaloguj się w formularzu strony i wybierz „Zapisz sesję”."
                 textSize = 14f
                 setPadding(padding, 0, padding, padding / 2)
             }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))

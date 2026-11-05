@@ -30,7 +30,12 @@ class EkinoLoginDialogTest {
             "Strona odmówiła dostępu (HTTP 403). Jeśli Cloudflare wyświetla „Sorry, you have been blocked”, sprawdź ten sam adres w zwykłej przeglądarce. Zapis sesji nie usuwa blokady serwisu.")
     }
 
-    private fun checkLayout(widthDp: Int, heightDp: Int, theme: Int, message: String) {
+    @Test fun manualVerificationKeepsTheBrowserVisibleOnAShortScreen() {
+        checkLayout(393, 350, android.R.style.Theme_Material_NoActionBar,
+            "Wybierz ten sam odtwarzacz i wykonaj weryfikację. Potem zapisz sesję i ponownie uruchom materiał w dodatku.", true)
+    }
+
+    private fun checkLayout(widthDp: Int, heightDp: Int, theme: Int, message: String, verification: Boolean = false) {
         val controller = Robolectric.buildActivity(Activity::class.java)
         val activity = controller.get()
         activity.setTheme(theme)
@@ -39,7 +44,7 @@ class EkinoLoginDialogTest {
         // Android View to test the space allocated to the browser by the real layout.
         val web = View(activity)
         val status = TextView(activity).apply { text = message }
-        val dialog = EkinoLoginDialog(activity, web, status)
+        val dialog = EkinoLoginDialog(activity, web, status, verification)
         try {
             dialog.show()
             val density = activity.resources.displayMetrics.density

@@ -187,14 +187,20 @@ class EkinoProvider(private val session: EkinoSession) : MainAPI() {
                 // Site denials stop further requests; previously emitted links remain usable.
                 val wrapper = sitePage(player.url, page.url, allowMissing = true, cookies = cookies)
                 if (wrapper == null) { missing++; continue }
-                if (EkinoParser.isPlayerVerification(wrapper.doc)) throw ErrorLoadingException(EkinoMessages.playerVerification(player.host))
+                if (EkinoParser.isPlayerVerification(wrapper.doc)) {
+                    session.rememberVerificationPage(target)
+                    throw ErrorLoadingException(EkinoMessages.playerVerification(player.host))
+                }
                 val first = EkinoParser.embeds(wrapper.doc, wrapper.url)
                 if (first.isEmpty()) noEmbeds++
                 val embeds = mutableListOf<EkinoParser.Embed>()
                 for (embed in first.take(8)) {
                     if (EkinoParser.isSiteUrl(embed.url)) {
                         val nested = sitePage(embed.url, wrapper.url, allowMissing = true, cookies = cookies) ?: continue
-                        if (EkinoParser.isPlayerVerification(nested.doc)) throw ErrorLoadingException(EkinoMessages.playerVerification(player.host))
+                        if (EkinoParser.isPlayerVerification(nested.doc)) {
+                            session.rememberVerificationPage(target)
+                            throw ErrorLoadingException(EkinoMessages.playerVerification(player.host))
+                        }
                         embeds.addAll(EkinoParser.embeds(nested.doc, nested.url).filterNot { EkinoParser.isSiteUrl(it.url) })
                     } else embeds.add(embed)
                 }
