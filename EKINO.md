@@ -1,6 +1,8 @@
-# EkinoProvider v6
+# EkinoProvider v7
 
 Dodatek CloudStream dla `https://ekino-tv.pl/`. Dnia 4 listopada 2026 adres przekierowywał do `https://ekino.ws/`, wskazanej przez stronę jako jej oficjalna domena. Moduł korzysta z tego dokładnego pochodzenia; nie wybiera automatycznie nowych domen z reklam lub zewnętrznych list.
+
+V7 rozróżnia CAPTCHA w odtwarzaczu od strony ochronnej Cloudflare. Sam formularz CAPTCHA nie jest diagnozą problemu z internetem; wskazówka zmiany sieci dotyczy zapętlającej się weryfikacji. Błąd podaje krótki identyfikator hostingu z zakładki ShowPlayer, bez zaszyfrowanego identyfikatora źródła ani URL. Gdy wcześniejszy odtwarzacz zwrócił już wideo, późniejsza odmowa dostępu lub weryfikacja kończy pobieranie kolejnych źródeł i zachowuje znalezione linki. Nie ponawia się zablokowanego żądania ani nie rozwiązuje CAPTCHA automatycznie. Log użytkownika potwierdził znalezienie jednego źródła MixDrop dla **Bitwy o Pandorę (32972)**; dla **Powrotu (26101)** wskazał formularz weryfikacji w ramce. Nie potwierdzono odtwarzania Powrotu.
 
 V6 dodaje odczyt statycznych źródeł MP4/HLS i zagnieżdżonych ramek dla hostingów bez ekstraktora CloudStream, w tym domen Upzone. Rozpoznaje elementy HTML video/source i deklaracje file/src w konfiguracji odtwarzacza, także po statycznym rozpakowaniu skryptu. Nie wykonuje JavaScriptu ani kliknięć. Rozpoznany ekstraktor, który nie zwrócił wideo, nie powoduje ponownego pobrania strony innym klientem. Odczyt ma ograniczenie liczby stron i głębokości ramek; odmowy dostępu zatrzymują dalsze żądania do danego hostingu. Cookies hostingów mają osobny, tymczasowy magazyn. Komunikat błędu pokazuje wyłącznie domeny hostingów i etap niepowodzenia, bez ścieżek, parametrów i danych sesji. Dla filmu **5x2 (43318)** potwierdzono zakładki player i upzone, ale nie potwierdzono odtwarzania w środowisku programistycznym. Przykłady formatów źródeł oraz przepływ żądań zweryfikowano testami.
 
@@ -27,6 +29,12 @@ Dodatek odczytuje wyłącznie zwykłe źródła `ShowPlayer` reklamowane przez s
 Zewnętrzne hostingi obsługują ekstraktory CloudStream oraz opisany wyżej odczyt statycznych źródeł dla hostingów bez ekstraktora. Ich dostępność i zgodność zależą również od hostingu. Moduł nie promuje odtwarzacza Premium ani ograniczonych podglądów do pełnych źródeł.
 
 **Status: wersja testowa.** Potwierdzono odpowiedzi strony głównej, katalogu filmów, wyszukiwania, szczegółów filmu, serialu i odcinka. Parser sprawdzono na pobranych stronach i syntetycznych przykładach struktury. Żądanie do serwera darmowego odtwarzacza ze środowiska programistycznego otrzymało HTTP 403 Cloudflare. Nie ponawiano go z inną tożsamością, domeną ani przeglądarką. Pełne odtwarzanie oraz rzeczywiste logowanie wymagają próby na urządzeniu użytkownika; sama kompilacja ich nie potwierdza. W v3 strukturę dodatkowej strony pośredniej zweryfikowano na podstawie publicznego kodu integracji Ekino, a izolację cookies i przekazywanie referera sprawdzono testami. Odmowa dostępu ze środowiska programistycznego nie była obchodzona.
+
+### Gdy weryfikacja się zapętla
+
+Zgodnie z [instrukcją Cloudflare](https://developers.cloudflare.com/cloudflare-challenges/troubleshooting/challenge-solve-issues/) sama pętla weryfikacji nie dowodzi awarii internetu. Sprawdź ten sam materiał w aktualnym Chrome, aktualizacje Android System WebView, działanie JavaScriptu oraz ewentualne blokowanie skryptów przez rozszerzenia lub VPN/proxy. Dopiero porównanie z inną siecią pomaga rozróżnić problem połączenia i przeglądarki. Nie zmieniaj sieci w trakcie tej samej weryfikacji.
+
+Okno logowania ma włączone JavaScript, DOM storage, cookies i cookies ramek zewnętrznych. Dopuszcza zasoby challenges.cloudflare.com oraz about:blank/about:srcdoc, nie zmienia identyfikatora User-Agent w trakcie sesji i nie traktuje błędów HTTP/DNS podzasobów jako błędu całej strony. Odpowiada to [wymaganiom dla implementacji mobilnej](https://developers.cloudflare.com/turnstile/get-started/mobile-implementation/). Okno pozostaje opcjonalne; nie otwiera się podczas odtwarzania. Sam zapis cookies po zalogowaniu nie potwierdza rozwiązania oddzielnej CAPTCHA konkretnego odtwarzacza.
 
 HTTP 401 wymaga logowania, 403 oznacza odmowę dostępu, a 429 ograniczenie liczby żądań. Te odpowiedzi przerywają pobieranie źródeł bez automatycznych ponowień. Jeśli ten sam materiał nie działa na stronie na danym urządzeniu, sam dodatek nie przywróci dostępu. Anulowanie odtwarzania przerywa oczekiwanie.
 

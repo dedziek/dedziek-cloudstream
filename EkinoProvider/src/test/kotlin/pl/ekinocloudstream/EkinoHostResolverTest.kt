@@ -53,7 +53,7 @@ class EkinoHostResolverTest {
         resolver.resolve("https://upzone.example/e/other", "https://ekino.ws/")
         assertEquals(1, fetches)
         assertTrue(resolver.report().contains("HTTP 403"))
-        assertTrue(resolver.requiresVerification)
+        assertEquals(EkinoHostResolver.Verification.ACCESS_DENIED, resolver.verification)
     }
 
     @Test fun theSameHostingCanEmitForDifferentPlayerLanguageLabels() = runBlocking {
@@ -74,6 +74,15 @@ class EkinoHostResolverTest {
         }, { error("No source expected") }, { error("Challenge must not be processed as a packed player") })
         resolver.resolve(page, "https://ekino.ws/")
         assertTrue(resolver.report().contains("weryfikacja wymagana"))
+        assertEquals(EkinoHostResolver.Verification.CAPTCHA, resolver.verification)
+    }
+
+    @Test fun cloudflareInterstitialIsDistinguishedFromAPlayerCaptcha() = runBlocking {
+        val resolver = EkinoHostResolver({ _, _ -> EkinoHostResolver.Dispatch.UNSUPPORTED }, { _, _ ->
+            EkinoHostResolver.Response(200, "<title>Just a moment...</title><form id='challenge-form'></form>")
+        }, { error("No source expected") }, { error("Challenge must not be processed") })
+        resolver.resolve(page, "https://ekino.ws/")
+        assertEquals(EkinoHostResolver.Verification.CLOUDFLARE, resolver.verification)
     }
 
     @Test fun redirectsAndDuplicateFramesAreBoundedAndSecretsStayOutOfReports() = runBlocking {

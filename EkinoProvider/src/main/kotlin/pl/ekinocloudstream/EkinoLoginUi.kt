@@ -115,7 +115,7 @@ object EkinoLoginUi {
             }
 
             override fun onPageFinished(view: WebView, url: String) {
-                status.text = pageError ?: "Jeśli Cloudflare się zapętla, spróbuj zmienić internet (Wi-Fi / dane komórkowe). Po zalogowaniu wybierz „Zapisz sesję”."
+                status.text = pageError ?: "Jeśli weryfikacja się zapętla, sprawdź aktualizacje Android System WebView i spróbuj innej sieci (Wi-Fi / dane komórkowe). Po zalogowaniu wybierz „Zapisz sesję”."
             }
 
             override fun onReceivedHttpError(view: WebView, request: WebResourceRequest, response: WebResourceResponse) {
