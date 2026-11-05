@@ -12,6 +12,8 @@ import android.os.Looper
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.CookieManager
+import android.webkit.ConsoleMessage
+import android.webkit.WebChromeClient
 import android.webkit.SslErrorHandler
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
@@ -52,10 +54,18 @@ object EkinoLoginUi {
     }
 
     @Suppress("SetJavaScriptEnabled", "DEPRECATION", "OVERRIDE_DEPRECATION")
-    private fun openLogin(activity: Activity, session: EkinoSession) {
+    internal fun openLogin(activity: Activity, session: EkinoSession,
+                           startUrl: String = "${EkinoSession.BASE_URL}/login", verification: Boolean = false,
+                           saveSession: (String, String) -> Unit = session::save,
+                           onClosed: (Boolean) -> Unit = {}): EkinoLoginDialog? {
+        if (!EkinoSession.isEkinoUrl(startUrl) || (verification && !EkinoParser.isDetailUrl(startUrl))) {
+            onClosed(false)
+            return null
+        }
         val web = try { WebView(activity) } catch (_: Exception) {
             toast(activity, "Nie można uruchomić Android System WebView. Sprawdź jego instalację i aktualizacje.")
-            return
+            onClosed(false)
+            return null
         }
         // Retain the actual WebView identity for the entire verification/login session.
         val userAgent = web.settings.userAgentString
@@ -89,6 +99,10 @@ object EkinoLoginUi {
             setPadding(padding, padding / 2, padding, padding / 2)
         }
         var pageError: String? = null
+        var completed = false
+        web.webChromeClient = object : WebChromeClient() {
+            override fun onConsoleMessage(message: ConsoleMessage): Boolean = true
+        }
         web.setDownloadListener { _, _, _, _, _ -> toast(activity, "To okno służy wyłącznie do logowania.") }
         web.webViewClient = object : WebViewClient() {
             override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
@@ -115,7 +129,9 @@ object EkinoLoginUi {
             }
 
             override fun onPageFinished(view: WebView, url: String) {
-                status.text = pageError ?: "Jeżeli strona prosi o weryfikację, dokończ ją samodzielnie. Po zalogowaniu wybierz „Zapisz sesję”."
+                status.text = pageError ?: if (verification)
+                    "Otwórz odtwarzacz, wykonaj weryfikację i wybierz „Gotowe — kontynuuj”."
+                    else "Jeżeli strona prosi o weryfikację, dokończ ją samodzielnie. Po zalogowaniu wybierz „Zapisz sesję”."
             }
 
             override fun onReceivedHttpError(view: WebView, request: WebResourceRequest, response: WebResourceResponse) {
@@ -149,11 +165,11 @@ object EkinoLoginUi {
             }
             // Default WebView certificate and Safe Browsing handling is retained.
         }
-        val dialog = EkinoLoginDialog(activity, web, status)
+        val dialog = EkinoLoginDialog(activity, web, status, verification)
         dialog.setOnShowListener {
             dialog.saveButton.setOnClickListener {
                 val currentUrl = web.url.orEmpty()
-                if (!EkinoSession.isEkinoUrl(currentUrl)) {
+                if (!EkinoSession.isEkinoUrl(currentUrl) || (verification && pageError != null)) {
                     toast(activity, "Otwórz stronę Ekino przed zapisaniem sesji.")
                     return@setOnClickListener
                 }
@@ -165,8 +181,9 @@ object EkinoLoginUi {
                 }
                 try {
                     manager.flush()
-                    session.save(cookies, userAgent)
-                    toast(activity, "Zapisano sesję. Spróbuj wyszukiwania w dodatku.")
+                    saveSession(cookies, userAgent)
+                    completed = true
+                    toast(activity, if (verification) "Zapisano sesję. Ponowne sprawdzanie materiału…" else "Zapisano sesję. Spróbuj wyszukiwania w dodatku.")
                     dialog.dismiss()
                 } catch (_: Exception) {
                     toast(activity, "Nie udało się zapisać sesji na urządzeniu. Spróbuj ponownie.")
@@ -174,18 +191,19 @@ object EkinoLoginUi {
             }
             dialog.refreshButton.setOnClickListener {
                 if (EkinoSession.isEkinoUrl(web.url.orEmpty())) web.reload()
-                else web.loadUrl("${EkinoSession.BASE_URL}/login")
+                else web.loadUrl(startUrl)
             }
             web.requestFocus()
-            web.loadUrl("${EkinoSession.BASE_URL}/login")
+            // Load the material itself, so its own page creates fresh, browser-session-bound player IDs.
+            // No scripts are injected and no Play, CAPTCHA or verification controls are clicked.
+            web.loadUrl(startUrl)
         }
         dialog.setOnDismissListener {
-            web.stopLoading()
-            web.clearFormData()
-            (web.parent as? ViewGroup)?.removeView(web)
-            web.destroy()
+            runCatching { web.stopLoading(); web.clearFormData(); (web.parent as? ViewGroup)?.removeView(web); web.destroy() }
+            onClosed(completed)
         }
         dialog.show()
+        return dialog
     }
 
     private fun findActivity(context: Context): Activity? {
