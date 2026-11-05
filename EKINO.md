@@ -30,6 +30,12 @@ Zewnętrzne hostingi obsługują ekstraktory CloudStream oraz opisany wyżej odc
 
 **Status: wersja testowa.** Potwierdzono odpowiedzi strony głównej, katalogu filmów, wyszukiwania, szczegółów filmu, serialu i odcinka. Parser sprawdzono na pobranych stronach i syntetycznych przykładach struktury. Żądanie do serwera darmowego odtwarzacza ze środowiska programistycznego otrzymało HTTP 403 Cloudflare. Nie ponawiano go z inną tożsamością, domeną ani przeglądarką. Pełne odtwarzanie oraz rzeczywiste logowanie wymagają próby na urządzeniu użytkownika; sama kompilacja ich nie potwierdza. W v3 strukturę dodatkowej strony pośredniej zweryfikowano na podstawie publicznego kodu integracji Ekino, a izolację cookies i przekazywanie referera sprawdzono testami. Odmowa dostępu ze środowiska programistycznego nie była obchodzona.
 
+### Gdy weryfikacja się zapętla
+
+Zgodnie z [instrukcją Cloudflare](https://developers.cloudflare.com/cloudflare-challenges/troubleshooting/challenge-solve-issues/) sama pętla weryfikacji nie dowodzi awarii internetu. Sprawdź ten sam materiał w aktualnym Chrome, aktualizacje Android System WebView, działanie JavaScriptu oraz ewentualne blokowanie skryptów przez rozszerzenia lub VPN/proxy. Dopiero porównanie z inną siecią pomaga rozróżnić problem połączenia i przeglądarki. Nie zmieniaj sieci w trakcie tej samej weryfikacji.
+
+Okno logowania ma włączone JavaScript, DOM storage, cookies i cookies ramek zewnętrznych. Dopuszcza zasoby challenges.cloudflare.com oraz about:blank/about:srcdoc, nie zmienia identyfikatora User-Agent w trakcie sesji i nie traktuje błędów HTTP/DNS podzasobów jako błędu całej strony. Odpowiada to [wymaganiom dla implementacji mobilnej](https://developers.cloudflare.com/turnstile/get-started/mobile-implementation/). Okno pozostaje opcjonalne; nie otwiera się podczas odtwarzania. Sam zapis cookies po zalogowaniu nie potwierdza rozwiązania oddzielnej CAPTCHA konkretnego odtwarzacza.
+
 HTTP 401 wymaga logowania, 403 oznacza odmowę dostępu, a 429 ograniczenie liczby żądań. Te odpowiedzi przerywają pobieranie źródeł bez automatycznych ponowień. Jeśli ten sam materiał nie działa na stronie na danym urządzeniu, sam dodatek nie przywróci dostępu. Anulowanie odtwarzania przerywa oczekiwanie.
 
 ## Sesja i aktualizacje
