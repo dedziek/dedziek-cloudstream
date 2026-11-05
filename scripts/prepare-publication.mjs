@@ -1,8 +1,9 @@
-import { readFile, writeFile, mkdir, copyFile } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, copyFile, rm } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { repositoryManifest } from './repository-config.mjs';
+import { ownPlugins as expectedPlugins, retiredPlugins, validateOwnCatalogue } from './own-plugins.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const repository = process.argv[2] ?? process.env.GITHUB_REPOSITORY;
@@ -10,18 +11,8 @@ if (!repository || !/^[A-Za-z0-9-]+\/[A-Za-z0-9._-]+$/.test(repository)) {
   throw new Error('Podaj repozytorium owner/repo, np. dedziek/dedziek-cloudstream.');
 }
 const rawBase = `https://raw.githubusercontent.com/${repository}/builds/`;
-const expectedPlugins = new Map([
-  ['FilmanProvider', 'pl.filmancloudstream.FilmanPlugin'],
-  ['AnimeWatchProvider', 'pl.animewatchcloudstream.AnimeWatchPlugin'],
-  ['AnimeGateProvider', 'pl.animegatecloudstream.AnimeGatePlugin'],
-  ['EkinoProvider', 'pl.ekinocloudstream.EkinoPlugin'],
-]);
 const entries = JSON.parse(await readFile(path.join(root, 'build', 'plugins.json'), 'utf8'));
-if (!Array.isArray(entries) || entries.length !== expectedPlugins.size ||
-    new Set(entries.map(entry => entry.internalName)).size !== expectedPlugins.size ||
-    entries.some(entry => !expectedPlugins.has(entry.internalName))) {
-  throw new Error('Lista własnych dodatków nie pasuje do konfiguracji publikacji.');
-}
+validateOwnCatalogue(entries);
 const packages = [];
 for (const [pluginName, pluginClassName] of expectedPlugins) {
   const entry = entries.find(entry => entry.internalName === pluginName);
@@ -43,6 +34,7 @@ for (const [pluginName, pluginClassName] of expectedPlugins) {
 const repo = repositoryManifest(repository);
 const out = path.join(root, 'build', 'publication');
 await mkdir(out, { recursive: true });
+for (const retired of retiredPlugins) await rm(path.join(out, `${retired}.cs3`), { force: true });
 for (const { pluginName, compiled } of packages) {
   await copyFile(compiled, path.join(out, `${pluginName}.cs3`));
 }

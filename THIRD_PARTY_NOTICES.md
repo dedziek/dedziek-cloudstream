@@ -1,6 +1,6 @@
 # Źródła i zależności
 
-Obsługa publicznego odtwarzacza Byse w EkinoProvider v11 adaptuje obliczenia inicjalizacyjne i format odpowiedzi z [MoonGetter](https://github.com/darkryh/MoonGetter/tree/master/server-src/moongetter-filemoon), MIT. Informacja licencyjna jest również zachowana jako stała `BYSE_LICENSE` w pliku DEX dodatku:
+Obsługa publicznego odtwarzacza Byse w nowym EkinoTvProvider używa zgodnego algorytmu inicjalizacji i formatu odpowiedzi z [MoonGetter](https://github.com/darkryh/MoonGetter/tree/master/server-src/moongetter-filemoon), MIT. Informacja licencyjna jest również zachowana w źródłach i pliku DEX dodatku:
 
 MIT License
 

@@ -51,7 +51,7 @@ jobs:
           python3 -m unittest discover -s scripts -p 'test_*.py'
 
       - name: Compile and test
-        run: sh gradlew :FilmanProvider:make :AnimeWatchProvider:make :AnimeGateProvider:make :EkinoProvider:make testDebugUnitTest makePluginsJson --no-daemon --console=plain
+        run: sh gradlew :FilmanProvider:make :AnimeWatchProvider:make :AnimeGateProvider:make :EkinoTvProvider:make testDebugUnitTest makePluginsJson --no-daemon --console=plain
 
       - name: Validate package and prepare repository
         run: node scripts/prepare-publication.mjs "$GITHUB_REPOSITORY"
@@ -88,10 +88,11 @@ jobs:
             git worktree add --detach "$publication" HEAD
             git -C "$publication" switch --orphan builds
           fi
-          cp build/publication/FilmanProvider.cs3 build/publication/AnimeWatchProvider.cs3 build/publication/AnimeGateProvider.cs3 build/publication/EkinoProvider.cs3 build/publication/plugins.json build/publication/phisher-plugins.json build/publication/repo.json build/publication/SHA256SUMS.txt "$publication/"
+          cp build/publication/FilmanProvider.cs3 build/publication/AnimeWatchProvider.cs3 build/publication/AnimeGateProvider.cs3 build/publication/EkinoTvProvider.cs3 build/publication/plugins.json build/publication/phisher-plugins.json build/publication/repo.json build/publication/SHA256SUMS.txt "$publication/"
           git -C "$publication" config user.name 'github-actions[bot]'
           git -C "$publication" config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git -C "$publication" add FilmanProvider.cs3 AnimeWatchProvider.cs3 AnimeGateProvider.cs3 EkinoProvider.cs3 plugins.json phisher-plugins.json repo.json SHA256SUMS.txt
+          git -C "$publication" add FilmanProvider.cs3 AnimeWatchProvider.cs3 AnimeGateProvider.cs3 EkinoTvProvider.cs3 plugins.json phisher-plugins.json repo.json SHA256SUMS.txt
+          git -C "$publication" rm --ignore-unmatch EkinoProvider.cs3
           if ! git -C "$publication" diff --cached --quiet; then
             git -C "$publication" commit -m "Publish CloudStream providers from ${GITHUB_SHA}"
             git -C "$publication" push origin HEAD:builds
