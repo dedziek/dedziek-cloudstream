@@ -1,6 +1,8 @@
 package pl.ekinocloudstream
 
 import android.app.Activity
+import android.content.ClipboardManager
+import android.content.Context
 import android.os.Looper
 import android.view.View
 import android.view.ViewGroup
@@ -79,6 +81,30 @@ class EkinoManualVerificationTest {
             shadowOf(settings).clickOnItem(2)
             assertFalse(reopened.requestGate.isPaused)
             assertFalse(EkinoSession(activity).requestGate.isPaused)
+        } finally {
+            session.requestGate.resume()
+            controller.pause().stop().destroy()
+        }
+    }
+
+    @Test fun viewingAndCopyingTheLastReportDoesNotOpenABrowserOrResumeRequests() {
+        val controller = Robolectric.buildActivity(Activity::class.java).setup()
+        val activity = controller.get()
+        val session = EkinoSession(activity)
+        try {
+            session.requestGate.pause()
+            session.lastPlaybackReport = "Ekino v10 · raport odtwarzania\nHTTP 200, CAPTCHA=reCAPTCHA"
+            EkinoLoginUi.show(activity, session)
+            shadowOf(ShadowAlertDialog.getLatestAlertDialog()).clickOnItem(4)
+            val reportDialog = ShadowAlertDialog.getLatestAlertDialog()
+            assertTrue(reportDialog.isShowing)
+            assertNull(findBrowser(reportDialog.window!!.decorView))
+            assertTrue(session.requestGate.isPaused)
+            reportDialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick()
+            shadowOf(Looper.getMainLooper()).idle()
+            val clipboard = activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            assertEquals(session.lastPlaybackReport, clipboard.primaryClip!!.getItemAt(0).text.toString())
+            assertTrue(session.requestGate.isPaused)
         } finally {
             session.requestGate.resume()
             controller.pause().stop().destroy()
