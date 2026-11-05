@@ -32,7 +32,7 @@ Link pomocy Cloudflare można otworzyć przez świadome kliknięcie w widocznej 
 
 Testy lokalne obejmują parser katalogu i seriali, zwykłe odtwarzacze, CAPTCHA w ramce przy HTTP 200, warunki wznowienia sesji, utrwalanie pauzy, limit ponownej nawigacji, zachowanie znalezionego źródła, protokół Byse i uwierzytelnienie jego odpowiedzi. Nie zastępują odtwarzania filmu na fizycznym telefonie.
 
-Walidacja v1: pełna kompilacja czterech dodatków i **178 testów JUnit (29 dla Ekino TV), 22 testy Node i 8 testów Python** zakończyły się poprawnie. Sprawdzono nową klasę w manifeście, brak starej klasy w DEX, informację MIT w paczce i katalog bez starego wpisu. Lokalna paczka: 85 543 bajty, SHA-256 `ee797326153f59a5450188e9e9977a4cc88ae29045d08fa86ce0afbfa62906b6`.
+Walidacja v1: pełna kompilacja czterech dodatków i **178 testów JUnit (29 dla Ekino TV), 22 testy Node i 8 testów Python** zakończyły się poprawnie. Sprawdzono nową klasę w manifeście, brak starej klasy w DEX, informację MIT w paczce i katalog bez starego wpisu. Opublikowana paczka GitHub Actions: 85 594 bajty, SHA-256 `3d46dc6a2fd0da5440941e99ae91bb9250bd46ee173ec932f5e1d548c2a4cc43`. Pobrany plik sprawdzono z manifestem i katalogiem; stary wpis i paczka zostały usunięte. [Publikacja i ponowne testy w GitHub Actions](https://github.com/dedziek/dedziek-cloudstream/actions/runs/42122923089) zakończyły się poprawnie.
 
 [Analiza całej historii v1–v13 i zgłoszeń](EKINO-TV-AUDIT.md).
 
