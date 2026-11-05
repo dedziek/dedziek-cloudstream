@@ -5,7 +5,7 @@ import java.util.Locale
 
 /** Static source metadata only. Never executes JavaScript or clicks a player. */
 internal object EkinoHostSources {
-    data class Media(val url: String, val hls: Boolean, val referer: String)
+    data class Media(val url: String, val hls: Boolean, val referer: String, val headers: Map<String, String> = emptyMap())
     data class Parsed(val media: List<Media>, val frames: List<String>)
 
     fun publicHttps(url: String): Boolean = runCatching {

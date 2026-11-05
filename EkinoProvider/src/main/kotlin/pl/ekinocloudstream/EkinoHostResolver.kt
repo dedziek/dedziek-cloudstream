@@ -8,7 +8,8 @@ internal class EkinoHostResolver(
     private val extractor: suspend (String, String) -> Dispatch,
     private val fetch: suspend (String, String) -> Response,
     private val emit: suspend (EkinoHostSources.Media) -> Unit,
-    private val unpack: (String) -> String = { it }
+    private val unpack: (String) -> String = { it },
+    private val byse: (suspend (String) -> EkinoByseResolver.Result)? = null
 ) {
     enum class Dispatch { FOUND, EMPTY, UNSUPPORTED, ERROR }
     enum class Verification { NONE, ACCESS_DENIED, CLOUDFLARE, CAPTCHA }
@@ -53,7 +54,15 @@ internal class EkinoHostResolver(
         requests++
         val page = try { fetch(url, referer) }
         catch (error: CancellationException) { throw error }
-        catch (_: Exception) { note(url, "błąd połączenia"); blocked.add(host); return }
+        catch (error: Exception) {
+            note(url, when (error) {
+                is java.net.UnknownHostException -> "błąd DNS"
+                is java.net.SocketTimeoutException -> "limit czasu połączenia"
+                is javax.net.ssl.SSLException -> "błąd TLS"
+                else -> "błąd połączenia"
+            })
+            blocked.add(host); return
+        }
         if (page.status in setOf(401, 403, 429)) {
             if (page.status == 403) verification = Verification.ACCESS_DENIED
             blocked.add(host); note(url, "HTTP ${page.status}"); return
@@ -69,6 +78,24 @@ internal class EkinoHostResolver(
         if (cloudflare || EkinoParser.isPlayerVerification(doc)) {
             verification = if (cloudflare) Verification.CLOUDFLARE else Verification.CAPTCHA
             blocked.add(host); note(url, "weryfikacja wymagana"); return
+        }
+        if (doc.text().contains("Transfer dla darmowych użytkowników został wyczerpany", true)) {
+            note(url, "wyczerpany transfer darmowy"); blocked.add(host); return
+        }
+        if (doc.title().contains("Video not found", true)) {
+            note(url, "plik niedostępny"); blocked.add(host); return
+        }
+        if (EkinoByseResolver.matches(doc, url)) {
+            val result = byse?.invoke(url)
+            if (result == null) { note(url, "Byse wymaga obsługi API"); return }
+            note(url, result.report())
+            if (result.status in setOf(401, 403, 429)) {
+                blocked.add(host)
+                if (result.status == 403) verification = Verification.ACCESS_DENIED
+            }
+            if (result.verification != Verification.NONE) { blocked.add(host); verification = result.verification }
+            for (media in result.media) emit(media)
+            return
         }
         val expanded = runCatching { unpack(page.body) }.getOrDefault("")
         val parsed = EkinoHostSources.parse(page.body, url, expanded)

@@ -204,6 +204,7 @@ class EkinoProvider(private val session: EkinoSession) : MainAPI() {
         var extractorAttempts = 0
         val seen = mutableSetOf<String>()
         val publicHostHttp = EkinoHostHttp(session.userAgent().ifBlank { USER_AGENT })
+        val byseResolver = EkinoByseResolver(publicHostHttp::post)
         var activePlayer: EkinoParser.Player? = null
         suspend fun emitLink(link: ExtractorLink) {
             val player = activePlayer ?: return
@@ -236,10 +237,10 @@ class EkinoProvider(private val session: EkinoSession) : MainAPI() {
                 val label = activePlayer?.host ?: "Ekino"
                 emitLink(newExtractorLink(name, label, media.url,
                     if (media.hls) ExtractorLinkType.M3U8 else ExtractorLinkType.VIDEO) {
-                    referer = media.referer; headers = publicHostHttp.mediaHeaders(media.url)
+                    referer = media.referer; headers = publicHostHttp.mediaHeaders(media.url) + media.headers
                 })
             },
-            unpack = { getAndUnpack(it) })
+            unpack = { getAndUnpack(it) }, byse = byseResolver::resolve)
         try {
             for (player in players) {
                 activePlayer = player
@@ -285,9 +286,11 @@ class EkinoProvider(private val session: EkinoSession) : MainAPI() {
             }
         } catch (error: ErrorLoadingException) {
             // Stop at a denial without further requests, but retain any source already emitted.
+            trace.hostSummary(hostResolver.report())
             if (!found) throw error
             return true
         }
+        trace.hostSummary(hostResolver.report())
         if (!found) throw ErrorLoadingException("Ekino: nie uzyskano wideo. Źródła: ${players.size}, niedostępne: $missing, bez odnośnika: $noEmbeds, błędy strony pośredniej: $failedBridges, próby ekstraktorów: $extractorAttempts. Hostingi: ${hostResolver.report().ifBlank { "brak" }}." +
             hostResolver.verificationHint().takeIf(String::isNotBlank)?.let { " $it" }.orEmpty())
         return true
