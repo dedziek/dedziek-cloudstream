@@ -14,7 +14,7 @@ object EkinoParser {
     data class EpisodeData(val title: String, val url: String, val season: Int, val episode: Int)
     data class Details(val title: String, val poster: String?, val plot: String?, val year: Int?, val tags: List<String>, val episodes: List<EpisodeData>)
     data class Player(val url: String, val host: String, val language: String)
-    data class Embed(val url: String, val direct: Boolean)
+    data class Embed(val url: String, val direct: Boolean, val referer: String = "")
 
     private val episodePattern = Regex("""\+season\[(\d{1,3})]\+episode\[(\d{1,4})]""", RegexOption.IGNORE_CASE)
     private val showPlayer = Regex("""ShowPlayer\(\s*['"]([a-zA-Z0-9_-]{1,32})['"]\s*,\s*['"]([a-zA-Z0-9_-]{1,512})['"]\s*\)""")
@@ -24,6 +24,15 @@ object EkinoParser {
         val uri = URI(url)
         uri.scheme == "https" && uri.host == "ekino.ws" && uri.userInfo == null && uri.port in listOf(-1, 443)
     }.getOrDefault(false)
+
+    fun isBridgeUrl(url: String): Boolean = runCatching {
+        val uri = URI(url)
+        uri.scheme == "https" && uri.host == "play.ekino.link" && uri.userInfo == null && uri.port in listOf(-1, 443)
+    }.getOrDefault(false)
+
+    fun isPlayerVerification(doc: Document): Boolean =
+        doc.selectFirst(".cf-turnstile, .g-recaptcha, [data-sitekey]") != null ||
+            doc.select("script").any { it.data().contains("turnstile.render") && it.data().contains("sitekey") }
 
     fun absolute(base: String, raw: String): String? = runCatching {
         // Square brackets are part of the site's ordinary season/page paths.
@@ -128,13 +137,19 @@ object EkinoParser {
         }.filter { isSiteUrl(it.url) }.distinctBy { it.url }
     }
 
-    fun embeds(doc: Document, base: String): List<Embed> = doc.select("iframe[src], a.buttonprch[href], video[src], video source[src]")
+    fun embeds(doc: Document, base: String): List<Embed> {
+        // The free-player wrapper also advertises a plain external link opening another window.
+        val watchPage = isSiteUrl(base) && URI(base).path.startsWith("/watch/f/")
+        val selector = "iframe[src], a.buttonprch[href], video[src], video source[src]" +
+            if (watchPage) ", a[target][href]" else ""
+        return doc.select(selector)
         .filter { it.parents().none { parent -> parent.id() == "premium" } }
         .mapNotNull { element ->
             val raw = if (element.tagName() == "a") element.attr("href") else element.attr("src")
             val target = absolute(base, raw) ?: return@mapNotNull null
             if (raw.isBlank()) return@mapNotNull null
             if (isSiteUrl(target) && !URI(target).path.startsWith("/watch/f/")) return@mapNotNull null
-            Embed(target, element.tagName() in setOf("video", "source"))
+            Embed(target, element.tagName() in setOf("video", "source"), base)
         }.distinctBy { it.url }
+    }
 }

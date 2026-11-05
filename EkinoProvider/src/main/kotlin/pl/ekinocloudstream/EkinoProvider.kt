@@ -20,18 +20,21 @@ class EkinoProvider(private val session: EkinoSession) : MainAPI() {
     private data class Page(val url: String, val doc: org.jsoup.nodes.Document)
 
     private suspend fun sitePage(url: String, referer: String = "$mainUrl/", form: Map<String, String>? = null,
-                                 allowMissing: Boolean = false): Page? {
+                                 allowMissing: Boolean = false,
+                                 cookies: EkinoRequestCookies = EkinoRequestCookies(session.cookieHeader(mainUrl))): Page? {
         var target = url
         repeat(6) { redirect ->
             if (!EkinoParser.isSiteUrl(target)) throw ErrorLoadingException("Ekino: nieobsługiwana domena przekierowania.")
             val headers = buildMap {
                 put("User-Agent", session.userAgent().ifBlank { USER_AGENT })
                 put("Referer", referer)
-                session.cookieHeader(target).takeIf(String::isNotBlank)?.let { put("Cookie", it) }
+                cookies.header(target).takeIf(String::isNotBlank)?.let { put("Cookie", it) }
             }
             val response = if (form != null && redirect == 0) app.post(target, data = form, headers = headers,
                 allowRedirects = false, cacheTime = 0) else app.get(target, headers = headers, allowRedirects = false, cacheTime = 0)
-            session.mergeResponseCookies(target, response.headers.values("Set-Cookie"))
+            val setCookie = response.headers.values("Set-Cookie")
+            cookies.merge(target, setCookie)
+            session.mergeResponseCookies(target, setCookie)
             if (response.code in listOf(301, 302, 303, 307, 308)) {
                 // No credentials are forwarded across domains, including unannounced mirror domains.
                 target = response.headers["Location"]?.let { EkinoParser.absolute(target, it) }
@@ -52,6 +55,34 @@ class EkinoProvider(private val session: EkinoSession) : MainAPI() {
             }
         }
         throw ErrorLoadingException("Ekino: zbyt wiele przekierowań.")
+    }
+
+    /** The public bridge has its own origin. It never receives the Ekino cookie jar. */
+    private suspend fun bridgeEmbeds(url: String): List<EkinoParser.Embed> {
+        var target = url
+        repeat(3) {
+            if (!EkinoParser.isBridgeUrl(target)) return emptyList()
+            val response = app.get(target, headers = mapOf(
+                "User-Agent" to session.userAgent().ifBlank { USER_AGENT }, "Referer" to "$mainUrl/"),
+                allowRedirects = false, cacheTime = 0)
+            if (response.code in listOf(301, 302, 303, 307, 308)) {
+                val next = response.headers["Location"]?.let { EkinoParser.absolute(target, it) } ?: return emptyList()
+                if (!EkinoParser.isBridgeUrl(next)) {
+                    // A redirect to a hosting URL is handed to its extractor, without our credentials.
+                    return if (EkinoParser.isSiteUrl(next)) emptyList() else listOf(EkinoParser.Embed(next, false, target))
+                }
+                target = next
+            } else {
+                if (response.code in listOf(401, 403, 429)) throw ErrorLoadingException(
+                    "Ekino: strona pośrednia odmówiła dostępu (HTTP ${response.code}). Sprawdź odtwarzanie na stronie; żądanie nie jest automatycznie ponawiane.")
+                if (response.code !in 200..299) return emptyList()
+                val doc = EkinoParser.document(response.text, target)
+                if (EkinoParser.isChallenge(doc) || EkinoParser.isPlayerVerification(doc)) throw ErrorLoadingException(
+                    "Ekino: strona pośrednia wymaga ręcznej weryfikacji. Sprawdź odtwarzanie na stronie.")
+                return EkinoParser.embeds(doc, target).filterNot { EkinoParser.isSiteUrl(it.url) || EkinoParser.isBridgeUrl(it.url) }
+            }
+        }
+        return emptyList()
     }
 
     private fun EkinoParser.Card.toResult(): SearchResponse = if (series) {
@@ -95,32 +126,54 @@ class EkinoProvider(private val session: EkinoSession) : MainAPI() {
                                    callback: (ExtractorLink) -> Unit): Boolean {
         val target = EkinoParser.siteUrl(mainUrl, data)?.takeIf(EkinoParser::isDetailUrl)
             ?: throw ErrorLoadingException("Ekino: niepoprawny adres odcinka.")
-        val page = sitePage(target)!!
+        val cookies = EkinoRequestCookies(session.cookieHeader(mainUrl))
+        val page = sitePage(target, cookies = cookies)!!
         val players = EkinoParser.players(page.doc, page.url).take(12)
         val delaySeconds = EkinoParser.playerDelaySeconds(page.doc)
         if (players.isEmpty() || delaySeconds == null) throw ErrorLoadingException("Ekino: brak zwykłych odtwarzaczy lub zmieniony układ strony. Sprawdź materiał na stronie.")
         // Respect the countdown advertised by the free-player UI. Never automate verification or premium access.
         delay(delaySeconds * 1_000L)
         var found = false
+        var missing = 0
+        var noEmbeds = 0
+        var failedBridges = 0
+        var extractorAttempts = 0
         val seen = mutableSetOf<String>()
         for (player in players) {
             // Site denials abort the whole operation; they are never swallowed as extractor failures.
-            val wrapper = sitePage(player.url, page.url, allowMissing = true) ?: continue
+            val wrapper = sitePage(player.url, page.url, allowMissing = true, cookies = cookies)
+            if (wrapper == null) { missing++; continue }
+            if (EkinoParser.isPlayerVerification(wrapper.doc)) throw ErrorLoadingException(
+                "Ekino: odtwarzacz wymaga ręcznej weryfikacji. Otwórz stronę w ustawieniach dodatku, wykonaj weryfikację i zapisz sesję.")
             val first = EkinoParser.embeds(wrapper.doc, wrapper.url)
+            if (first.isEmpty()) noEmbeds++
             val embeds = mutableListOf<EkinoParser.Embed>()
             for (embed in first.take(8)) {
                 if (EkinoParser.isSiteUrl(embed.url)) {
-                    val nested = sitePage(embed.url, wrapper.url, allowMissing = true) ?: continue
+                    val nested = sitePage(embed.url, wrapper.url, allowMissing = true, cookies = cookies) ?: continue
+                    if (EkinoParser.isPlayerVerification(nested.doc)) throw ErrorLoadingException("Ekino: odtwarzacz wymaga ręcznej weryfikacji w ustawieniach dodatku.")
                     embeds.addAll(EkinoParser.embeds(nested.doc, nested.url).filterNot { EkinoParser.isSiteUrl(it.url) })
                 } else embeds.add(embed)
             }
+            val resolved = mutableListOf<EkinoParser.Embed>()
             for (embed in embeds.distinctBy { it.url }.take(12)) {
+                if (EkinoParser.isBridgeUrl(embed.url)) {
+                    val unwrapped = try { bridgeEmbeds(embed.url) }
+                    catch (error: CancellationException) { throw error }
+                    catch (error: ErrorLoadingException) { throw error }
+                    catch (_: Exception) { emptyList() }
+                    if (unwrapped.isEmpty()) failedBridges++
+                    resolved.addAll(unwrapped)
+                } else resolved.add(embed)
+            }
+            for (embed in resolved.distinctBy { it.url }.take(12)) {
                 try {
+                    extractorAttempts++
                     val links = mutableListOf<ExtractorLink>()
                     if (embed.direct) links.add(newExtractorLink(name, player.host, embed.url,
                         if (URI(embed.url).path.endsWith(".m3u8", true)) ExtractorLinkType.M3U8 else ExtractorLinkType.VIDEO) {
-                        referer = wrapper.url
-                    }) else loadExtractor(embed.url, wrapper.url, subtitleCallback) { links.add(it) }
+                        referer = embed.referer
+                    }) else loadExtractor(embed.url, embed.referer, subtitleCallback) { links.add(it) }
                     for (link in links) {
                         if (!seen.add("${link.url}|${player.language}")) continue
                         found = true
@@ -132,7 +185,7 @@ class EkinoProvider(private val session: EkinoSession) : MainAPI() {
                 catch (_: Exception) { /* Try other ordinary hosts. No session or player URL logging. */ }
             }
         }
-        if (!found) throw ErrorLoadingException("Ekino: nie uzyskano wideo z dostępnych odtwarzaczy. Sprawdź materiał na stronie; hosting może wymagać logowania lub być nieobsługiwany w CloudStream.")
+        if (!found) throw ErrorLoadingException("Ekino: nie uzyskano wideo. Źródła: ${players.size}, niedostępne: $missing, bez odnośnika: $noEmbeds, błędy strony pośredniej: $failedBridges, próby ekstraktorów: $extractorAttempts. Sprawdź materiał na stronie.")
         return true
     }
 }
