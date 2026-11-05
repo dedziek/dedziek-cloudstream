@@ -1,6 +1,8 @@
-# EkinoProvider v2
+# EkinoProvider v3
 
 Dodatek CloudStream dla `https://ekino-tv.pl/`. Dnia 4 listopada 2026 adres przekierowywał do `https://ekino.ws/`, wskazanej przez stronę jako jej oficjalna domena. Moduł korzysta z tego dokładnego pochodzenia; nie wybiera automatycznie nowych domen z reklam lub zewnętrznych list.
+
+V3 zachowuje anonimową sesję PHP pomiędzy pobraniem strony materiału a jego odtwarzaczami. Cookies takiej operacji pozostają wyłącznie w pamięci i są ograniczone do dokładnego pochodzenia Ekino oraz właściwych ścieżek. Dodano rozpoznanie zwykłego odnośnika z ramki `/watch/f/`, osobny odczyt publicznej strony pośredniej `play.ekino.link` i przekazanie właściwego referera do ekstraktora hostingu. Strona pośrednia nie otrzymuje cookies Ekino. Odpowiedź 401/403/429 lub interaktywna weryfikacja zatrzymuje operację bez automatycznych ponowień i rozwiązywania CAPTCHA. W razie braku wideo komunikat podaje liczbę źródeł, brakujących odnośników, błędów strony pośredniej i prób ekstraktorów, bez adresów i danych sesji.
 
 V2 naprawia błąd „brak zwykłych odtwarzaczy” dla stron takich jak **The List (33512)**. Ich funkcja `ShowPlayer` osadza ramkę od razu, bez licznika `time`; V1 błędnie odrzucała ten poprawny wariant. Parser rozpoznaje teraz zarówno natychmiastowe osadzenie, jak i ograniczone odliczanie podane przez stronę. Nieznany sposób odmierzania czasu lub zmieniona trasa nadal oznaczają brak obsługi, bez zgadywania opóźnienia.
 
@@ -18,7 +20,7 @@ Dodatek odczytuje wyłącznie zwykłe źródła `ShowPlayer` reklamowane przez s
 
 Zewnętrzne hostingi obsługują ekstraktory CloudStream; ich dostępność i zgodność zależą również od hostingu. Opcjonalnie obsługiwane są bezpośrednie źródła HTML `<video>`/`<source>`. Moduł nie promuje odtwarzacza Premium ani ograniczonych podglądów do pełnych źródeł.
 
-**Status: wersja testowa.** Potwierdzono odpowiedzi strony głównej, katalogu filmów, wyszukiwania, szczegółów filmu, serialu i odcinka. Parser sprawdzono na pobranych stronach i syntetycznych przykładach struktury. Żądanie do serwera darmowego odtwarzacza ze środowiska programistycznego otrzymało HTTP 403 Cloudflare. Nie ponawiano go z inną tożsamością, domeną ani przeglądarką. Pełne odtwarzanie oraz rzeczywiste logowanie wymagają próby na urządzeniu użytkownika; sama kompilacja ich nie potwierdza.
+**Status: wersja testowa.** Potwierdzono odpowiedzi strony głównej, katalogu filmów, wyszukiwania, szczegółów filmu, serialu i odcinka. Parser sprawdzono na pobranych stronach i syntetycznych przykładach struktury. Żądanie do serwera darmowego odtwarzacza ze środowiska programistycznego otrzymało HTTP 403 Cloudflare. Nie ponawiano go z inną tożsamością, domeną ani przeglądarką. Pełne odtwarzanie oraz rzeczywiste logowanie wymagają próby na urządzeniu użytkownika; sama kompilacja ich nie potwierdza. W v3 strukturę dodatkowej strony pośredniej zweryfikowano na podstawie publicznego kodu integracji Ekino, a izolację cookies i przekazywanie referera sprawdzono testami. Odmowa dostępu ze środowiska programistycznego nie była obchodzona.
 
 HTTP 401 wymaga logowania, 403 oznacza odmowę dostępu, a 429 ograniczenie liczby żądań. Te odpowiedzi przerywają pobieranie źródeł bez automatycznych ponowień. Jeśli ten sam materiał nie działa na stronie na danym urządzeniu, sam dodatek nie przywróci dostępu. Anulowanie odtwarzania przerywa oczekiwanie.
 

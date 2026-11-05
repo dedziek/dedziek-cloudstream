@@ -157,6 +157,41 @@ class EkinoParserTest {
         assertTrue(EkinoParser.isLoginPage(doc("<title>Logowanie - Ekino</title>")))
     }
 
+    @Test fun followsPublicWatchLinkThroughBridgeAndKeepsTheHostingReferer() {
+        val watch = "$base/watch/f/player/TestId"
+        val outer = doc("<a href='https://play.ekino.link/advertised' target='_blank'>Oglądaj</a>")
+        val first = EkinoParser.embeds(outer, watch).single()
+        assertTrue(EkinoParser.isBridgeUrl(first.url))
+        assertEquals(watch, first.referer)
+        val inner = doc("<iframe src='//host.example/e/video'></iframe>")
+        val host = EkinoParser.embeds(inner, first.url).single()
+        assertEquals("https://host.example/e/video", host.url)
+        assertEquals(first.url, host.referer)
+        assertFalse(EkinoParser.isSiteUrl(first.url))
+    }
+
+    @Test fun plainWindowLinksAreOnlyParsedFromFreeWatchWrappers() {
+        val html = "<a href='https://host.example/e/test' target='_blank'>Oglądaj</a>" +
+            "<div id=premium><a href='https://premium.example/test' target='_blank'>Premium</a></div>" +
+            "<a href='/login' target='_blank'>Zaloguj</a>"
+        assertTrue(EkinoParser.embeds(doc(html), "$base/movie/show/test/1").isEmpty())
+        assertEquals(listOf("https://host.example/e/test"), EkinoParser.embeds(doc(html), "$base/watch/f/player/test").map { it.url })
+    }
+
+    @Test fun bridgeScopeIsSeparateAndRejectsLookalikesAndInsecureOrigins() {
+        assertTrue(EkinoParser.isBridgeUrl("https://play.ekino.link/test"))
+        for (url in listOf("http://play.ekino.link/", "https://play.ekino.link.evil.example/",
+            "https://user@play.ekino.link/", "https://play.ekino.link:444/", "https://ekino.link/")) {
+            assertFalse(url, EkinoParser.isBridgeUrl(url))
+        }
+    }
+
+    @Test fun identifiesInteractivePlayerVerificationWithoutExecutingIt() {
+        assertTrue(EkinoParser.isPlayerVerification(doc("<div class=cf-turnstile data-sitekey=fixture></div>")))
+        assertTrue(EkinoParser.isPlayerVerification(doc("<script>turnstile.render('#verify', {sitekey:'fixture'});</script>")))
+        assertFalse(EkinoParser.isPlayerVerification(doc(fixture("players-immediate"))))
+    }
+
     @Test fun distinguishesCloudflareDenialFromOrdinaryPageScripts() {
         assertTrue(EkinoParser.isChallenge(doc("<title>Attention Required! | Cloudflare</title>")))
         assertTrue(EkinoParser.isChallenge(doc("<div id=cf-error-details>Blocked</div>")))
