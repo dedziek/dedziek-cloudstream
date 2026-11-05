@@ -1,5 +1,28 @@
 # Próba Ekino, 5 listopada 2026
 
+## V11 — Powrót: potwierdzone źródło Byse
+
+Raport urządzenia z v10 dla filmu **Powrót (26101)** potwierdził HTTP 200 bez CAPTCHA dla strony filmu, wszystkich czterech ramek i strony pośredniej. Sesja PHP docierała do ramek i nie była zmieniana. Nie był to błąd CAPTCHA w tej konkretnej próbie: problem dotyczył kolejnych hostingów.
+
+Odczyty publicznych stron z tego środowiska wykazały:
+
+| Hosting | Wynik | Zmiana w v11 |
+|---|---|---|
+| mfw09.org | HTTP 200, aplikacja `Byse Frontend` zamiast statycznego źródła | Obsługa publicznej inicjalizacji API Byse |
+| dood.la → playmogo.com | HTTP 200, tytuł „Video not found” | Plik niedostępny w tej próbie; brak ponownego odczytu po pustym ekstraktorze |
+| onlystream.tv | Błąd DNS | Osobny komunikat o DNS |
+| upzone.cc | HTTP 200, informacja o wyczerpanym transferze darmowym i Premium | Osobny komunikat o limicie, bez dalszego odczytu źródeł |
+
+Publiczny przepływ Byse `captcha` → `captcha/verify` → `playback` zwrócił trzy razy HTTP 200. Zadanie obliczeniowe miało trudność 16; serwer przyjął wynik. Odpowiedź AES-256-GCM, wersja 5 z 30 fragmentami klucza, zawierała jedno źródło HLS oznaczone 1080p. Pobranie samej playlisty, bez segmentów filmu, dało HTTP 200 i poprawne `#EXTM3U` (607 bajtów).
+
+Następnie wykonano oddzielną próbę **rzeczywistego skompilowanego kodu** `EkinoByseResolver` i `EkinoHostHttp`, z domyślnymi ograniczeniami obliczeń. Kod zwrócił `Byse API OK`, jedno źródło, czas około 1,99 s. Odczyt playlisty z nagłówkami tego źródła ponownie zwrócił HTTP 200 i poprawne HLS. To weryfikuje pobieranie źródła i playlisty; nie potwierdza renderowania obrazu/dźwięku na Androidzie.
+
+Żądania API pozostają na pochodzeniu odtwarzacza, a cookies hostingów są oddzielone od Ekino. Nie użyto API klucza konta ani Premium. Przy odczycie jednego statycznego pliku JavaScript uzyskano HTTP 403; nie ponawiano odczytu tego zasobu. Obsługę normalnej inicjalizacji publicznego odtwarzacza porównano z implementacją [MoonGetter](https://github.com/darkryh/MoonGetter/tree/master/server-src/moongetter-filemoon), MIT, z zachowaniem licencji w źródle i pliku DEX. Interaktywna CAPTCHA/Cloudflare, odmowa API, przekierowanie lub przekroczenie budżetu nie są automatycznie ponawiane.
+
+Walidacja v11: `sh gradlew :EkinoProvider:testDebugUnitTest :EkinoProvider:make --no-daemon --console=plain` — **84 testy, 0 błędów i pominięć**. Obejmują pełną sekwencję API, wektor obliczeń publicznego odtwarzacza, dwa formaty uwierzytelnionego szyfrogramu, zmianę danych szyfrogramu, limity, anulowanie, blokadę dalszych odczytów po odmowie oraz brak automatycznego rozwiązywania interaktywnej weryfikacji. Paczka v11: 107 618 bajtów, SHA-256 `c58d251ab6d721a40171852d85ecf02abd32650ba5faaf96ddd56d462ffaafde`; manifest i obecność informacji MIT w DEX zweryfikowane.
+
+Poniżej zachowano wcześniejszą diagnostykę v10 dla innego filmu i poprzednią sumę paczki; nie są wynikami kompilacji v11.
+
 Zgłoszenie: test CloudStream znajduje film **Zabójcza gra / Murder & Matrimony (33270)**, a ładowanie źródeł kończy się komunikatem o CAPTCHA odtwarzacza `mix`. Użytkownik zgłasza też zapętloną weryfikację w Chrome.
 
 ## Wynik odczytu publicznych stron

@@ -52,6 +52,8 @@ internal class EkinoPlaybackTrace(savedSession: Boolean, savedAgent: Boolean) {
         note("hosting=${host.takeIf { it.length <= 100 && it.matches(Regex("[a-zA-Z0-9.-]+")) } ?: "inny"}")
     }
 
+    fun hostSummary(report: String) { if (report.isNotBlank()) note("wyniki hostingów: ${report.take(1200)}") }
+
     @Synchronized fun finish(outcome: Outcome, paused: Boolean) {
         result = "${outcome.label}; żądania wstrzymane=${yes(paused)}"
     }
@@ -59,7 +61,7 @@ internal class EkinoPlaybackTrace(savedSession: Boolean, savedAgent: Boolean) {
     @Synchronized fun report(): String {
         val lines = events.toMutableList()
         if (omitted > 0) lines.add(6, "… pominięto $omitted wpisów …")
-        return "Ekino v10 · raport odtwarzania\n" + lines.joinToString("\n") + "\nwynik=$result; żądania=$requests"
+        return "Ekino v11 · raport odtwarzania\n" + lines.joinToString("\n") + "\nwynik=$result; żądania=$requests"
     }
 
     enum class Outcome(val label: String) { VIDEO("znaleziono wideo"), EMPTY("brak wideo"), ERROR("błąd"), CANCELLED("anulowano") }
