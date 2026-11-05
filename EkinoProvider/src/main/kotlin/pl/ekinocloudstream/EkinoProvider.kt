@@ -97,9 +97,10 @@ class EkinoProvider(private val session: EkinoSession) : MainAPI() {
             ?: throw ErrorLoadingException("Ekino: niepoprawny adres odcinka.")
         val page = sitePage(target)!!
         val players = EkinoParser.players(page.doc, page.url).take(12)
-        if (players.isEmpty()) throw ErrorLoadingException("Ekino: brak zwykłych odtwarzaczy lub zmieniony układ strony. Sprawdź materiał na stronie.")
+        val delaySeconds = EkinoParser.playerDelaySeconds(page.doc)
+        if (players.isEmpty() || delaySeconds == null) throw ErrorLoadingException("Ekino: brak zwykłych odtwarzaczy lub zmieniony układ strony. Sprawdź materiał na stronie.")
         // Respect the countdown advertised by the free-player UI. Never automate verification or premium access.
-        delay((EkinoParser.playerDelaySeconds(page.doc) ?: 10) * 1_000L)
+        delay(delaySeconds * 1_000L)
         var found = false
         val seen = mutableSetOf<String>()
         for (player in players) {

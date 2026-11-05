@@ -1,0 +1,24 @@
+<!-- Synthetic structure of The List (33512): ShowPlayer inserts the iframe without a countdown. -->
+<div class="playerContainer"><ul class="players">
+<li><a href="#TestPlayer-player">player<i title="Lektor PL"></i></a></li>
+<li><a href="#TestDood-dood">dood<i title="Lektor PL"></i></a></li>
+<li><a href="#TestHqq-hqq">hqq<i title="Lektor PL"></i></a></li>
+<li><a href="#TestMix-mix">mix<i title="Lektor PL"></i></a></li>
+<li><a href="#TestUpzone-upzone">upzone<i title="Lektor PL"></i></a></li></ul>
+<div class="tab-content">
+<a onclick="ShowPlayer('player','TestPlayer')">Oglądaj</a>
+<a onclick="ShowPlayer('dood','TestDood')">Oglądaj</a>
+<a onclick="ShowPlayer('hqq','TestHqq')">Oglądaj</a>
+<a onclick="ShowPlayer('mix','TestMix')">Oglądaj</a>
+<a onclick="ShowPlayer('upzone','TestUpzone')">Oglądaj</a>
+<div id="premium"><a onclick="ShowPlayer('premium','PaidPlayer')">Premium</a></div>
+</div></div>
+<script>
+function ShowPlayer(host, id) {
+    $('#over-player').hide();
+    $('#freePlayerClickf_' + id).hide();
+    $('#fplayer_' + id).html(
+        '<iframe id="iframes" allowfullscreen="true" src="/watch/f/' +
+        host + '/' + id + '" scrolling="no"></iframe>');
+}
+</script>
