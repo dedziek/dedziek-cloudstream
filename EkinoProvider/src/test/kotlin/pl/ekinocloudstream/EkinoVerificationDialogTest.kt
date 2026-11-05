@@ -2,6 +2,7 @@ package pl.ekinocloudstream
 
 import android.app.Activity
 import android.net.Uri
+import android.os.Looper
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.CookieManager
@@ -13,6 +14,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
@@ -24,6 +26,7 @@ class EkinoVerificationDialogTest {
         assertEquals(material, web.url)
         assertEquals("Gotowe — kontynuuj", dialog.saveButton.text.toString())
         dialog.closeButton.performClick()
+        idle()
         assertEquals(0, saved.size)
         assertEquals(listOf(false), closed)
     }
@@ -34,6 +37,7 @@ class EkinoVerificationDialogTest {
         manager.setCookie("https://foreign.example/", "foreign=FOREIGN_FIXTURE; Path=/; Secure")
         val agent = web.settings.userAgentString
         dialog.saveButton.performClick()
+        idle()
         assertFalse(dialog.isShowing)
         assertEquals(listOf(true), closed)
         assertEquals(1, saved.size)
@@ -47,6 +51,7 @@ class EkinoVerificationDialogTest {
         web.webViewClient.onReceivedHttpError(web, request(material),
             WebResourceResponse("text/plain", "UTF-8", 403, "Forbidden", emptyMap(), null))
         dialog.saveButton.performClick()
+        idle()
         assertTrue(dialog.isShowing)
         assertTrue(saved.isEmpty())
         assertTrue(closed.isEmpty())
@@ -67,12 +72,15 @@ class EkinoVerificationDialogTest {
         val closed = mutableListOf<Boolean>()
         val dialog = requireNotNull(EkinoLoginUi.openLogin(activity, EkinoSession(activity), material, verification = true,
             saveSession = { cookie, agent -> saved.add(cookie to agent) }, onClosed = { closed.add(it) }))
+        idle()
         fun web(view: View): WebView? = if (view is WebView) view else if (view is ViewGroup)
             (0 until view.childCount).firstNotNullOfOrNull { web(view.getChildAt(it)) } else null
         val browser = requireNotNull(web(dialog.findViewById(android.R.id.content)))
         try { check(dialog, browser, saved, closed) }
-        finally { dialog.dismiss(); controller.pause().stop().destroy() }
+        finally { dialog.dismiss(); idle(); controller.pause().stop().destroy() }
     }
+
+    private fun idle() = shadowOf(Looper.getMainLooper()).idle()
 
     private fun request(url: String) = object : WebResourceRequest {
         override fun getUrl() = Uri.parse(url)
