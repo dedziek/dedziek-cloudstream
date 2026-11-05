@@ -206,4 +206,20 @@ class EkinoParserTest {
         assertFalse(EkinoLoginPolicy.allowLegacyNavigation("https://www.google.com/search?q=test"))
         assertFalse(EkinoLoginPolicy.allowLegacyNavigation("https://challenges.cloudflare.com.evil.example/"))
     }
+
+    @Test fun manualVerificationRetainsOnlyThePublicMovieOrEpisodePage() {
+        assertEquals("https://ekino.ws/movie/show/rescued-hd-2026-napisy/43324",
+            EkinoLoginPolicy.verificationPage("https://ekino.ws/movie/show/rescued-hd-2026-napisy/43324?token=PRIVATE_FIXTURE#player"))
+        assertEquals("https://ekino.ws/serie/watch/test+season%5B1%5D+episode%5B2%5D",
+            EkinoLoginPolicy.verificationPage("https://ekino.ws/serie/watch/test+season%5B1%5D+episode%5B2%5D"))
+    }
+
+    @Test fun manualVerificationNeverReusesEncryptedWrappersOrForeignTargets() {
+        for (url in listOf("https://ekino.ws/watch/f/upzone/PRIVATE_FIXTURE", "https://ekino.ws/login",
+            "http://ekino.ws/movie/show/test/1", "https://ekino.ws.evil.example/movie/show/test/1",
+            "https://user:password@ekino.ws/movie/show/test/1", "https://play.ekino.link/movie/show/test/1",
+            "https://ekino.ws:444/movie/show/test/1", "javascript:alert(1)")) {
+            assertNull(url, EkinoLoginPolicy.verificationPage(url))
+        }
+    }
 }

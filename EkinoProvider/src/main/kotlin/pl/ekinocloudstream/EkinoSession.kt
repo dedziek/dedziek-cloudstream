@@ -22,6 +22,7 @@ class EkinoSession(context: Context) {
     private val storage = AtomicFile(File(context.applicationContext.noBackupFilesDir, "ekino-session-v1.enc"))
     private val lock = Any()
     @Volatile private var snapshot: Snapshot = read()
+    @Volatile private var pendingVerificationPage: String? = null
 
     private class Snapshot(val cookies: String = "", val agent: String = "")
 
@@ -31,6 +32,12 @@ class EkinoSession(context: Context) {
     fun cookieHeader(url: String): String = if (isEkinoUrl(url)) snapshot.cookies else ""
 
     fun userAgent(): String = snapshot.agent
+
+    fun rememberVerificationPage(url: String) {
+        pendingVerificationPage = EkinoLoginPolicy.verificationPage(url)
+    }
+
+    fun verificationPage(): String? = pendingVerificationPage
 
     /** Retain root-scoped cookie rotations without widening a host/path restriction. */
     fun mergeResponseCookies(url: String, cookies: List<String>) {
@@ -101,6 +108,7 @@ class EkinoSession(context: Context) {
     }
 
     fun clear() {
+        pendingVerificationPage = null
         val oldCookies = snapshot.cookies
         synchronized(lock) {
             snapshot = Snapshot()

@@ -12,6 +12,12 @@ object EkinoLoginPolicy {
 
     fun isEkinoUrl(url: String): Boolean = httpsHost(url) == "ekino.ws"
 
+    /** Keep a public detail page, not a session-bound encrypted /watch/f/ URL. */
+    fun verificationPage(url: String): String? = runCatching {
+        if (url.length > 4096 || !isEkinoUrl(url) || !EkinoParser.isDetailUrl(url)) return null
+        "${EkinoParser.BASE}${URI(url).rawPath}"
+    }.getOrNull()
+
     fun isBlank(url: String): Boolean = url.substringBefore('#') in setOf("about:blank", "about:srcdoc")
 
     fun isVerificationFrame(url: String): Boolean =

@@ -24,7 +24,7 @@ internal class EkinoHostResolver(
         Verification.NONE -> ""
         Verification.ACCESS_DENIED -> EkinoMessages.ACCESS_DENIED
         Verification.CLOUDFLARE -> EkinoMessages.CLOUDFLARE
-        Verification.CAPTCHA -> EkinoMessages.playerVerification()
+        Verification.CAPTCHA -> EkinoMessages.HOST_VERIFICATION
     }
 
     fun nextPlayer() { visited.clear() }
