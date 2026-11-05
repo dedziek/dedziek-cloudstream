@@ -43,3 +43,16 @@ Usunięto osobny klient HTTP Ekino, ręczne kopiowanie cookies, zapisywanie User
 Pauza i publiczny adres odzyskania dostępu są trwałe. Weryfikacja odbywa się w tej samej instancji i profilu WebView. Wznowienie wymaga strony bez bramki, a po CAPTCHA odtwarzacza również rzeczywistego odnośnika w jego ramce. Pętla nawigacji i skrypty opuszczanego dokumentu są zatrzymywane. Nie są automatycznie przesyłane tokeny Turnstile, ponawiane odmówione żądania ani zmieniane sieci czy tożsamości przeglądarki.
 
 Podczas rozpoczęcia przebudowy `ekino-tv.pl` odpowiedziało przekierowaniem 301 do `ekino.ws`, a domena docelowa zwróciła 403 z środowiska roboczego. Dalszych automatycznych prób nie wykonywano. Nowa paczka wymaga próby odtwarzania i ręcznej weryfikacji na urządzeniu użytkownika; lokalne testy i kompilacja nie potwierdzają akceptacji przez Cloudflare w jego sieci.
+
+
+## Ekino TV v2 — timeout po pierwszym filmie
+
+Użytkownik potwierdził działanie pierwszego filmu w nowym dodatku. Przy zmianie materiału wystąpił błąd. W kolejnym teście (23:47:46) strona główna i wszystkie wyszukiwania zostały odrzucone w tej samej sekundzie. Komunikat pochodzi z kontroli zapisanego stanu przed nawigacją, więc nie jest wynikiem nowego żądania do serwera ani dowodem CAPTCHA. Log nie podaje etapu wcześniejszego timeoutu.
+
+W kodzie v1 potwierdzono trzy problemy: odczyt katalogu zależał od `onPageFinished`, zwykły timeout zapisywał tę samą trwałą pauzę co weryfikacja, a obsługa `TimeoutCancellationException` przechwytywała również krótszy limit aplikacji nadrzędnej. Dodatkowo po przejściu do `about:blank` sam adres WebView nie był wystarczającym potwierdzeniem aktywnego dokumentu do kolejnego formularza wyszukiwania.
+
+V2 sprawdza gotowość i identyfikator DOM niezależnie od `onPageFinished`, odrzuca poprzedni dokument i spóźnione callbacki zamkniętej strony, a przed wyszukiwaniem przygotowuje rzeczywistą stronę w tej samej sesji. Własny limit czasu daje jedynie 10 sekund przerwy. Zewnętrzne anulowanie nie zapisuje przerwy. Aktualizacja usuwa dokładnie stary zwykły timeout zapisany przez v1; nie usuwa rozpoznanej CAPTCHA.
+
+Nowe testy obejmują trzy kolejne materiały i ich ramki bez `onPageFinished`, stary callback i DOM poprzedniego filmu, wyszukiwanie po zakończeniu odtwarzania i po poprzednim wyszukiwaniu, własny i nadrzędny timeout, migrację stanu v1 oraz zachowanie rzeczywistej bramki. Osobny test Node wykonuje faktyczny skrypt odczytu DOM, w tym jego identyfikator nawigacji i pomijanie niedostępnych ramek. To kontrolowana próba kodu, bez wysyłania kolejnych żądań do Ekino.
+
+Walidacja lokalna v2: kompilacja paczki i **38 testów Ekino TV — 0 błędów, 0 pominięć**; trzy nowe testy Node skryptu DOM również przeszły. Metadane i manifest paczki potwierdzają wersję 2. Akceptacja strony na telefonie użytkownika po tej aktualizacji wymaga jego próby.

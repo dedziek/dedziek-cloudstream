@@ -47,7 +47,10 @@ internal data class WebPage(val url: String, val html: String) {
     val doc: Document by lazy { Jsoup.parse(html, url) }
 }
 
-internal data class BrowserSnapshot(val page: WebPage, val frames: List<WebPage> = emptyList()) {
+internal data class BrowserSnapshot(val page: WebPage, val frames: List<WebPage> = emptyList(),
+                                    val readyState: String = "complete", val documentId: Double = 0.0,
+                                    val hasShowPlayer: Boolean = false) {
+    val parsed get() = readyState in setOf("interactive", "complete") && page.html.isNotBlank()
     fun gate(): String? = (listOf(page) + frames).firstNotNullOfOrNull { p ->
         val d = p.doc
         when {
@@ -61,7 +64,7 @@ internal data class BrowserSnapshot(val page: WebPage, val frames: List<WebPage>
     }
 
     fun verified(playerRequired: Boolean): Boolean {
-        if (gate() != null) return false
+        if (!parsed || gate() != null) return false
         val pages = listOf(page) + frames
         return if (playerRequired) pages.any { p ->
             (Site.wrapper(p.url) || Site.bridge(p.url)) && Catalogue.embeds(p).isNotEmpty()

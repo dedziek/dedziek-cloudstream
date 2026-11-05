@@ -55,4 +55,36 @@ class SessionStateTest {
         assertFalse(budget.record(url, 140_000))
         budget.reset(); assertTrue(budget.record(url, 160_000))
     }
+
+    @Test fun upgradeReleasesTheOrdinaryTimeoutSavedByV1AndKeepsTheMaterial() {
+        val prefs = context.getSharedPreferences("dedziek_ekino_tv_v1", Context.MODE_PRIVATE)
+        prefs.edit().putBoolean("paused", true).putBoolean("playerRequired", false)
+            .putString("reason", "Przekroczono czas oczekiwania na stronę")
+            .putString("material", "https://ekino.ws/movie/show/test/42").commit()
+        val state = SessionState(context)
+        assertFalse(state.paused); assertNull(state.rejection())
+        assertEquals("https://ekino.ws/movie/show/test/42", state.lastMaterial)
+        assertFalse(SessionState(context).paused)
+    }
+
+    @Test fun temporaryFailureExpiresWithoutVerificationAndDoesNotSurviveRestart() {
+        var now = 100L
+        val state = SessionState(context) { now }
+        state.temporaryFailure("Przekroczono czas oczekiwania · materiał")
+        assertFalse(state.paused)
+        assertTrue(state.rejection()!!.contains("10 s"))
+        assertFalse(state.rejection()!!.contains("Sprawdź i zamknij"))
+        assertFalse(SessionState(context).paused)
+        now += 9999; assertNotNull(state.rejection())
+        now++; assertNull(state.rejection())
+    }
+
+    @Test fun aTransientProblemNeverReleasesOrReplacesAKnownCaptchaGate() {
+        val state = SessionState(context)
+        state.pause("CAPTCHA odtwarzacza", true)
+        state.temporaryFailure("Przekroczono czas oczekiwania · materiał")
+        assertTrue(state.paused)
+        assertEquals("CAPTCHA odtwarzacza", SessionState(context).reason)
+        assertTrue(SessionState(context).playerRequired)
+    }
 }

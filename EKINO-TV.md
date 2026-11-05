@@ -1,6 +1,6 @@
 # Ekino TV
 
-Nowy dodatek **EkinoTvProvider v1**, źródło **Ekino TV**. Napisany od nowa dla `https://ekino-tv.pl`; przeglądarka obsługuje oficjalne przekierowanie do `https://ekino.ws`. To osobna paczka i klasa dodatku. Kod starego EkinoProvider v1–v13 został usunięty z aktualnej gałęzi, a historia zmian pozostaje dostępna w Git.
+Dodatek **EkinoTvProvider v2**, źródło **Ekino TV**. Napisany od nowa dla `https://ekino-tv.pl`; przeglądarka obsługuje oficjalne przekierowanie do `https://ekino.ws`. To osobna paczka i klasa dodatku. Kod starego EkinoProvider v1–v13 został usunięty z aktualnej gałęzi, a historia zmian pozostaje dostępna w Git.
 
 ## Instalacja
 
@@ -8,13 +8,23 @@ Nowy dodatek **EkinoTvProvider v1**, źródło **Ekino TV**. Napisany od nowa dl
 2. Odśwież repozytorium **Dedziek CloudStream** i zainstaluj **EkinoTvProvider**. Możesz też pobrać [nową paczkę](https://raw.githubusercontent.com/dedziek/dedziek-cloudstream/builds/EkinoTvProvider.cs3).
 3. Wybierz źródło **Ekino TV**. Wymagany jest Android 6+ z działającym Android System WebView oraz aktualny CloudStream Beta. Zgodność z konkretnym Android TV nie została sprawdzona.
 
+## V2 — przełączanie filmów i limit czasu
+
+V1 po zwykłym przekroczeniu czasu zapisywała trwałe wstrzymanie i kierowała do weryfikacji. Zgłoszenie z 23:47:46 pokazuje właśnie taki zapisany stan: strona główna i wszystkie wyszukiwania zostały odrzucone natychmiast. Sam ten log nie potwierdza CAPTCHA.
+
+V2 odczytuje gotowy dokument strony (`interactive` lub `complete`) bez czekania na zakończenie ładowania reklam i pozostałych zasobów. Sprawdza adres oraz tożsamość dokumentu, aby poprzedni film lub stare zdarzenie przeglądarki nie zastąpiły nowego wyniku. Po zamknięciu filmu ponownie przygotowuje stronę potrzebną do wyszukiwania.
+
+Własny timeout strony wynosi 20 sekund, odtwarzacza 30 sekund. Przekroczenie własnego limitu przerywa jedną operację i wprowadza 10 sekund przerwy, bez ponawiania żądań w tle. Przerwa wygasa sama; nie wymaga CAPTCHA. Anulowanie lub krótszy limit CloudStream są przekazywane do aplikacji bez zapisywania blokady. Raport podaje etap: katalog, materiał, wyniki wyszukiwania, skrypt odtwarzacza lub ramka.
+
+Aktualizacja automatycznie usuwa zwykły timeout błędnie zapisany przez v1. Zapisana rzeczywista CAPTCHA pozostaje do ręcznej weryfikacji. Po aktualizacji do v2 uruchom ponownie CloudStream.
+
 ## Zasada działania
 
 Katalog, formularz wyszukiwania, szczegóły filmu, odcinki i ramka odtwarzacza działają w jednej instancji WebView. Przeglądarka zachowuje własny User-Agent, cookies i DOM storage. Dodatek nie eksportuje cookies do klienta HTTP, nie importuje sesji ze starego dodatku i nie podszywa się pod Chrome. Cookies WebView są przechowywane przez Androida w profilu WebView aplikacji; inne dodatki CloudStream mogą korzystać z tego samego profilu.
 
 Wybranie zwykłego odtwarzacza uruchamia funkcję `ShowPlayer` dostarczoną przez stronę, razem z jej odliczaniem. Dodatek odczytuje publiczny link, następnie korzysta z ekstraktora hostingu, zwykłych źródeł HTML albo publicznego API Byse. Klient hostingów ma oddzielne, krótkotrwałe cookies i nie otrzymuje sesji Ekino. Tokenów, linków wideo i wyników odtwarzania nie zapisuje na dysku. Metadane maksymalnie pięciu materiałów są przechowywane w pamięci przez minutę.
 
-Całe operacje są wykonywane kolejno. Jedna próba sprawdza najwyżej cztery zwykłe odtwarzacze, a po znalezieniu źródła pomija pozostałe z takim samym opisem języka. CAPTCHA, błąd sieci, błąd HTTPS lub odpowiedź HTTP 4xx/5xx strony zatrzymują automatyczne ładowanie. Już znalezione źródło pozostaje dostępne. Zakończenie odtwarzania lub zamknięcie okna usuwa aktywny dokument, aby zatrzymać jego skrypty i odświeżanie; sesja przeglądarki pozostaje zachowana.
+Całe operacje są wykonywane kolejno. Jedna próba sprawdza najwyżej cztery zwykłe odtwarzacze, a po znalezieniu źródła pomija pozostałe z takim samym opisem języka. Wykryta CAPTCHA, logowanie HTTP 401, odmowa HTTP 403/429 i pętla weryfikacji zatrzymują kolejne automatyczne operacje do ręcznego sprawdzenia. Pozostałe błędy sieci i serwera przerywają bieżącą operację i wprowadzają 10 sekund przerwy. Już znalezione źródło pozostaje dostępne. Zakończenie odtwarzania lub zamknięcie okna usuwa aktywny dokument, aby zatrzymać jego skrypty i odświeżanie; sesja przeglądarki pozostaje zachowana.
 
 ## Weryfikacja lub logowanie
 
@@ -32,7 +42,7 @@ Link pomocy Cloudflare można otworzyć przez świadome kliknięcie w widocznej 
 
 Testy lokalne obejmują parser katalogu i seriali, zwykłe odtwarzacze, CAPTCHA w ramce przy HTTP 200, warunki wznowienia sesji, utrwalanie pauzy, limit ponownej nawigacji, zachowanie znalezionego źródła, protokół Byse i uwierzytelnienie jego odpowiedzi. Nie zastępują odtwarzania filmu na fizycznym telefonie.
 
-Walidacja v1: pełna kompilacja czterech dodatków i **178 testów JUnit (29 dla Ekino TV), 22 testy Node i 8 testów Python** zakończyły się poprawnie. Sprawdzono nową klasę w manifeście, brak starej klasy w DEX, informację MIT w paczce i katalog bez starego wpisu. Opublikowana paczka GitHub Actions: 85 594 bajty, SHA-256 `3d46dc6a2fd0da5440941e99ae91bb9250bd46ee173ec932f5e1d548c2a4cc43`. Pobrany plik sprawdzono z manifestem i katalogiem; stary wpis i paczka zostały usunięte. [Publikacja i ponowne testy w GitHub Actions](https://github.com/dedziek/dedziek-cloudstream/actions/runs/42122923089) zakończyły się poprawnie.
+Walidację v2 opisano w [analizie zgłoszenia](EKINO-TV-AUDIT.md). Testy sterują rzeczywistym kodem dodatku i callbackami WebView; nie są próbą odtwarzania filmu na fizycznym telefonie.
 
 [Analiza całej historii v1–v13 i zgłoszeń](EKINO-TV-AUDIT.md).
 
