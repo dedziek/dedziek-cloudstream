@@ -1,0 +1,97 @@
+package pl.ekinocloudstream
+
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.runBlocking
+import org.junit.Assert.*
+import org.junit.Test
+
+class EkinoHostResolverTest {
+    private val page = "https://upzone.example/e/fixture?token=PRIVATE_FIXTURE"
+
+    @Test fun unsupportedHostWithStaticPlaylistReturnsMediaAndKeepsReferer() = runBlocking {
+        val media = mutableListOf<EkinoHostSources.Media>()
+        val requests = mutableListOf<Pair<String, String>>()
+        val resolver = EkinoHostResolver({ _, _ -> EkinoHostResolver.Dispatch.UNSUPPORTED }, { url, referer ->
+            requests.add(url to referer)
+            EkinoHostResolver.Response(200, "<script>var sources=[{file:'https://cdn.example/video.m3u8'}];</script>")
+        }, { media.add(it) })
+        resolver.resolve(page, "https://play.ekino.link/parent")
+        assertEquals(listOf(page to "https://play.ekino.link/parent"), requests)
+        assertEquals("https://cdn.example/video.m3u8", media.single().url)
+        assertEquals(page, media.single().referer)
+        assertFalse(resolver.report().contains("PRIVATE_FIXTURE"))
+        assertFalse(resolver.report().contains("/e/"))
+    }
+
+    @Test fun recognisedExtractorReturningNoVideoIsNotRetriedWithAnotherClient() = runBlocking {
+        val resolver = EkinoHostResolver({ _, _ -> EkinoHostResolver.Dispatch.EMPTY }, { _, _ ->
+            error("Recognised extractor must not trigger another request")
+        }, { error("No source expected") })
+        resolver.resolve(page, "https://ekino.ws/")
+        assertTrue(resolver.report().contains("ekstraktor bez wideo"))
+    }
+
+    @Test fun nestedHostingUsesItsExtractorBeforeFetchingAnyMoreHtml() = runBlocking {
+        val extracted = mutableListOf<String>()
+        var fetches = 0
+        val resolver = EkinoHostResolver({ url, _ ->
+            if (url.startsWith("https://host.example/")) { extracted.add(url); EkinoHostResolver.Dispatch.FOUND }
+            else EkinoHostResolver.Dispatch.UNSUPPORTED
+        }, { _, _ -> fetches++; EkinoHostResolver.Response(200, "<iframe src='https://host.example/e/video'></iframe>") }, {})
+        resolver.resolve(page, "https://ekino.ws/")
+        assertEquals(1, fetches)
+        assertEquals(listOf("https://host.example/e/video"), extracted)
+    }
+
+    @Test fun accessDenialStopsFurtherReadsToThatHost() = runBlocking {
+        var fetches = 0
+        val resolver = EkinoHostResolver({ _, _ -> EkinoHostResolver.Dispatch.UNSUPPORTED }, { _, _ ->
+            fetches++; EkinoHostResolver.Response(403)
+        }, {})
+        resolver.resolve(page, "https://ekino.ws/")
+        resolver.nextPlayer()
+        resolver.resolve("https://upzone.example/e/other", "https://ekino.ws/")
+        assertEquals(1, fetches)
+        assertTrue(resolver.report().contains("HTTP 403"))
+        assertTrue(resolver.requiresVerification)
+    }
+
+    @Test fun theSameHostingCanEmitForDifferentPlayerLanguageLabels() = runBlocking {
+        var extracted = 0
+        val resolver = EkinoHostResolver({ _, _ -> extracted++; EkinoHostResolver.Dispatch.FOUND },
+            { _, _ -> error("Built-in extractor already found a source") }, {})
+        resolver.resolve(page, "https://ekino.ws/")
+        resolver.resolve(page, "https://ekino.ws/")
+        assertEquals(1, extracted)
+        resolver.nextPlayer()
+        resolver.resolve(page, "https://ekino.ws/")
+        assertEquals(2, extracted)
+    }
+
+    @Test fun verificationIsReportedWithoutFollowingFramesOrInvokingUnpack() = runBlocking {
+        val resolver = EkinoHostResolver({ _, _ -> EkinoHostResolver.Dispatch.UNSUPPORTED }, { _, _ ->
+            EkinoHostResolver.Response(200, "<div class=cf-turnstile data-sitekey=x></div><iframe src='https://host.example/e/video'></iframe>")
+        }, { error("No source expected") }, { error("Challenge must not be processed as a packed player") })
+        resolver.resolve(page, "https://ekino.ws/")
+        assertTrue(resolver.report().contains("weryfikacja wymagana"))
+    }
+
+    @Test fun redirectsAndDuplicateFramesAreBoundedAndSecretsStayOutOfReports() = runBlocking {
+        var fetches = 0
+        val resolver = EkinoHostResolver({ _, _ -> EkinoHostResolver.Dispatch.UNSUPPORTED }, { _, _ ->
+            fetches++
+            EkinoHostResolver.Response(200, "<iframe src='$page'></iframe><iframe src='http://127.0.0.1/private'></iframe>")
+        }, {})
+        resolver.resolve(page, "https://ekino.ws/")
+        assertEquals(1, fetches)
+        assertFalse(resolver.report().contains("PRIVATE_FIXTURE"))
+    }
+
+    @Test fun cancellationIsPropagatedAndNotConvertedToAHostingFailure() = runBlocking {
+        val resolver = EkinoHostResolver({ _, _ -> EkinoHostResolver.Dispatch.UNSUPPORTED }, { _, _ ->
+            throw CancellationException("fixture cancellation")
+        }, {})
+        try { resolver.resolve(page, "https://ekino.ws/"); fail("Expected cancellation") }
+        catch (error: CancellationException) { assertEquals("fixture cancellation", error.message) }
+    }
+}

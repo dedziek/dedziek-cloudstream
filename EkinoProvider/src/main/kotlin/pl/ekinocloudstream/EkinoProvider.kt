@@ -5,6 +5,8 @@ import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.loadExtractor
 import com.lagradost.cloudstream3.utils.newExtractorLink
+import com.lagradost.cloudstream3.utils.getAndUnpack
+import com.lagradost.cloudstream3.utils.extractorApis
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import java.net.URI
@@ -141,7 +143,45 @@ class EkinoProvider(private val session: EkinoSession) : MainAPI() {
         var failedBridges = 0
         var extractorAttempts = 0
         val seen = mutableSetOf<String>()
+        val publicHostHttp = EkinoHostHttp(session.userAgent().ifBlank { USER_AGENT })
+        var activePlayer: EkinoParser.Player? = null
+        suspend fun emitLink(link: ExtractorLink) {
+            val player = activePlayer ?: return
+            if (!seen.add("${link.url}|${player.language}")) return
+            found = true
+            callback(newExtractorLink(name, listOf(link.name, player.language).filter(String::isNotBlank).joinToString(" · "), link.url, link.type) {
+                referer = link.referer; headers = link.headers; quality = link.quality; extractorData = link.extractorData
+            })
+        }
+        val hostResolver = EkinoHostResolver(
+            extractor = { url, referer ->
+                extractorAttempts++
+                val links = mutableListOf<ExtractorLink>()
+                val hostname = URI(url).host
+                val exactHost = extractorApis.any { runCatching { URI(it.mainUrl).host.equals(hostname, true) }.getOrDefault(false) }
+                // Upzone has no built-in extractor in the inspected CloudStream version.
+                // Do not send it to an unrelated fuzzy match; use its ordinary source metadata instead.
+                val upzone = hostname.orEmpty().split('.').any { it.equals("upzone", true) }
+                val supported = if (upzone && !exactHost) false else loadExtractor(url, referer, subtitleCallback) { links.add(it) }
+                for (link in links) emitLink(link)
+                when {
+                    links.isNotEmpty() -> EkinoHostResolver.Dispatch.FOUND
+                    supported -> EkinoHostResolver.Dispatch.EMPTY
+                    else -> EkinoHostResolver.Dispatch.UNSUPPORTED
+                }
+            },
+            fetch = publicHostHttp::get,
+            emit = { media ->
+                val label = activePlayer?.host ?: "Ekino"
+                emitLink(newExtractorLink(name, label, media.url,
+                    if (media.hls) ExtractorLinkType.M3U8 else ExtractorLinkType.VIDEO) {
+                    referer = media.referer; headers = publicHostHttp.mediaHeaders(media.url)
+                })
+            },
+            unpack = { getAndUnpack(it) })
         for (player in players) {
+            activePlayer = player
+            hostResolver.nextPlayer()
             // Site denials abort the whole operation; they are never swallowed as extractor failures.
             val wrapper = sitePage(player.url, page.url, allowMissing = true, cookies = cookies)
             if (wrapper == null) { missing++; continue }
@@ -168,25 +208,16 @@ class EkinoProvider(private val session: EkinoSession) : MainAPI() {
                 } else resolved.add(embed)
             }
             for (embed in resolved.distinctBy { it.url }.take(12)) {
-                try {
-                    extractorAttempts++
-                    val links = mutableListOf<ExtractorLink>()
-                    if (embed.direct) links.add(newExtractorLink(name, player.host, embed.url,
+                if (embed.direct) {
+                    emitLink(newExtractorLink(name, player.host, embed.url,
                         if (URI(embed.url).path.endsWith(".m3u8", true)) ExtractorLinkType.M3U8 else ExtractorLinkType.VIDEO) {
                         referer = embed.referer
-                    }) else loadExtractor(embed.url, embed.referer, subtitleCallback) { links.add(it) }
-                    for (link in links) {
-                        if (!seen.add("${link.url}|${player.language}")) continue
-                        found = true
-                        callback(newExtractorLink(name, listOf(link.name, player.language).filter(String::isNotBlank).joinToString(" · "), link.url, link.type) {
-                            referer = link.referer; headers = link.headers; quality = link.quality; extractorData = link.extractorData
-                        })
-                    }
-                } catch (error: CancellationException) { throw error }
-                catch (_: Exception) { /* Try other ordinary hosts. No session or player URL logging. */ }
+                    })
+                } else hostResolver.resolve(embed.url, embed.referer)
             }
         }
-        if (!found) throw ErrorLoadingException("Ekino: nie uzyskano wideo. Źródła: ${players.size}, niedostępne: $missing, bez odnośnika: $noEmbeds, błędy strony pośredniej: $failedBridges, próby ekstraktorów: $extractorAttempts. Sprawdź materiał na stronie.")
+        if (!found) throw ErrorLoadingException("Ekino: nie uzyskano wideo. Źródła: ${players.size}, niedostępne: $missing, bez odnośnika: $noEmbeds, błędy strony pośredniej: $failedBridges, próby ekstraktorów: $extractorAttempts. Hostingi: ${hostResolver.report().ifBlank { "brak" }}." +
+            if (hostResolver.requiresVerification) " ${EkinoMessages.CLOUDFLARE}" else "")
         return true
     }
 }
