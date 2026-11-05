@@ -15,7 +15,7 @@ class EkinoProvider(private val session: EkinoSession) : MainAPI() {
     override var lang = "pl"
     override val supportedTypes = setOf(TvType.Movie, TvType.TvSeries)
     override val hasMainPage = true
-    override val loadLinksTimeoutMs = 180_000L
+    override val loadLinksTimeoutMs = 300_000L
     override val mainPage = mainPageOf("/movie/cat/" to "Najnowsze filmy", "/serie/" to "Seriale")
     private data class Page(val url: String, val doc: org.jsoup.nodes.Document)
 
@@ -123,7 +123,18 @@ class EkinoProvider(private val session: EkinoSession) : MainAPI() {
     }
 
     override suspend fun loadLinks(data: String, isCasting: Boolean, subtitleCallback: (SubtitleFile) -> Unit,
-                                   callback: (ExtractorLink) -> Unit): Boolean {
+                                   callback: (ExtractorLink) -> Unit): Boolean = try {
+        EkinoPlaybackVerification.resolve(
+            read = { loadLinksOnce(data, subtitleCallback, callback) },
+            verify = { EkinoParser.siteUrl(mainUrl, data)?.let { EkinoVerificationUi.verify(session, it) } ?: false })
+    } catch (_: EkinoPlaybackVerification.NotCompleted) {
+        throw ErrorLoadingException("Ekino: weryfikacja została anulowana albo nie ma aktywnego okna CloudStream. Uruchom materiał ponownie i zakończ weryfikację w widocznym oknie.")
+    } catch (_: EkinoPlaybackVerification.Required) {
+        throw ErrorLoadingException("Ekino nadal wymaga weryfikacji. Otwórz odtwarzacz materiału w oknie strony, wykonaj ją samodzielnie i zapisz sesję. Nie ponawiaj wielu prób.")
+    }
+
+    private suspend fun loadLinksOnce(data: String, subtitleCallback: (SubtitleFile) -> Unit,
+                                     callback: (ExtractorLink) -> Unit): Boolean {
         val target = EkinoParser.siteUrl(mainUrl, data)?.takeIf(EkinoParser::isDetailUrl)
             ?: throw ErrorLoadingException("Ekino: niepoprawny adres odcinka.")
         val cookies = EkinoRequestCookies(session.cookieHeader(mainUrl))
@@ -143,15 +154,20 @@ class EkinoProvider(private val session: EkinoSession) : MainAPI() {
             // Site denials abort the whole operation; they are never swallowed as extractor failures.
             val wrapper = sitePage(player.url, page.url, allowMissing = true, cookies = cookies)
             if (wrapper == null) { missing++; continue }
-            if (EkinoParser.isPlayerVerification(wrapper.doc)) throw ErrorLoadingException(
-                "Ekino: odtwarzacz wymaga ręcznej weryfikacji. Otwórz stronę w ustawieniach dodatku, wykonaj weryfikację i zapisz sesję.")
+            if (EkinoParser.requiresPlayerVerification(wrapper.doc, wrapper.url)) {
+                if (found) continue
+                throw EkinoPlaybackVerification.Required()
+            }
             val first = EkinoParser.embeds(wrapper.doc, wrapper.url)
             if (first.isEmpty()) noEmbeds++
             val embeds = mutableListOf<EkinoParser.Embed>()
             for (embed in first.take(8)) {
                 if (EkinoParser.isSiteUrl(embed.url)) {
                     val nested = sitePage(embed.url, wrapper.url, allowMissing = true, cookies = cookies) ?: continue
-                    if (EkinoParser.isPlayerVerification(nested.doc)) throw ErrorLoadingException("Ekino: odtwarzacz wymaga ręcznej weryfikacji w ustawieniach dodatku.")
+                    if (EkinoParser.requiresPlayerVerification(nested.doc, nested.url)) {
+                        if (found) continue
+                        throw EkinoPlaybackVerification.Required()
+                    }
                     embeds.addAll(EkinoParser.embeds(nested.doc, nested.url).filterNot { EkinoParser.isSiteUrl(it.url) })
                 } else embeds.add(embed)
             }
