@@ -210,10 +210,12 @@ class EkinoProvider(private val session: EkinoSession) : MainAPI() {
         val publicHostHttp = EkinoHostHttp(session.userAgent().ifBlank { USER_AGENT })
         val byseResolver = EkinoByseResolver(publicHostHttp::post)
         var activePlayer: EkinoParser.Player? = null
+        var playerHasSource = false
         suspend fun emitLink(link: ExtractorLink) {
             val player = activePlayer ?: return
             if (!seen.add("${link.url}|${player.language}")) return
             found = true
+            playerHasSource = true
             callback(newExtractorLink(name, listOf(link.name, player.language).filter(String::isNotBlank).joinToString(" · "), link.url, link.type) {
                 referer = link.referer; headers = link.headers; quality = link.quality; extractorData = link.extractorData
             })
@@ -246,12 +248,13 @@ class EkinoProvider(private val session: EkinoSession) : MainAPI() {
             },
             unpack = { getAndUnpack(it) }, byse = byseResolver::resolve)
         try {
-            for (player in players) {
+            EkinoPlayerRequests.visit(players) { player ->
                 activePlayer = player
+                playerHasSource = false
                 hostResolver.nextPlayer()
                 // Site denials stop further requests; previously emitted links remain usable.
                 val wrapper = sitePage(player.url, page.url, allowMissing = true, cookies = cookies, trace = trace)
-                if (wrapper == null) { missing++; continue }
+                if (wrapper == null) { missing++; return@visit false }
                 if (EkinoParser.isPlayerVerification(wrapper.doc)) {
                     throw ErrorLoadingException(EkinoMessages.playerVerification(player.host))
                 }
@@ -287,6 +290,7 @@ class EkinoProvider(private val session: EkinoSession) : MainAPI() {
                         })
                     } else hostResolver.resolve(embed.url, embed.referer)
                 }
+                playerHasSource
             }
         } catch (error: ErrorLoadingException) {
             // Stop at a denial without further requests, but retain any source already emitted.

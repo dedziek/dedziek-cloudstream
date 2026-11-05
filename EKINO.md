@@ -1,6 +1,10 @@
-# EkinoProvider v12
+# EkinoProvider v13
 
 Dodatek CloudStream dla `https://ekino-tv.pl/`. Dnia 4 listopada 2026 adres przekierowywał do `https://ekino.ws/`, wskazanej przez stronę jako jej oficjalna domena. Moduł korzysta z tego dokładnego pochodzenia; nie wybiera automatycznie nowych domen z reklam lub zewnętrznych list.
+
+V13 kończy pobieranie kolejnych hostingów danej wersji językowej, gdy jeden odtwarzacz rzeczywiście zwrócił wideo. Wcześniej nawet po znalezieniu działającego Byse dodatek otwierał następne ramki Ekino tej samej wersji. Pozostałe języki są nadal odczytywane; brak etykiety nie jest uznawany za wspólny język. Gdy pierwszy hosting nie zwróci wideo, próbowany jest następny. Ograniczenie jest osobne dla każdego uruchomienia materiału, bez cache źródeł lub tokenów. Nie usuwa istniejącej weryfikacji witryny ani nie gwarantuje, że Turnstile nie pojawi się ponownie.
+
+W ograniczonej próbie trzech operacji z jedną anonimową sesją PHP pięć pierwszych ramek zwróciło HTTP 200 bez CAPTCHA, a szósta — stronę z Turnstile. Sesja PHP nie była zmieniana. Próba została zatrzymana przy tej bramce; nie przesyłano tokenu i nie odtworzono interaktywnego zapętlenia. Kod tej strony wysyła wynik widżetu do `/watch/verify.php` i odświeża ramkę zarówno przy `re.error`, jak i bez zgłoszonego błędu. Nie ustalono, czy warunek włączenia bramki zależy od sesji, IP, czasu czy innych czynników.
 
 V12 obsługuje również błędy połączenia występujące przed odtwarzaniem: katalog, wyszukiwanie i szczegóły. Pierwszy błąd I/O, w tym timeout, DNS lub TLS, wstrzymuje następne natywne żądania tak samo jak wcześniejsza odmowa dostępu. Anulowanie operacji przez użytkownika nie zapisuje takiego wstrzymania. Nie zmieniono 25-sekundowego limitu i nie dodano ponowień ani zmian sieci/domeny. Nowy błąd wskazuje ustawienia **Raport ostatniego połączenia**, dostępne także wtedy, gdy nie udało się wyszukać żadnego filmu.
 

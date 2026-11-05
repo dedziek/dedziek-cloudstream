@@ -41,7 +41,7 @@ internal class EkinoNetworkJournal {
         private fun elapsed(): Long = (System.nanoTime() - started) / 1_000_000L
 
         @Synchronized private fun publish(result: String) {
-            last = "Ekino v12 · raport połączenia\netap=$phase\n" + events.joinToString("\n") +
+            last = "Ekino v13 · raport połączenia\netap=$phase\n" + events.joinToString("\n") +
                 "\nwynik=$result; HTTP=${http ?: "brak"}; Ray ID=${ray ?: "brak"}; ostatnie zdarzenie=$stage; czas=${elapsed()} ms"
         }
 
