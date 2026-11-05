@@ -1,6 +1,7 @@
 package pl.ekinocloudstream
 
 import android.app.Activity
+import android.os.Looper
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebView
@@ -32,6 +33,8 @@ class EkinoManualVerificationTest {
             assertTrue(settings.isShowing)
             assertNull(findBrowser(settings.window!!.decorView))
             shadowOf(settings).clickOnItem(1)
+            // Dialog dispatches OnShowListener through the main Handler.
+            shadowOf(Looper.getMainLooper()).idle()
             val dialog = ShadowDialog.getLatestDialog()
             assertTrue(dialog is EkinoLoginDialog)
             val web = requireNotNull(findBrowser(dialog.window!!.decorView))
