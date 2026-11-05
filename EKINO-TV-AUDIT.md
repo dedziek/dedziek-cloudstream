@@ -1,0 +1,45 @@
+# Ekino: analiza historii i zgłoszeń, 5 listopada 2026
+
+Zakres: wszystkie 13 zmian EkinoProvider w historii `main`, od `3b3b1c4` do `37b5d82`, źródła i testy tych wersji oraz dostarczone raporty użytkownika. Nowy EkinoTvProvider nie jest kontynuacją numeracji starej paczki.
+
+## Historia
+
+| Wersja | Commit | Zmiana i jej znaczenie |
+|---|---|---|
+| 1 | [3b3b1c4](https://github.com/dedziek/dedziek-cloudstream/commit/3b3b1c44c36d0bcb78d33e8c31c1b4ae3d58488d) | Katalog, POST wyszukiwania, seriale, zwykłe odtwarzacze, osobne logowanie WebView. Odczyt strony klientem HTTP. |
+| 2 | [195d84e](https://github.com/dedziek/dedziek-cloudstream/commit/195d84eb27e743b43c709c3ceb0574c3d9632b93) | Rozpoznanie odtwarzacza bez odliczania; v1 zakładała obowiązkowe `time`. |
+| 3 | [2056910](https://github.com/dedziek/dedziek-cloudstream/commit/2056910f72feaff033801f5d59fc535c9751c26f) | Zachowanie anonimowej sesji PHP w obrębie operacji, obsługa publicznej strony pośredniej. |
+| 4 | [0116b9b](https://github.com/dedziek/dedziek-cloudstream/commit/0116b9b765d3c63670be350ad03481f79c028b58) | Automatyczne otwarcie ręcznej weryfikacji i pojedyncze ponowienie. Nie usuwało różnic klient HTTP / WebView. |
+| 5 | [ac906b3](https://github.com/dedziek/dedziek-cloudstream/commit/ac906b369014e86aa68a2aee35bad5f9100b4d2c) | Powrót do zachowania v3, bez automatycznie otwieranego okna. |
+| 6 | [fc47a7d](https://github.com/dedziek/dedziek-cloudstream/commit/fc47a7d9345e8bc8f047fc830f84929022c716bb) | Odczyt zwykłych źródeł HTML i dokładniejsze błędy hostingów. |
+| 7 | [525ccce](https://github.com/dedziek/dedziek-cloudstream/commit/525ccce18618a8b6a837e85e9db4147e1ef2748a) | Oddzielna CAPTCHA ramki odtwarzacza; zachowanie już znalezionych linków. |
+| 8 | [b91cd9b](https://github.com/dedziek/dedziek-cloudstream/commit/b91cd9b039932da2259136b30c81e1ca04aea051) | Ręczne otwarcie materiału, cookies i User-Agent z WebView. Zapis sesji nie potwierdzał uzyskania dostępu do ramki. |
+| 9 | [ae8ebd6](https://github.com/dedziek/dedziek-cloudstream/commit/ae8ebd6072017d932c76541a64dc06886149cd99) | Kolejkowanie pojedynczych żądań oraz trwała pauza po CAPTCHA/403/429. Operacje mogły nadal przeplatać żądania. |
+| 10 | [a0ee029](https://github.com/dedziek/dedziek-cloudstream/commit/a0ee029d265c1c35ceb7a5b42092cf0493dd4046) | Usunięcie podwójnego User-Agent z klienta NiceHttp; raport odtwarzania. Naprawa nie dowodziła usunięcia problemów sieciowych. |
+| 11 | [2ead45f](https://github.com/dedziek/dedziek-cloudstream/commit/2ead45f041b88a0735d8f458594f949af067071b) | Obsługa rzeczywistego publicznego API Byse, AES-GCM v5 i opisy niedostępnych hostingów. |
+| 12 | [45d4092](https://github.com/dedziek/dedziek-cloudstream/commit/45d4092e71f79702bc5788a6f024101763d49c35) | Pauza po błędzie transportu oraz dziennik DNS/TCP/TLS/HTTP. |
+| 13 | [37b5d82](https://github.com/dedziek/dedziek-cloudstream/commit/37b5d8264a729166b81f007dbd1cc240385956c9) | Pomijanie kolejnych odtwarzaczy tej samej rozpoznanej wersji językowej po znalezieniu wideo. |
+
+## Raporty i rozdzielenie przyczyn
+
+- **15:33, Zabójcza gra:** wyszukiwanie działało, dostęp zatrzymał się na CAPTCHA `mix`. Sam wynik wyszukiwania nie potwierdza dostępu do ramki.
+- **16:17, Powrót, v10:** strona materiału i cztery ramki odpowiadały 200; utworzono sesję PHP. Problem dotyczył hostingów. `mfw09.org` był aplikacją Byse wymagającą inicjalizacji JavaScript/API, nie statycznego parsowania HTML. Dood przekierowywał do niedostępnego filmu, onlystream nie rozwiązywał DNS, upzone zgłaszał wyczerpany darmowy transfer. To oddzielne awarie od Turnstile.
+- **17:07:** strona główna przekroczyła czas, kolejne wyszukiwania nie dały wyników. Końcowy komunikat testera CloudStream nie zachowywał przyczyny każdego wyjątku wyszukiwania. Brak wyników nie dowodzi uszkodzenia parsera.
+- **22:06, Gang-over i Zabójcza gra:** dwa testy załadowały po jednym źródle. To potwierdza działający odczyt linku w tej chwili, nie pełne odtwarzanie filmu ani trwałe rozwiązanie CAPTCHA.
+- **22:08, Gang-over, v12:** sesja była zapisana, User-Agent pochodził z WebView. Strona filmu była zwykła, ramka zwróciła 200 z Turnstile. Odpowiedź zajęła 103 ms; nie był to timeout DNS/TLS. `clearance=nie` nie dowodzi błędnego logowania: Turnstile nie musi wydawać `cf_clearance`.
+- **22:34, v13:** ten sam rodzaj bramki przy odpowiedzi 200 w 76 ms, tym razem bez zapisanej sesji. Poprawa kolejności odtwarzaczy nie mogła usunąć bramki występującej już przy pierwszym z nich.
+- **Chrome zwykły i incognito:** po zamknięciu CloudStream pętla pozostała na Wi‑Fi, a na danych komórkowych strona działała. Wskazuje to na czynnik sieciowy; nie znamy reguł serwera, okresu ograniczenia ani tego, czy dotyczyło wyłącznie adresu IP. Nie ma podstaw do obiecywania odblokowania po konkretnej liczbie minut.
+- **Okno pomocy Cloudflare:** użytkownik otworzył je z problematycznego widgetu w tej samej przeglądarce i niczego tam nie klikał. Zbieżność z późniejszym sukcesem nie wykazuje przyczyny. Kod strony pomocy rozdziela odczyt informacji od świadomego polecenia odświeżenia.
+- **Ray ID:** podane identyfikatory `a55eb9c1bf3cff54`, `a55ed522ae7a03be-HAM` i `a55efb4c3936b4c8-HAM` identyfikują żądania. Nie stanowią samodzielnej diagnozy. Dostęp do logów i reguł właściciela witryny nie był dostępny.
+
+W kontrolowanym wcześniejszym odczycie zwykłych ramek, przy tym samym PHP i User-Agent oraz wymaganym odliczaniu, pięć odpowiedzi było zwykłych, a szósta zawierała Turnstile. Próby zatrzymano. Nie jest to dowód stałego limitu sześciu żądań i nie odtwarza interaktywnej pętli zgłoszonej na telefonie.
+
+Odczytany skrypt bramki wysyła wynik Turnstile do `/watch/verify.php` i odświeża dokument zarówno po sukcesie, jak i po odpowiedzi błędnej. Dlatego zielony widget i odświeżenie nie potwierdzają akceptacji przez backend Ekino. Naprawa logiki serwera należy do właściciela witryny.
+
+## Decyzje nowej implementacji
+
+Usunięto osobny klient HTTP Ekino, ręczne kopiowanie cookies, zapisywanie User-Agent innego silnika, szyfrowany eksport sesji oraz niezależny przycisk wznowienia bez sprawdzenia strony. Zastąpiła je jedna przeglądarka i kolejka całych operacji. Nowy kod zachowuje wyłącznie rozwiązania wynikające z protokołu strony: POST wyszukiwania, zwykłe kontrolki ShowPlayer, opis języka, format katalogu/odcinków i protokół zewnętrznego Byse. Algorytm inicjalizacji Byse ma osobną informację MIT.
+
+Pauza i publiczny adres odzyskania dostępu są trwałe. Weryfikacja odbywa się w tej samej instancji i profilu WebView. Wznowienie wymaga strony bez bramki, a po CAPTCHA odtwarzacza również rzeczywistego odnośnika w jego ramce. Pętla nawigacji i skrypty opuszczanego dokumentu są zatrzymywane. Nie są automatycznie przesyłane tokeny Turnstile, ponawiane odmówione żądania ani zmieniane sieci czy tożsamości przeglądarki.
+
+Podczas rozpoczęcia przebudowy `ekino-tv.pl` odpowiedziało przekierowaniem 301 do `ekino.ws`, a domena docelowa zwróciła 403 z środowiska roboczego. Dalszych automatycznych prób nie wykonywano. Nowa paczka wymaga próby odtwarzania i ręcznej weryfikacji na urządzeniu użytkownika; lokalne testy i kompilacja nie potwierdzają akceptacji przez Cloudflare w jego sieci.

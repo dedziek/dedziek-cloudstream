@@ -29,7 +29,7 @@ subprojects {
         namespace = when (project.name) {
             "AnimeWatchProvider" -> "pl.animewatchcloudstream"
             "AnimeGateProvider" -> "pl.animegatecloudstream"
-            "EkinoProvider" -> "pl.ekinocloudstream"
+            "EkinoTvProvider" -> "pl.dedziek.ekinotv"
             else -> "pl.filmancloudstream"
         }
         compileSdkVersion(35)
