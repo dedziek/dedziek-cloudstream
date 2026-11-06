@@ -78,3 +78,13 @@ Sprawdzane są układy pionowy i poziomy na API 28 i 35 w Robolectric, zapisane 
 Kontrola kodu i paczki nie wykazała starego modułu `pl.ekinocloudstream`. Pozostawiony klucz danych `dedziek_ekino_tv_v1` należy do nowego `pl.dedziek.ekinotv`; celowo zachowuje jego stan między aktualizacjami. Nie migruje danych ani klienta HTTP starego EkinoProvider.
 
 Walidacja lokalna v4: **46 testów Ekino TV, 0 błędów i pominięć**, kompilacja i kontrola manifestu v4. Sprawdzono nowe menu w DEX oraz brak starego modułu w źródłach i paczce.
+
+## Ekino TV v5 — test Androida i odmowa serwera
+
+Po udostępnieniu `/dev/kvm` emulator Androida uruchomił się w około 44 sekundy. Zainstalowano oficjalny CloudStream 4.8.0-PRE i publiczny dodatek v4; hash pliku załadowanego przez aplikację był zgodny z katalogiem GitHub. Menu v4 sprawdzono także przy zapisanym stanie CAPTCHA: trzy akcje są widoczne w rzeczywistym oknie.
+
+Pierwszy test nie miał połączenia Wi-Fi i zgłosił WebView -2; po naprawieniu sieci ponowiono test. O 12:34 UTC test aplikacji przeszedł katalog, wyszukiwanie „Jego” i szczegóły materiału, a następnie zatrzymał się na CAPTCHA ramki `player`. Podczas dalszego porównania w tej samej sieci Chrome również otrzymał z `/watch/verify.php` odpowiedź HTTP 200, `{"error":true}`. Nie przechwytywano ani nie podstawiano tokenów weryfikacji. Sam wynik nie ustala, dlaczego witryna odrzuciła potwierdzenie.
+
+Odczyt rzeczywistego DOM po zmianie hostingu pokazał jednocześnie ukryty `player` (`getClientRects().length=0`) i aktywny `dood` (`=1`). V4 oceniała oba dokumenty jako równorzędne. V5 uwzględnia aktywność, aktywuje wybraną kartę, zachowuje w pamięci adres zatrzymanej ramki i przerywa ponawianie po komunikacie błędu z procedury weryfikacji witryny. Dopuszcza też renderowanie HTTP 403 w ręcznym oknie. Nie oznacza to usunięcia odmowy po stronie Ekino ani potwierdzenia odtwarzania.
+
+Walidacja v5: **50 testów Ekino TV, 0 błędów i pominięć**, kompilacja paczki. Rzeczywisty test dostawcy v5 z 13:37:24–13:37:39 UTC odczytał katalog, wyszukał „Cena” i otworzył „Cena kłamstwa”; zakończył się CAPTCHA odtwarzacza, bez źródła wideo. Ręczne okno otworzyło bezpośrednio zatrzymaną ramkę z widocznym przyciskiem „Wczytaj film”. Kontrolowane wywołanie tego samego komunikatu błędu w rzeczywistym WebView sprawdziło obsługę odmowy: widoczny opis zatrzymania i zakończenie dokumentu przez `about:blank`. To kontrola reakcji aplikacji, nie dowód naturalnego błędu ani zaakceptowania CAPTCHA. Test używał Androida 15 i WebView 124.0.6367.219; wiek silnika ogranicza ocenę zgodności z bieżącą weryfikacją. Nie potwierdzono pełnego odtwarzania.

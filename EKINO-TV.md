@@ -1,12 +1,22 @@
 # Ekino TV
 
-Dodatek **EkinoTvProvider v4**, źródło **Ekino TV**. Napisany od nowa dla `https://ekino-tv.pl`; przeglądarka obsługuje oficjalne przekierowanie do `https://ekino.ws`. To osobna paczka i klasa dodatku. Kod starego EkinoProvider v1–v13 został usunięty z aktualnej gałęzi, a historia zmian pozostaje dostępna w Git.
+Dodatek **EkinoTvProvider v5**, źródło **Ekino TV**. Napisany od nowa dla `https://ekino-tv.pl`; przeglądarka obsługuje oficjalne przekierowanie do `https://ekino.ws`. To osobna paczka i klasa dodatku. Kod starego EkinoProvider v1–v13 został usunięty z aktualnej gałęzi, a historia zmian pozostaje dostępna w Git.
 
 ## Instalacja
 
 1. Usuń **EkinoProvider / Ekino** w rozszerzeniach CloudStream. Zainstalowanej kopii na telefonie nie usuwa wycofanie paczki z GitHuba.
 2. Odśwież repozytorium **Dedziek CloudStream** i zainstaluj **EkinoTvProvider**. Możesz też pobrać [nową paczkę](https://raw.githubusercontent.com/dedziek/dedziek-cloudstream/builds/EkinoTvProvider.cs3).
 3. Wybierz źródło **Ekino TV**. Wymagany jest Android 6+ z działającym Android System WebView oraz aktualny CloudStream Beta. Zgodność z konkretnym Android TV nie została sprawdzona.
+
+## V5 — aktywna ramka i zatrzymanie odmowy weryfikacji
+
+Dodatek aktywuje kartę wybranego hostingu przed uruchomieniem funkcji strony. W odczycie DOM rozróżnia ramki aktywne od ukrytych, także przy zagnieżdżaniu. CAPTCHA pozostawiona w poprzedniej karcie nie blokuje poprawnego źródła w bieżącej karcie; ukryty odtwarzacz nie może też sam potwierdzić weryfikacji.
+
+Po wykryciu CAPTCHA w bieżącej sesji **Otwórz weryfikację** kieruje bezpośrednio do zatrzymanej ramki. Jej adres pozostaje tylko w pamięci tej sesji; po restarcie nadal dostępny jest zapisany film. Przycisk **Wczytaj film** pozwala wrócić do wyboru hostingu. Widoczna strona weryfikacji może wyświetlić HTTP 403, zamiast być od razu zastąpiona pustą stroną. HTTP 429 nadal zatrzymuje próby.
+
+Gdy strona odtwarzacza zgłasza znany komunikat o odrzuceniu weryfikacji, dodatek kończy jej dokument i blokuje spóźnione ponowienia do świadomego ponownego otwarcia. Raport rozróżnia tę odmowę od samej obecności CAPTCHA i podaje wersję WebView.
+
+W rzeczywistym CloudStream 4.8.0-PRE na Androidzie 15 katalog, wyszukiwanie i szczegóły filmu „Jego ostatnie życzenie” zostały odczytane. Oba zwykłe hostingi (`player` i `dood`) wymagały CAPTCHA. W niezależnej sesji Chrome żądanie strony do `/watch/verify.php` zwróciło HTTP 200 i `{"error":true}`. V5 naprawia błędy obsługi po stronie dodatku; nie gwarantuje przyjęcia potwierdzenia przez Ekino i nie uznaje samego „Success” widgetu za dostęp do wideo. Odtwarzanie w tej sieci pozostaje niepotwierdzone.
 
 ## V4 — widoczne ustawienia i dostęp do weryfikacji
 
@@ -53,6 +63,8 @@ Link pomocy Cloudflare można otworzyć przez świadome kliknięcie w widocznej 
 ## Raport i sprawdzenie
 
 **Kopiuj raport** pokazuje etapy nawigacji, faktycznie otrzymane błędy HTTP/WebView, wysłanie żądania do trasy weryfikacji, numeryczne kody klienta Turnstile oraz wynik odczytu hostingu. Raport nie zapisuje cookies, tokenów CAPTCHA, treści formularzy ani pełnych adresów wideo. Nie podaje wymyślonego HTTP 200 dla nawigacji WebView, której statusu Android nie ujawnił.
+
+Walidacja v5: **50 testów, 0 błędów**, zbudowana paczka i rzeczywisty test dostawcy w emulatorze. Test aplikacji przeszedł katalog i wyszukiwanie, ale zatrzymał się na CAPTCHA; nie uzyskano wideo.
 
 Testy lokalne obejmują parser katalogu i seriali, zwykłe odtwarzacze, CAPTCHA w ramce przy HTTP 200, warunki wznowienia sesji, utrwalanie pauzy, limit ponownej nawigacji, zachowanie znalezionego źródła, protokół Byse i uwierzytelnienie jego odpowiedzi. Nie zastępują odtwarzania filmu na fizycznym telefonie.
 

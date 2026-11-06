@@ -103,6 +103,36 @@ class WebSessionTest {
 
     private fun browser() = views(activity.findViewById(android.R.id.content)).filterIsInstance<WebView>().single()
 
+    @Test fun visibleHttp403CanRenderTheChallengeInsteadOfBeingBlanked() {
+        val (dialog, web) = open()
+        web.webViewClient.onReceivedHttpError(web, request("https://ekino.ws/watch/f/player/id", true),
+            WebResourceResponse("text/html", "UTF-8", 403, "Forbidden", emptyMap(), java.io.ByteArrayInputStream(ByteArray(0))))
+        assertTrue(state.paused)
+        assertNotEquals("about:blank", shadowOf(web).lastLoadedUrl)
+        dialog.dismiss()
+    }
+
+    @Test fun serverRejectionAlertStopsItsReloadAndBlocksLateWrapperRequestsUntilUserRetry() {
+        val (dialog, web) = open()
+        @Suppress("UNCHECKED_CAST")
+        val receiverClass = Class.forName("android.webkit.JsResult\$ResultReceiver") as Class<Any>
+        var completed = false
+        val receiver = java.lang.reflect.Proxy.newProxyInstance(receiverClass.classLoader, arrayOf(receiverClass)) { _, _, _ ->
+            completed = true; null
+        }
+        val result = ReflectionHelpers.callConstructor(android.webkit.JsResult::class.java,
+            ReflectionHelpers.ClassParameter.from(receiverClass, receiver))
+        val wrapper = "https://ekino.ws/watch/f/player/id"
+        assertTrue(web.webChromeClient!!.onJsAlert(web, wrapper, "Wystąpił błąd! Spróbuj ponownie.", result))
+        assertTrue(shadowOf(result).wasCancelled())
+        assertTrue(state.reason.contains("odrzuciło potwierdzenie"))
+        assertEquals("about:blank", shadowOf(web).lastLoadedUrl)
+        assertEquals(409, web.webViewClient.shouldInterceptRequest(web, request(wrapper))!!.statusCode)
+        shownAction(dialog, "Wczytaj ponownie").performClick()
+        assertNull(web.webViewClient.shouldInterceptRequest(web, request(wrapper)))
+        dialog.dismiss()
+    }
+
     private fun reply(browser: WebView, url: String, id: Double, ready: String = "interactive",
                       html: String = "<h1 class=title>Film</h1><div class=playerContainer></div>",
                       frames: List<WebPage> = emptyList()) {
@@ -152,7 +182,7 @@ class WebSessionTest {
         assertTrue(shownAction(options, "Kopiuj raport").performClick())
         val clipboard = activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val report = clipboard.primaryClip!!.getItemAt(0).text.toString()
-        assertTrue(report.contains("Ekino TV v4"))
+        assertTrue(report.contains("Ekino TV v5"))
         assertTrue(report.contains("CAPTCHA odtwarzacza"))
         assertTrue(restored.paused)
         assertTrue(views(activity.findViewById(android.R.id.content)).none { it is WebView })
@@ -198,10 +228,10 @@ class WebSessionTest {
         assertTrue(session.operations.tryLock()); session.operations.unlock()
     }
 
-    @Test fun wrapperHttpDenialStopsTimersPersistsPauseAndNeverEnablesAnAutomaticRetry() {
+    @Test fun aManualHttp429StopsTimersPersistsPauseAndNeverEnablesAnAutomaticRetry() {
         val (dialog, browser) = open()
         browser.webViewClient.onReceivedHttpError(browser, request("https://ekino.ws/watch/f/player/id"),
-            WebResourceResponse("text/plain", "UTF-8", 403, "Forbidden", emptyMap(), "denied".byteInputStream()))
+            WebResourceResponse("text/plain", "UTF-8", 429, "Too Many Requests", emptyMap(), "denied".byteInputStream()))
         assertTrue(state.paused); assertTrue(state.playerRequired)
         assertTrue(SessionState(activity).paused)
         assertEquals("about:blank", shadowOf(browser).lastLoadedUrl)

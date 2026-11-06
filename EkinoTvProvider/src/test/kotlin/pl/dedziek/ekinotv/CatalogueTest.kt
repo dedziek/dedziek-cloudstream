@@ -65,6 +65,22 @@ class CatalogueTest {
         assertEquals(listOf("https://host.example/e/a"), Catalogue.embeds(page))
     }
 
+    @Test fun switchingToAReadyMirrorIgnoresThePreviousHiddenChallenge() {
+        val page = WebPage(movie, "<h1 class=title>Film</h1>")
+        val hidden = WebPage("https://ekino.ws/watch/f/player/old", "<div class=cf-turnstile></div>", active = false)
+        val selected = WebPage("https://ekino.ws/watch/f/dood/new", "<iframe src='https://host.example/e/video'></iframe>")
+        val snapshot = BrowserSnapshot(page, listOf(hidden, selected))
+        assertNull(snapshot.gate())
+        assertTrue(snapshot.verified(true))
+        assertEquals("CAPTCHA odtwarzacza", BrowserSnapshot(page, listOf(hidden.copy(active = true), selected)).gate())
+    }
+
+    @Test fun aHiddenReadyMirrorCannotReleaseTheSelectedPlayersChallenge() {
+        val page = WebPage(movie, "<h1 class=title>Film</h1>")
+        val hidden = WebPage("https://ekino.ws/watch/f/dood/old", "<iframe src='https://host.example/e/video'></iframe>", active = false)
+        assertFalse(BrowserSnapshot(page, listOf(hidden)).verified(true))
+    }
+
     @Test fun paginationOnlyRecognizesTheNextPageInTheSameCategory() {
         val html = "<div id=pager><a href='/movie/cat/strona[3]+'>3</a><a href='/movie/cat/strona[2]+'>2</a></div>"
         assertTrue(Catalogue.hasNext(WebPage("https://ekino.ws/movie/cat/", html)))
