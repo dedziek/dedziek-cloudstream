@@ -57,7 +57,7 @@ internal class WebSession(context: Context, val state: SessionState,
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val popups = mutableMapOf<WebView, Dialog>()
     private var activeJob: Job? = null
-    @Volatile private var verificationStopped = false
+    private var idleJob: Job? = null
     private var pendingVerification: Pair<String?, String>? = null
 
     init {
@@ -73,7 +73,15 @@ internal class WebSession(context: Context, val state: SessionState,
             override fun onActivityStarted(a: Activity) = Unit
             override fun onActivityResumed(a: Activity) = Unit
             override fun onActivityPaused(a: Activity) = Unit
-            override fun onActivityStopped(a: Activity) = Unit
+            override fun onActivityStopped(a: Activity) {
+                if (owner === a) {
+                    activeJob?.cancel(CancellationException("CloudStream przeszedł w tło"))
+                    dialog?.dismiss()
+                    blank()
+                    popups.values.toList().forEach { it.dismiss() }
+                    state.note("Aplikacja w tle; zakończono dokument strony")
+                }
+            }
             override fun onActivitySaveInstanceState(a: Activity, b: Bundle) = Unit
         })
     }
@@ -100,7 +108,7 @@ internal class WebSession(context: Context, val state: SessionState,
             webChromeClient = chrome()
             webViewClient = object : WebViewClient() {
                 override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) {
-                    if (manual && verificationStopped && url != "about:blank") { view.stopLoading(); return }
+                    if (!documentActive && url != "about:blank") { view.stopLoading(); return }
                     if (manual && (Site.official(url) || Site.bridge(url))) {
                         documentActive = true
                         target = DocumentTarget(url, currentDocument?.documentId)
@@ -146,19 +154,27 @@ internal class WebSession(context: Context, val state: SessionState,
                 }
                 override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
                     val url = request.url.toString()
-                    if (verificationStopped && (Site.official(url) || Site.bridge(url)))
-                        return WebResourceResponse("text/plain", "UTF-8", 409, "Verification stopped", emptyMap(), java.io.ByteArrayInputStream(ByteArray(0)))
+                    // This applies to automatic stops, cancellation, idle pages and closed windows too.
+                    // stopLoading/about:blank alone cannot reject a request already queued by a script.
+                    if (!documentActive && request.url.scheme in setOf("https", "http")) {
+                        state.request("zatrzymane")
+                        return WebResourceResponse("text/plain", "UTF-8", 409, "Document closed", emptyMap(), java.io.ByteArrayInputStream(ByteArray(0)))
+                    }
                     val generation = epoch
                     if (documentActive && (request.isForMainFrame || Site.wrapper(url)) && request.method == "GET" &&
                         !budget.record(url, SystemClock.elapsedRealtime())) {
+                        state.request("zatrzymane")
                         scope.launch { if (epoch == generation && documentActive)
                             stop("Strona powtarza weryfikację lub przekierowanie", Site.wrapper(url)) }
                         return WebResourceResponse("text/plain", "UTF-8", 429, "Navigation stopped", emptyMap(),
                             java.io.ByteArrayInputStream(ByteArray(0)))
                     }
                     // Observe only the route, never the verification token or request body.
-                    if (Site.official(url) && request.url.path == "/watch/verify.php")
+                    if (Site.official(url) && request.url.path == "/watch/verify.php") {
+                        state.request("weryfikacja")
                         state.note("Strona wysłała ${request.method} do weryfikacji odtwarzacza")
+                    } else if (Site.wrapper(url)) state.request("ramki")
+                    else if (request.isForMainFrame && (Site.official(url) || Site.bridge(url))) state.request("strony")
                     return null
                 }
             }
@@ -179,6 +195,7 @@ internal class WebSession(context: Context, val state: SessionState,
             return false
         }
         override fun onJsAlert(view: WebView, url: String, message: String, result: JsResult): Boolean {
+            if (view !== web || !documentActive) { result.cancel(); return true }
             if (manual && Site.wrapper(url) && message.trim() in setOf("Wystąpił błąd! Spróbuj ponownie.", "Wystąpił błąd.")) {
                 // The site's verify.php error callback otherwise immediately reloads the challenge.
                 stop(if (message.contains('!')) "Ekino odrzuciło potwierdzenie CAPTCHA; weryfikacja nie została przyjęta przez serwer"
@@ -250,13 +267,13 @@ internal class WebSession(context: Context, val state: SessionState,
 
     /** about:blank terminates page timers as well as network loads; stopLoading alone does not. */
     private fun blank() {
+        idleJob?.cancel(); idleJob = null
         epoch++
         documentActive = false; activePlayer = null; external = null; bridgeNavigation = false
         web?.stopLoading(); web?.loadUrl("about:blank")
     }
 
     private fun stop(message: String, player: Boolean = false, persistent: Boolean = true) {
-        verificationStopped = manual
         failure = message
         if (persistent) state.pause(message, player) else state.temporaryFailure(message)
         info?.text = "$message. Automatyczne ładowanie zatrzymano."
@@ -265,6 +282,7 @@ internal class WebSession(context: Context, val state: SessionState,
     }
 
     private fun closeBrowser(renderGone: Boolean = false) {
+        idleJob?.cancel(); idleJob = null
         pendingVerification = null
         epoch++
         documentActive = false; activePlayer = null
@@ -299,7 +317,7 @@ internal class WebSession(context: Context, val state: SessionState,
     private fun begin(url: String, bridge: Boolean = false) {
         check(Site.official(url) || Site.bridge(url))
         val browser = ensure()
-        verificationStopped = false
+        idleJob?.cancel(); idleJob = null
         failure = null; external = null; bridgeNavigation = bridge; activePlayer = null
         target = DocumentTarget(url, currentDocument?.documentId)
         documentActive = true
@@ -319,6 +337,7 @@ internal class WebSession(context: Context, val state: SessionState,
 
     private suspend fun <T> automatic(label: String, timeout: Long = 20_000, block: suspend () -> T): T = withContext(Dispatchers.Main) {
         checkAutomatic()
+        idleJob?.cancel(); idleJob = null
         stage(label)
         activeJob = currentCoroutineContext()[Job]
         try {
@@ -336,7 +355,19 @@ internal class WebSession(context: Context, val state: SessionState,
         } catch (error: Exception) {
             blank()
             throw error
-        } finally { activeJob = null }
+        } finally {
+            activeJob = null
+            if (documentActive && !manual) {
+                val generation = epoch
+                idleJob = scope.launch {
+                    delay(2_000)
+                    if (epoch == generation && activeJob == null && !manual && documentActive) {
+                        state.note("Odczyt zakończony; zamknięto bezczynny dokument strony")
+                        blank()
+                    }
+                }
+            }
+        }
     }
 
     private fun checkFailure() {
@@ -379,16 +410,17 @@ internal class WebSession(context: Context, val state: SessionState,
     }
 
     override suspend fun search(query: String): WebPage = automatic("wyszukiwanie: otwarcie strony") {
-        val current = if (documentActive) snapshot()?.takeIf { it.parsed && Site.official(it.page.url) } else null
-        if (current == null) { begin("${Site.ENTRY}/"); loaded() }
-        else { checkSnapshot(current); currentDocument = current }
+        // Keep the established origin after an idle page has been unloaded. A browser POST does
+        // not need another homepage GET just to create a form in its DOM.
+        if (currentDocument?.page?.url?.let(Site::official) != true) { begin("${Site.ENTRY}/"); loaded() }
+        val origin = Site.origin(requireNotNull(currentDocument).page.url)
         failure = null; external = null; bridgeNavigation = false; budget.reset(); epoch++
         target = DocumentTarget(null, currentDocument?.documentId)
         documentActive = true; activePlayer = null
         stage("wyszukiwanie: wyniki")
-        val value = mapper.writeValueAsString(query.take(200))
-        evaluate("""(function(){var f=document.createElement('form');f.method='POST';f.action='/search/qf';var q=document.createElement('input');q.name='q';q.value=$value;f.appendChild(q);document.body.appendChild(f);HTMLFormElement.prototype.submit.call(f);return true;})()""")
-        state.note("Wysłano formularz wyszukiwania w przeglądarce")
+        val form = "q=" + java.net.URLEncoder.encode(query.take(200), "UTF-8")
+        ensure().postUrl("$origin/search/qf", form.toByteArray(Charsets.UTF_8))
+        state.note("Wysłano formularz wyszukiwania w przeglądarce bez dodatkowego GET strony głównej")
         loaded()
     }
 
@@ -398,18 +430,27 @@ internal class WebSession(context: Context, val state: SessionState,
             begin(material); loaded()
         }
         failure = null; budget.reset()
-        val h = mapper.writeValueAsString(player.host); val id = mapper.writeValueAsString(player.id)
         stage("odtwarzacz: skrypt strony")
+        var selected: Player? = null
         while (true) {
             checkFailure()
             val value = snapshot()
             if (value != null && Site.publicPage(value.page.url) == Site.publicPage(material)) {
                 checkSnapshot(value)
-                if (value.parsed && value.hasShowPlayer) break
+                if (value.parsed && value.hasShowPlayer) {
+                    val controls = Catalogue.players(value.page)
+                    selected = controls.firstOrNull { it.identity == player.identity }
+                        ?: controls.filter { it.host == player.host && it.languageKey == player.languageKey }.singleOrNull()
+                        ?: throw SiteProblem("Ekino TV: wybrany odtwarzacz zmienił się lub nie jest już dostępny na stronie.")
+                    if (selected.identity != player.identity) state.note("Odświeżono kontrolkę odtwarzacza po ponownym wczytaniu materiału")
+                    break
+                }
             }
             delay(200)
         }
-        activePlayer = player
+        val currentPlayer = requireNotNull(selected)
+        val h = mapper.writeValueAsString(currentPlayer.host); val id = mapper.writeValueAsString(currentPlayer.id)
+        activePlayer = currentPlayer
         val click = evaluate("""(function(){if(typeof window.ShowPlayer!=='function')return false;var href='#'+$id+'-'+$h;var tab=Array.from(document.querySelectorAll('.players a[href]')).find(function(a){return a.getAttribute('href')===href;});if(tab)tab.click();window.ShowPlayer($h,$id);return true;})()""")
         checkFailure()
         if (click != "true") throw SiteProblem("Ekino TV: strona zmieniła sposób uruchamiania odtwarzacza.")
@@ -422,7 +463,7 @@ internal class WebSession(context: Context, val state: SessionState,
             val value = snapshot()
             if (value == null || Site.publicPage(value.page.url) != Site.publicPage(material)) { delay(250); continue }
             checkSnapshot(value)
-            val wrapper = value.frames.firstOrNull { it.active && Site.wrapper(it.url) && Site.path(it.url).endsWith("/${player.identity}") }
+            val wrapper = value.frames.firstOrNull { it.active && Site.wrapper(it.url) && Site.path(it.url).endsWith("/${currentPlayer.identity}") }
             if (wrapper != null && Catalogue.embeds(wrapper).isNotEmpty()) return@automatic wrapper
             if (wrapper != null) {
                 val now = SystemClock.elapsedRealtime()

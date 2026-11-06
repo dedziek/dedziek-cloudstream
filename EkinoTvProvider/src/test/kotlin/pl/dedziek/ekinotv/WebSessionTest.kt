@@ -37,14 +37,23 @@ import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.Implements
+import org.robolectric.annotation.Implementation
 import org.robolectric.shadows.ShadowAlertDialog
 import org.robolectric.shadows.ShadowDialog
 import org.robolectric.util.ReflectionHelpers
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
-@Config(manifest = Config.NONE, sdk = [28])
+@Config(manifest = Config.NONE, sdk = [28], shadows = [WebSessionTest.PostingWebView::class])
 class WebSessionTest {
+    @Implements(WebView::class)
+    class PostingWebView : org.robolectric.shadows.ShadowWebView() {
+        var post: Pair<String, ByteArray>? = null
+        @Implementation fun postUrl(url: String, data: ByteArray) { post = url to data }
+    }
+
+    private fun posted(web: WebView) = org.robolectric.shadow.api.Shadow.extract<PostingWebView>(web).post!!
     private val controller = Robolectric.buildActivity(Activity::class.java)
     private lateinit var activity: Activity
     private lateinit var state: SessionState
@@ -92,16 +101,70 @@ class WebSessionTest {
         return button
     }
 
-    private fun request(url: String, main: Boolean = false) = object : WebResourceRequest {
+    private fun request(url: String, main: Boolean = false, method: String = "GET") = object : WebResourceRequest {
         override fun getUrl(): Uri = Uri.parse(url)
         override fun isForMainFrame() = main
         override fun isRedirect() = false
         override fun hasGesture() = false
-        override fun getMethod() = "GET"
+        override fun getMethod() = method
         override fun getRequestHeaders(): Map<String, String> = emptyMap()
     }
 
     private fun browser() = views(activity.findViewById(android.R.id.content)).filterIsInstance<WebView>().single()
+
+    @Test fun automaticGateBlocksLateGetAndVerificationPostEvenAfterTheNavigationIsBlanked() = runTest {
+        val pending = async(UnconfinedTestDispatcher(testScheduler)) {
+            runCatching { session.page("https://ekino.ws/movie/show/test/1") }
+        }
+        val web = browser()
+        reply(web, "https://ekino.ws/movie/show/test/1", 1.0, html = "<title>Just a moment...</title>")
+        assertTrue(pending.await().exceptionOrNull() is SiteProblem)
+        for (req in listOf(request("https://ekino.ws/watch/f/player/late"),
+            request("https://ekino.ws/watch/verify.php", method = "POST"))) {
+            assertNotNull("A late request escaped after automatic stop", web.webViewClient.shouldInterceptRequest(web, req))
+        }
+    }
+
+    @Test fun closingVerificationCannotBeUndoneByALatePageStartedCallback() {
+        val (window, web) = open()
+        window.dismiss()
+        shadowOf(Looper.getMainLooper()).idle()
+        web.webViewClient.onPageStarted(web, "https://ekino.ws/watch/f/player/late", null)
+        assertNotNull(web.webViewClient.shouldInterceptRequest(web,
+            request("https://ekino.ws/watch/verify.php", method = "POST")))
+    }
+
+    @Test fun aReadCatalogueIsUnloadedAfterIdleAndCannotKeepRequestingInTheBackground() = runTest {
+        val page = async(UnconfinedTestDispatcher(testScheduler)) { session.page("https://ekino.ws/movie/cat/") }
+        val web = browser()
+        reply(web, "https://ekino.ws/movie/cat/", 1.0)
+        page.await()
+        advanceTimeBy(2_001); runCurrent()
+        assertEquals("about:blank", shadowOf(web).lastLoadedUrl)
+        assertFalse(state.paused)
+        assertNotNull(web.webViewClient.shouldInterceptRequest(web, request("https://ad.example/refresh")))
+    }
+
+    private fun controls(id: String) = "<h1 class=title>Film</h1><div class=playerContainer>" +
+        "<ul class=players><li><a href='#$id-player'><i title='Lektor PL'></i></a></li></ul>" +
+        "<a onclick=\"ShowPlayer('player','$id')\">Oglądaj</a></div>"
+
+    @Test fun reloadedMaterialResolvesItsCurrentPlayerInsteadOfUsingCachedControlIds() = runTest {
+        val dispatcher = UnconfinedTestDispatcher(testScheduler)
+        val url = "https://ekino.ws/movie/show/test/1"
+        val old = async(dispatcher) { session.page(url) }; val web = browser()
+        reply(web, url, 1.0, html = controls("old-id")); old.await(); session.finishPlayback()
+        val frame = async(dispatcher) { session.player(url, Player("player", "old-id", "Lektor PL")) }
+        reply(web, url, 2.0, html = controls("fresh-id"))
+        reply(web, url, 2.0, html = controls("fresh-id"))
+        val script = shadowOf(web).lastEvaluatedJavascript
+        assertTrue(script.contains("fresh-id")); assertFalse(script.contains("old-id"))
+        shadowOf(web).lastEvaluatedJavascriptCallback.onReceiveValue("true")
+        val wrapper = WebPage("https://ekino.ws/watch/f/player/fresh-id",
+            "<a target=_blank href='https://host.example/e/video'>wideo</a>")
+        reply(web, url, 2.0, html = controls("fresh-id"), frames = listOf(wrapper))
+        assertEquals(wrapper.url, frame.await().url)
+    }
 
     @Test fun visibleHttp403CanRenderTheChallengeInsteadOfBeingBlanked() {
         val (dialog, web) = open()
@@ -182,7 +245,7 @@ class WebSessionTest {
         assertTrue(shownAction(options, "Kopiuj raport").performClick())
         val clipboard = activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val report = clipboard.primaryClip!!.getItemAt(0).text.toString()
-        assertTrue(report.contains("Ekino TV v5"))
+        assertTrue(report.contains("Ekino TV v6"))
         assertTrue(report.contains("CAPTCHA odtwarzacza"))
         assertTrue(restored.paused)
         assertTrue(views(activity.findViewById(android.R.id.content)).none { it is WebView })
@@ -281,11 +344,11 @@ class WebSessionTest {
                 assertFalse(page.isCompleted)
                 advanceTimeBy(200); runCurrent()
             }
-            reply(web, material, index.toDouble())
+            reply(web, material, index.toDouble(), html = controls("id$index"))
             assertEquals(material, page.await().url)
             val player = Player("player", "id$index", "Lektor PL")
             val frame = async(dispatcher) { session.player(material, player) }
-            reply(web, material, index.toDouble())
+            reply(web, material, index.toDouble(), html = controls("id$index"))
             assertTrue(shadowOf(web).lastEvaluatedJavascript.contains("window.ShowPlayer"))
             shadowOf(web).lastEvaluatedJavascriptCallback.onReceiveValue("true")
             val wrapper = WebPage("https://ekino.ws/watch/f/${player.identity}",
@@ -402,17 +465,16 @@ class WebSessionTest {
         assertFalse(state.paused); assertNotNull(state.rejection())
     }
 
-    @Test fun searchAfterPlaybackBootstrapsARealPageAndNeverReturnsThePreviousSearchDocument() = runTest {
+    @Test fun searchAfterPlaybackPostsInTheEstablishedBrowserWithoutAnotherHomepageGetOrStaleResults() = runTest {
         val dispatcher = UnconfinedTestDispatcher(testScheduler)
         val first = async(dispatcher) { session.page("https://ekino.ws/movie/show/first/1") }
         val web = browser(); reply(web, "https://ekino.ws/movie/show/first/1", 1.0); first.await()
         session.finishPlayback()
         val search = async(dispatcher) { session.search("Zabójcza") }
-        assertEquals("${Site.ENTRY}/", shadowOf(web).lastLoadedUrl)
-        reply(web, "https://ekino.ws/", 2.0)
-        assertTrue(shadowOf(web).lastEvaluatedJavascript.contains("HTMLFormElement.prototype.submit"))
-        shadowOf(web).lastEvaluatedJavascriptCallback.onReceiveValue("true")
-        reply(web, "https://ekino.ws/", 2.0)
+        assertEquals("about:blank", shadowOf(web).lastLoadedUrl)
+        assertEquals("https://ekino.ws/search/qf", posted(web).first)
+        assertEquals("q=Zab%C3%B3jcza", posted(web).second.toString(Charsets.UTF_8))
+        reply(web, "https://ekino.ws/movie/show/first/1", 1.0)
         assertFalse(search.isCompleted)
         advanceTimeBy(200); runCurrent()
         val url = "https://ekino.ws/search/qf/proba"
@@ -420,13 +482,49 @@ class WebSessionTest {
         assertEquals(url, search.await().url)
 
         val second = async(dispatcher) { session.search("Powrót") }
-        reply(web, url, 3.0) // Inspect the existing page before submitting its form.
-        shadowOf(web).lastEvaluatedJavascriptCallback.onReceiveValue("true")
+        assertEquals("q=Powr%C3%B3t", posted(web).second.toString(Charsets.UTF_8))
         reply(web, url, 3.0) // Same search path, but this is still the old document.
         assertFalse(second.isCompleted)
         advanceTimeBy(200); runCurrent()
         reply(web, url, 4.0)
         assertEquals(url, second.await().url)
         assertNull(state.rejection())
+    }
+
+    @Test fun aColdSearchEstablishesTheSiteOnceAndPostsEncodedFormDataWithoutRunningAFormScript() = runTest {
+        val search = async(UnconfinedTestDispatcher(testScheduler)) { session.search("A&B + ") }
+        val web = browser()
+        assertEquals("${Site.ENTRY}/", shadowOf(web).lastLoadedUrl)
+        reply(web, "https://ekino.ws/", 1.0)
+        assertEquals("https://ekino.ws/search/qf", posted(web).first)
+        assertEquals("q=A%26B+%2B+", posted(web).second.toString(Charsets.UTF_8))
+        reply(web, "https://ekino.ws/search/qf/result", 2.0)
+        assertEquals("https://ekino.ws/search/qf/result", search.await().url)
+    }
+
+    @Test fun activityStoppingCancelsThePendingOperationAndDisallowsAllLateRequests() = runTest {
+        val job = launch(UnconfinedTestDispatcher(testScheduler)) { session.page("${Site.ENTRY}/") }
+        val web = browser()
+        ReflectionHelpers.callInstanceMethod<Unit>(activity.application, "dispatchActivityStopped",
+            ReflectionHelpers.ClassParameter.from(Activity::class.java, activity))
+        job.join()
+        assertTrue(job.isCancelled)
+        assertFalse(state.paused)
+        assertEquals("about:blank", shadowOf(web).lastLoadedUrl)
+        assertNotNull(web.webViewClient.shouldInterceptRequest(web, request("https://ekino.ws/")))
+    }
+
+    @Test fun anExplicitNewNavigationReopensTheNetworkAfterIdleWithoutRejectingChallengeResources() = runTest {
+        val dispatcher = UnconfinedTestDispatcher(testScheduler)
+        val first = async(dispatcher) { session.page("${Site.ENTRY}/") }
+        val web = browser(); reply(web, "https://ekino.ws/", 1.0); first.await()
+        advanceTimeBy(2_001); runCurrent()
+        assertNotNull(web.webViewClient.shouldInterceptRequest(web, request("https://ekino.ws/late")))
+        val next = async(dispatcher) { session.page("https://ekino.ws/movie/show/next/2") }
+        assertNull(web.webViewClient.shouldInterceptRequest(web, request("https://ekino.ws/movie/show/next/2", true)))
+        assertNull(web.webViewClient.shouldInterceptRequest(web, request("https://challenges.cloudflare.com/frame")))
+        reply(web, "https://ekino.ws/movie/show/next/2", 2.0)
+        next.await()
+        assertTrue(state.report().contains("zatrzymane=1"))
     }
 }

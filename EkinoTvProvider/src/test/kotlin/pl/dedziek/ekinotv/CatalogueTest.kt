@@ -29,6 +29,14 @@ class CatalogueTest {
         assertEquals("Lektor PL", Catalogue.players(fixture("players")).first().language)
     }
 
+    @Test fun tooltipInitializationDoesNotEraseThePlayerLanguage() {
+        val source = fixture("players")
+        for (attribute in listOf("original-title", "data-original-title")) {
+            val liveDom = WebPage(movie, source.html.replace("i title=", "i title='' $attribute="))
+            assertEquals(listOf("Lektor PL", "Napisy PL"), Catalogue.players(liveDom).map { it.language })
+        }
+    }
+
     @Test fun acceptsOnlyOfficialHttpsPagesWithoutChangingTheirOrigins() {
         assertTrue(Site.official("https://ekino-tv.pl/"))
         assertTrue(Site.material(movie))

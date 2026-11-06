@@ -16,7 +16,7 @@ internal class Playback(
         var found = false
         try {
             for (player in players) {
-                if (player.languageKey.isNotEmpty() && player.languageKey in languages) continue
+                if (player.languageKey in languages) continue
                 val wrapper = browser.player(material.url, player)
                 val links = Catalogue.embeds(wrapper).take(4)
                 note("${player.host}: odnośniki=${links.size}")
@@ -40,7 +40,7 @@ internal class Playback(
                     }
                     if (playerFound) break
                 }
-                if (playerFound && player.languageKey.isNotEmpty()) languages.add(player.languageKey)
+                if (playerFound) languages.add(player.languageKey)
             }
         } catch (error: CancellationException) { throw error }
         catch (error: SiteProblem) {
