@@ -40,10 +40,10 @@
     "name": "AnimeWatchProvider"
   },
   {
-    "fileHash": "sha256-004a54a319f32a16f2a3bd34d0b2b9e71eaca4ee80d742052ce0b9a3d21f932c",
+    "fileHash": "sha256-02687d5a76577bbec415652ce497c322e070f7a32022dd4ec74200b312845dec",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/dedziek/dedziek-cloudstream",
-    "fileSize": 92956,
+    "fileSize": 94321,
     "status": 3,
     "language": "pl",
     "authors": [
@@ -53,7 +53,7 @@
       "Movie",
       "TvSeries"
     ],
-    "version": 4,
+    "version": 5,
     "internalName": "EkinoTvProvider",
     "description": "Ekino TV: nowy dodatek do ekino-tv.pl. Filmy, seriale, wspólna sesja przeglądarki i ręczna weryfikacja. Wersja testowa.",
     "url": "https://raw.githubusercontent.com/dedziek/dedziek-cloudstream/builds/EkinoTvProvider.cs3",
