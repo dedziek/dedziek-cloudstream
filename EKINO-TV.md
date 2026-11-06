@@ -1,12 +1,20 @@
 # Ekino TV
 
-Dodatek **EkinoTvProvider v3**, źródło **Ekino TV**. Napisany od nowa dla `https://ekino-tv.pl`; przeglądarka obsługuje oficjalne przekierowanie do `https://ekino.ws`. To osobna paczka i klasa dodatku. Kod starego EkinoProvider v1–v13 został usunięty z aktualnej gałęzi, a historia zmian pozostaje dostępna w Git.
+Dodatek **EkinoTvProvider v4**, źródło **Ekino TV**. Napisany od nowa dla `https://ekino-tv.pl`; przeglądarka obsługuje oficjalne przekierowanie do `https://ekino.ws`. To osobna paczka i klasa dodatku. Kod starego EkinoProvider v1–v13 został usunięty z aktualnej gałęzi, a historia zmian pozostaje dostępna w Git.
 
 ## Instalacja
 
 1. Usuń **EkinoProvider / Ekino** w rozszerzeniach CloudStream. Zainstalowanej kopii na telefonie nie usuwa wycofanie paczki z GitHuba.
 2. Odśwież repozytorium **Dedziek CloudStream** i zainstaluj **EkinoTvProvider**. Możesz też pobrać [nową paczkę](https://raw.githubusercontent.com/dedziek/dedziek-cloudstream/builds/EkinoTvProvider.cs3).
 3. Wybierz źródło **Ekino TV**. Wymagany jest Android 6+ z działającym Android System WebView oraz aktualny CloudStream Beta. Zgodność z konkretnym Android TV nie została sprawdzona.
+
+## V4 — widoczne ustawienia i dostęp do weryfikacji
+
+W v1–v3 ustawienia łączyły `setMessage()` z `setItems()`. Android wyświetlał komunikat i „Zamknij”, a lista akcji była niewidoczna. To błąd nowego menu. V4 używa jednego przewijanego widoku z osobnymi przyciskami **Otwórz weryfikację**, **Otwórz stronę / logowanie** i **Kopiuj raport**.
+
+Po aktualizacji do v4 i ponownym uruchomieniu CloudStream otwórz zębatkę dodatku i wybierz **Otwórz weryfikację**. Otworzy się zapamiętany film; gdy nie ma zapamiętanego materiału, otworzy się strona główna. Wybierz odtwarzacz na stronie i wykonaj weryfikację. Dopiero gdy dostęp do ramki jest uzyskany, wybierz **Sprawdź i zamknij**. Samo otwarcie okna lub zielony widget CAPTCHA nie zwalniają pauzy. **Kopiuj raport** działa również wtedy, gdy automatyczne próby są wstrzymane.
+
+Stary moduł `EkinoProvider` został usunięty z bieżącego kodu, katalogu i paczki. Nazwa lokalnego zapisu `dedziek_ekino_tv_v1` dotyczy danych pierwszej wersji nowego Ekino TV. Pozostaje stabilna, aby aktualizacja zachowała publiczny adres materiału i stan wymaganej weryfikacji. Migracja zwykłego timeoutu v1 usuwa błędne wstrzymanie nowego dodatku; nie pobiera sesji starego EkinoProvider.
 
 ## V3 — spóźnione błędy poprzedniego filmu
 
@@ -34,7 +42,7 @@ Całe operacje są wykonywane kolejno. Jedna próba sprawdza najwyżej cztery zw
 
 ## Weryfikacja lub logowanie
 
-Otwórz zębatkę dodatku → **Otwórz ostatni materiał**. Wybierz zwykły odtwarzacz na stronie i wykonaj weryfikację. Naciśnij **Sprawdź i zamknij**, dopiero gdy odtwarzacz udostępni link. Dodatek sprawdza zawartość ramki, zamiast uznawać sam zielony znacznik CAPTCHA lub obecność cookies za potwierdzenie dostępu. Przycisk **Otwórz stronę / logowanie** udostępnia zwykły formularz witryny; konto nie jest wymagane przez dodatek.
+Otwórz zębatkę dodatku → **Otwórz weryfikację**. Wybierz zwykły odtwarzacz na stronie i wykonaj weryfikację. Naciśnij **Sprawdź i zamknij**, dopiero gdy odtwarzacz udostępni link. Dodatek sprawdza zawartość ramki, zamiast uznawać sam zielony znacznik CAPTCHA lub obecność cookies za potwierdzenie dostępu. Przycisk **Otwórz stronę / logowanie** udostępnia zwykły formularz witryny; konto nie jest wymagane przez dodatek.
 
 Przy powtarzającej się nawigacji do tego samego dokumentu przeglądarka zatrzymuje ładowanie. Ograniczenie wynosi trzy żądania danego dokumentu w ciągu 15 sekund i najwyżej sześć do ręcznego ponowienia; wewnętrzne ramki Cloudflare nie są do tego wliczane. Okno przerywa oczekiwanie także po trzech minutach. **Wczytaj ponownie** to świadoma, ręczna próba użytkownika. Zamknięcie okna bez zakończenia weryfikacji pozostawia pauzę. Pauza i publiczny adres ostatniego materiału przetrwają restart aplikacji.
 
@@ -48,7 +56,7 @@ Link pomocy Cloudflare można otworzyć przez świadome kliknięcie w widocznej 
 
 Testy lokalne obejmują parser katalogu i seriali, zwykłe odtwarzacze, CAPTCHA w ramce przy HTTP 200, warunki wznowienia sesji, utrwalanie pauzy, limit ponownej nawigacji, zachowanie znalezionego źródła, protokół Byse i uwierzytelnienie jego odpowiedzi. Nie zastępują odtwarzania filmu na fizycznym telefonie.
 
-Walidację v2 i v3 opisano w [analizie zgłoszenia](EKINO-TV-AUDIT.md). Testy sterują rzeczywistym kodem dodatku i callbackami WebView; nie są próbą odtwarzania filmu na fizycznym telefonie.
+Walidację kolejnych wersji opisano w [analizie zgłoszenia](EKINO-TV-AUDIT.md). Testy sterują rzeczywistym kodem dodatku i callbackami WebView; nie są próbą odtwarzania filmu na fizycznym telefonie.
 
 [Analiza całej historii v1–v13 i zgłoszeń](EKINO-TV-AUDIT.md).
 

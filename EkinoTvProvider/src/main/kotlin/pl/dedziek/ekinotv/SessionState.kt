@@ -48,7 +48,7 @@ internal class SessionState(context: Context, private val clock: () -> Long = { 
     }
 
     fun rejection(): String? {
-        if (paused) return "Ekino TV: $reason. Otwórz ustawienia dodatku → Otwórz ostatni materiał. Po sprawdzeniu strony naciśnij „Sprawdź i zamknij”."
+        if (paused) return "Ekino TV: $reason. Otwórz ustawienia dodatku → „${SettingsUi.VERIFY}”. Wybierz odtwarzacz na stronie, a po weryfikacji naciśnij „Sprawdź i zamknij”."
         val remaining = retryAt - clock()
         return if (remaining > 0) "Ekino TV: $transientReason. Spróbuj ponownie za ${(remaining + 999) / 1000} s. Dodatek nie ponawia żądań w tle." else null
     }
@@ -64,7 +64,7 @@ internal class SessionState(context: Context, private val clock: () -> Long = { 
     }
 
     @Synchronized fun report(): String = buildString {
-        append("Ekino TV v3 · raport\nSilnik: Android System WebView\n")
+        append("Ekino TV v4 · raport\nSilnik: Android System WebView\n")
         val cooldown = (retryAt - clock()).coerceAtLeast(0)
         append("Automatyczne operacje: ${when {
             paused -> "wstrzymane"
