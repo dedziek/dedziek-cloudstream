@@ -1,12 +1,18 @@
 # Ekino TV
 
-Dodatek **EkinoTvProvider v2**, źródło **Ekino TV**. Napisany od nowa dla `https://ekino-tv.pl`; przeglądarka obsługuje oficjalne przekierowanie do `https://ekino.ws`. To osobna paczka i klasa dodatku. Kod starego EkinoProvider v1–v13 został usunięty z aktualnej gałęzi, a historia zmian pozostaje dostępna w Git.
+Dodatek **EkinoTvProvider v3**, źródło **Ekino TV**. Napisany od nowa dla `https://ekino-tv.pl`; przeglądarka obsługuje oficjalne przekierowanie do `https://ekino.ws`. To osobna paczka i klasa dodatku. Kod starego EkinoProvider v1–v13 został usunięty z aktualnej gałęzi, a historia zmian pozostaje dostępna w Git.
 
 ## Instalacja
 
 1. Usuń **EkinoProvider / Ekino** w rozszerzeniach CloudStream. Zainstalowanej kopii na telefonie nie usuwa wycofanie paczki z GitHuba.
 2. Odśwież repozytorium **Dedziek CloudStream** i zainstaluj **EkinoTvProvider**. Możesz też pobrać [nową paczkę](https://raw.githubusercontent.com/dedziek/dedziek-cloudstream/builds/EkinoTvProvider.cs3).
 3. Wybierz źródło **Ekino TV**. Wymagany jest Android 6+ z działającym Android System WebView oraz aktualny CloudStream Beta. Zgodność z konkretnym Android TV nie została sprawdzona.
+
+## V3 — spóźnione błędy poprzedniego filmu
+
+Podczas automatycznego przełączania filmów WebView może przez chwilę zwracać poprzedni adres. V3 przypisuje błędy do adresu żądanej strony i wybranego odtwarzacza. Spóźnione HTTP 403 albo błąd certyfikatu poprzedniego filmu nie zatrzymują wtedy następnego. Odmowa dostępu i błąd HTTPS dotyczące aktualnie otwieranego materiału nadal przerywają ładowanie; błędny certyfikat jest zawsze odrzucany.
+
+Jeżeli masz v1 lub v2, zaktualizuj ten sam EkinoTvProvider do v3 i uruchom ponownie CloudStream. V3 zawiera opisane poniżej poprawki timeoutu z v2.
 
 ## V2 — przełączanie filmów i limit czasu
 
@@ -42,7 +48,7 @@ Link pomocy Cloudflare można otworzyć przez świadome kliknięcie w widocznej 
 
 Testy lokalne obejmują parser katalogu i seriali, zwykłe odtwarzacze, CAPTCHA w ramce przy HTTP 200, warunki wznowienia sesji, utrwalanie pauzy, limit ponownej nawigacji, zachowanie znalezionego źródła, protokół Byse i uwierzytelnienie jego odpowiedzi. Nie zastępują odtwarzania filmu na fizycznym telefonie.
 
-Walidację v2 opisano w [analizie zgłoszenia](EKINO-TV-AUDIT.md). Testy sterują rzeczywistym kodem dodatku i callbackami WebView; nie są próbą odtwarzania filmu na fizycznym telefonie.
+Walidację v2 i v3 opisano w [analizie zgłoszenia](EKINO-TV-AUDIT.md). Testy sterują rzeczywistym kodem dodatku i callbackami WebView; nie są próbą odtwarzania filmu na fizycznym telefonie.
 
 [Analiza całej historii v1–v13 i zgłoszeń](EKINO-TV-AUDIT.md).
 

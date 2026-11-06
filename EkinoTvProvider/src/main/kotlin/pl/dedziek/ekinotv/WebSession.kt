@@ -128,7 +128,7 @@ internal class WebSession(context: Context, val state: SessionState,
                 }
                 override fun onReceivedSslError(view: WebView, handler: SslErrorHandler, error: SslError) {
                     handler.cancel()
-                    if (documentActive && (Site.official(error.url) || Site.bridge(error.url)))
+                    if (documentActive && (currentPageUrl(error.url) || currentPlayerUrl(error.url)))
                         stop("Błąd certyfikatu HTTPS · $phase", persistent = false)
                 }
                 override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
@@ -219,10 +219,15 @@ internal class WebSession(context: Context, val state: SessionState,
     private fun currentRequest(view: WebView, request: WebResourceRequest): Boolean {
         if (!documentActive || view !== web) return false
         val url = request.url.toString()
-        return if (request.isForMainFrame) (Site.official(url) || Site.bridge(url)) &&
-            (manual || url == view.url || target?.matchesUrl(url) == true)
-        else Site.wrapper(url) && (manual || activePlayer?.let { Site.path(url).endsWith("/${it.identity}") } == true)
+        return if (request.isForMainFrame) currentPageUrl(url) else currentPlayerUrl(url)
     }
+
+    // getUrl() can still expose the previous document while the next navigation is pending.
+    private fun currentPageUrl(url: String) = (Site.official(url) || Site.bridge(url)) &&
+        (manual || target?.matchesUrl(url) == true)
+
+    private fun currentPlayerUrl(url: String) = Site.wrapper(url) &&
+        (manual || activePlayer?.let { Site.path(url).endsWith("/${it.identity}") } == true)
 
     /** about:blank terminates page timers as well as network loads; stopLoading alone does not. */
     private fun blank() {
@@ -433,7 +438,7 @@ internal class WebSession(context: Context, val state: SessionState,
     fun settings(context: Context) {
         val activity = context as? Activity ?: activitySource() ?: return
         activity.runOnUiThread {
-            AlertDialog.Builder(activity).setTitle("Ekino TV v2")
+            AlertDialog.Builder(activity).setTitle("Ekino TV v3")
                 .setMessage(if (state.paused) "Wstrzymano: ${state.reason}" else "Katalog i weryfikacja korzystają z tej samej przeglądarki.")
                 .setItems(arrayOf("Otwórz ostatni materiał", "Otwórz stronę / logowanie", "Kopiuj raport")) { _, index ->
                     when (index) {
