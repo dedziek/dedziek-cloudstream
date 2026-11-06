@@ -65,3 +65,16 @@ Dalsza kontrola v2 ujawniła lukę w obsłudze zdarzeń: test v2 obejmował bł�
 Nowy test w tym stanie otrzymał na v2 trwałe wstrzymanie po HTTP 403 poprzedniego materiału, mimo rozpoczętej nawigacji do innego filmu. V3 ocenia zgodność z żądaną stroną, zamiast uznawać stary `getUrl()` za potwierdzenie bieżącego żądania. Doprecyzowano również przypisywanie błędu certyfikatu do aktualnej strony lub ramki. Każdy wadliwy certyfikat jest odrzucany; błąd poprzedniego filmu nie przerywa kolejnego.
 
 Walidacja v3: kompilacja i **40 testów Ekino TV — 0 błędów i pominięć**. Nowe przypadki sprawdzają zarówno ignorowanie starego HTTP/TLS, jak i zatrzymanie przy rzeczywistym błędzie nowego materiału. Test HTTP najpierw wykazał usterkę na v2, a po poprawce przeszedł. Są to kontrolowane zdarzenia przeglądarki; nie ustalono, czy ten dodatkowy scenariusz występował na telefonie użytkownika. Nie ponawiano żądań do Ekino.
+
+
+## Ekino TV v4 — akcje niewidoczne w ustawieniach
+
+Zgłoszenie z 6 listopada, 08:36:24: zachowane wstrzymanie „CAPTCHA odtwarzacza” blokowało automatyczny test; użytkownik widział w ustawieniach tylko tytuł v3, status i „Zamknij”. W kodzie nowego menu znaleziono jednoczesne `setMessage()` i `setItems()`. [Dokumentacja Androida](https://developer.android.com/develop/ui/views/components/dialogs#AddingAList) wyjaśnia, że komunikat i lista zajmują ten sam obszar i nie mogą być wyświetlone razem.
+
+Wcześniejszy test pobierał `listView` i wywoływał `performItemClick()` programowo, mimo że lista nie była dołączona do widocznego okna. Test nie dowodził dostępności opcji dla człowieka. Nowy test widoczności najpierw wykazał błąd na v3. V4 zastępuje listę osobnymi przyciskami w przewijanym widoku. Testy klikają te same dołączone przyciski, sprawdzają ich rzeczywisty widoczny prostokąt, obszar dotyku i możliwość ustawienia fokusu.
+
+Sprawdzane są układy pionowy i poziomy na API 28 i 35 w Robolectric, zapisane wstrzymanie z poprzedniego uruchomienia, skopiowanie raportu bez uruchamiania strony oraz przejście: widoczny przycisk → zapamiętany film → nieukończona CAPTCHA → rzeczywisty link odtwarzacza → zamknięcie okna i zwolnienie pauzy. To test kontrolowanej zawartości WebView, nie wykonanie CAPTCHA na telefonie użytkownika.
+
+Kontrola kodu i paczki nie wykazała starego modułu `pl.ekinocloudstream`. Pozostawiony klucz danych `dedziek_ekino_tv_v1` należy do nowego `pl.dedziek.ekinotv`; celowo zachowuje jego stan między aktualizacjami. Nie migruje danych ani klienta HTTP starego EkinoProvider.
+
+Walidacja lokalna v4: **46 testów Ekino TV, 0 błędów i pominięć**, kompilacja i kontrola manifestu v4. Sprawdzono nowe menu w DEX oraz brak starego modułu w źródłach i paczce.

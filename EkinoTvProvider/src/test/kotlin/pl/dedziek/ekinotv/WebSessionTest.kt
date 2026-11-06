@@ -3,12 +3,16 @@ package pl.dedziek.ekinotv
 import android.app.Activity
 import android.app.Dialog
 import android.content.Context
+import android.content.ClipboardManager
+import android.graphics.Rect
 import android.net.Uri
 import android.net.http.SslError
 import android.net.http.SslCertificate
 import android.os.Looper
 import android.view.View
 import android.view.ViewGroup
+import android.widget.TextView
+import android.widget.Button
 import android.webkit.CookieManager
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
@@ -68,11 +72,24 @@ class WebSessionTest {
     private fun open(): Pair<Dialog, WebView> {
         session.settings(activity)
         val options = ShadowAlertDialog.getLatestAlertDialog()
-        options.listView.performItemClick(options.listView.getChildAt(0), 0, 0)
-        options.dismiss()
+        assertTrue(shownAction(options, "Otwórz weryfikację").performClick())
         val dialog = ShadowDialog.getLatestDialog()
         val web = views(dialog.findViewById(android.R.id.content)).filterIsInstance<WebView>().single()
         return dialog to web
+    }
+
+    private fun shownAction(dialog: Dialog, label: String): Button {
+        shadowOf(Looper.getMainLooper()).idle()
+        val button = views(dialog.window!!.decorView).filterIsInstance<Button>().single { it.text.toString() == label }
+        assertTrue("Action is not attached: $label", button.isAttachedToWindow)
+        assertTrue("Action is hidden: $label", button.isShown)
+        button.requestRectangleOnScreen(Rect(0, 0, button.width, button.height), true)
+        shadowOf(Looper.getMainLooper()).idle()
+        val rect = Rect()
+        assertTrue("Action has no visible rectangle: $label", button.getGlobalVisibleRect(rect))
+        assertTrue("Action has no touch area: $label", rect.width() > 0 && rect.height() > 0)
+        assertTrue(button.isEnabled && button.isFocusable)
+        return button
     }
 
     private fun request(url: String, main: Boolean = false) = object : WebResourceRequest {
@@ -94,6 +111,71 @@ class WebSessionTest {
             "documentId" to id, "hasShowPlayer" to true,
             "frames" to frames.map { mapOf("url" to it.url, "html" to it.html) }))
         shadowOf(browser).lastEvaluatedJavascriptCallback.onReceiveValue(mapper.writeValueAsString(json))
+    }
+
+    @Test
+    @Config(sdk = [28, 35], qualifiers = "w411dp-h891dp-port")
+    fun pausedSettingsExposeReportAndRecoveryActionsInTheDisplayedWindow() {
+        state.remember("https://ekino.ws/movie/show/test/42")
+        state.pause("CAPTCHA odtwarzacza", true)
+        session.settings(activity)
+        val options = ShadowAlertDialog.getLatestAlertDialog()
+        shadowOf(Looper.getMainLooper()).idle()
+        val shown = views(options.window!!.decorView).filterIsInstance<TextView>()
+            .filter { it.isAttachedToWindow && it.isShown }.map { it.text.toString() }
+        assertTrue("Displayed text: $shown", shown.contains("Kopiuj raport"))
+        assertTrue("Displayed text: $shown", shown.contains("Otwórz stronę / logowanie"))
+        for (label in listOf("Otwórz weryfikację", "Otwórz stronę / logowanie", "Kopiuj raport")) shownAction(options, label)
+        assertTrue(state.rejection()!!.contains("Otwórz weryfikację"))
+        options.dismiss()
+    }
+
+    @Test
+    @Config(sdk = [28, 35], qualifiers = "w891dp-h411dp-land")
+    fun landscapeSettingsKeepAllActionsReachableWithoutAnExistingMaterial() {
+        session.settings(activity)
+        val options = ShadowAlertDialog.getLatestAlertDialog()
+        for (label in listOf("Otwórz weryfikację", "Otwórz stronę / logowanie", "Kopiuj raport")) shownAction(options, label)
+        assertTrue(shownAction(options, "Otwórz weryfikację").performClick())
+        val window = ShadowDialog.getLatestDialog()
+        val web = views(window.findViewById(android.R.id.content)).filterIsInstance<WebView>().single()
+        assertEquals("${Site.ENTRY}/", shadowOf(web).lastLoadedUrl)
+        window.dismiss()
+    }
+
+    @Test fun reportCanBeCopiedThroughTheVisibleButtonWhilePlaybackIsPaused() {
+        state.remember("https://ekino.ws/movie/show/test/42")
+        state.pause("CAPTCHA odtwarzacza", true)
+        val restored = SessionState(activity)
+        WebSession(activity, restored) { activity }.settings(activity)
+        val options = ShadowAlertDialog.getLatestAlertDialog()
+        assertTrue(shownAction(options, "Kopiuj raport").performClick())
+        val clipboard = activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val report = clipboard.primaryClip!!.getItemAt(0).text.toString()
+        assertTrue(report.contains("Ekino TV v4"))
+        assertTrue(report.contains("CAPTCHA odtwarzacza"))
+        assertTrue(restored.paused)
+        assertTrue(views(activity.findViewById(android.R.id.content)).none { it is WebView })
+        options.dismiss()
+    }
+
+    @Test fun theVisibleVerificationActionOpensTheRememberedFilmAndReleasesPauseOnlyForAReadyPlayer() {
+        val material = "https://ekino.ws/movie/show/test/42"
+        state.remember(material); state.pause("CAPTCHA odtwarzacza", true)
+        val (window, browser) = open()
+        assertEquals(material, shadowOf(browser).lastLoadedUrl)
+        assertTrue(shownAction(window, "Sprawdź i zamknij").performClick())
+        val wrapperUrl = "https://ekino.ws/watch/f/player/id"
+        reply(browser, material, 1.0, frames = listOf(WebPage(wrapperUrl, "<div class=cf-turnstile></div>")))
+        assertTrue(window.isShowing); assertTrue(state.paused)
+        assertTrue(shownAction(window, "Sprawdź i zamknij").performClick())
+        reply(browser, material, 1.0, frames = listOf(WebPage(wrapperUrl,
+            "<a target=_blank href='https://host.example/e/id'>wideo</a>")))
+        shadowOf(Looper.getMainLooper()).idle()
+        assertFalse(window.isShowing); assertFalse(state.paused)
+        assertFalse(SessionState(activity).paused)
+        assertEquals("about:blank", shadowOf(browser).lastLoadedUrl)
+        assertTrue(session.operations.tryLock()); session.operations.unlock()
     }
 
     @Test fun verificationReusesTheSameBrowserAndKeepsItsOwnIdentityAndCookies() {

@@ -2,7 +2,6 @@ package pl.dedziek.ekinotv
 
 import android.annotation.SuppressLint
 import android.app.Activity
-import android.app.AlertDialog
 import android.app.Application
 import android.app.Dialog
 import android.content.ClipData
@@ -326,7 +325,7 @@ internal class WebSession(context: Context, val state: SessionState,
         value.gate()?.let { gate ->
             val player = (listOf(value.page) + value.frames).any { Site.wrapper(it.url) }
             stop(gate, player)
-            throw SiteProblem("Ekino TV: $gate. W ustawieniach dodatku otwórz ostatni materiał i wybierz odtwarzacz na stronie.")
+            throw SiteProblem("Ekino TV: $gate. W ustawieniach dodatku wybierz „${SettingsUi.VERIFY}”, a następnie odtwarzacz na stronie.")
         }
     }
 
@@ -438,19 +437,17 @@ internal class WebSession(context: Context, val state: SessionState,
     fun settings(context: Context) {
         val activity = context as? Activity ?: activitySource() ?: return
         activity.runOnUiThread {
-            AlertDialog.Builder(activity).setTitle("Ekino TV v3")
-                .setMessage(if (state.paused) "Wstrzymano: ${state.reason}" else "Katalog i weryfikacja korzystają z tej samej przeglądarki.")
-                .setItems(arrayOf("Otwórz ostatni materiał", "Otwórz stronę / logowanie", "Kopiuj raport")) { _, index ->
-                    when (index) {
-                        0 -> openWindow(activity, state.lastMaterial ?: "${Site.ENTRY}/")
-                        1 -> openWindow(activity, "${Site.ENTRY}/")
-                        2 -> {
-                            (activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)
-                                .setPrimaryClip(ClipData.newPlainText("Ekino TV", state.report()))
-                            android.widget.Toast.makeText(activity, "Skopiowano raport", android.widget.Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                }.setNegativeButton("Zamknij", null).show()
+            SettingsUi.show(activity,
+                status = if (state.paused) "Wstrzymano: ${state.reason}" else "Katalog i weryfikacja korzystają z tej samej przeglądarki.",
+                hint = if (state.lastMaterial != null) "Weryfikacja otworzy ostatni materiał. Wybierz odtwarzacz na stronie, wykonaj weryfikację i naciśnij „Sprawdź i zamknij”."
+                    else "Weryfikacja otworzy stronę Ekino. Wybierz film i odtwarzacz, wykonaj weryfikację i naciśnij „Sprawdź i zamknij”.",
+                onVerify = { openWindow(activity, state.lastMaterial ?: "${Site.ENTRY}/") },
+                onSite = { openWindow(activity, "${Site.ENTRY}/") },
+                onReport = {
+                    (activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)
+                        .setPrimaryClip(ClipData.newPlainText("Ekino TV", state.report()))
+                    android.widget.Toast.makeText(activity, "Skopiowano raport", android.widget.Toast.LENGTH_SHORT).show()
+                })
         }
     }
 
