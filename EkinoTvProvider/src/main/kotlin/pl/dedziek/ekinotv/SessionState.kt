@@ -64,7 +64,7 @@ internal class SessionState(context: Context, private val clock: () -> Long = { 
     }
 
     @Synchronized fun report(): String = buildString {
-        append("Ekino TV v4 · raport\nSilnik: Android System WebView\n")
+        append("Ekino TV v5 · raport\nSilnik: Android System WebView\n")
         val cooldown = (retryAt - clock()).coerceAtLeast(0)
         append("Automatyczne operacje: ${when {
             paused -> "wstrzymane"

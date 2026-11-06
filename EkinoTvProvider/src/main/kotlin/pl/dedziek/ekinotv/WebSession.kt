@@ -57,6 +57,8 @@ internal class WebSession(context: Context, val state: SessionState,
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val popups = mutableMapOf<WebView, Dialog>()
     private var activeJob: Job? = null
+    @Volatile private var verificationStopped = false
+    private var pendingVerification: Pair<String?, String>? = null
 
     init {
         (context.applicationContext as? Application)?.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
@@ -98,6 +100,7 @@ internal class WebSession(context: Context, val state: SessionState,
             webChromeClient = chrome()
             webViewClient = object : WebViewClient() {
                 override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) {
+                    if (manual && verificationStopped && url != "about:blank") { view.stopLoading(); return }
                     if (manual && (Site.official(url) || Site.bridge(url))) {
                         documentActive = true
                         target = DocumentTarget(url, currentDocument?.documentId)
@@ -110,13 +113,18 @@ internal class WebSession(context: Context, val state: SessionState,
                 override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                     val target = request.url.toString()
                     if (!request.isForMainFrame) return false
-                    if (Site.official(target) || Site.bridge(target) || target == "about:blank") return false
+                    if (Site.official(target) || Site.bridge(target) || Site.challengeHost(target) || target in setOf("about:blank", "about:srcdoc")) return false
                     if (bridgeNavigation && Site.absolute(target, target) != null && !Site.challengeHost(target)) external = target
                     return true
                 }
                 override fun onReceivedHttpError(view: WebView, request: WebResourceRequest, response: WebResourceResponse) {
                     if (currentRequest(view, request)) {
                         state.note("HTTP ${response.statusCode} · ${if (Site.wrapper(request.url.toString())) "odtwarzacz" else "strona"}")
+                        // A challenge can legitimately use HTTP 403. Let the visible browser render it.
+                        if (manual && response.statusCode in setOf(401, 403)) {
+                            state.pause("Serwer wymaga weryfikacji (HTTP ${response.statusCode})", Site.wrapper(request.url.toString()))
+                            return
+                        }
                         if (response.statusCode >= 400) stop("Serwer zwrócił HTTP ${response.statusCode}",
                             Site.wrapper(request.url.toString()), persistent = response.statusCode in setOf(401, 403, 429))
                     }
@@ -138,6 +146,8 @@ internal class WebSession(context: Context, val state: SessionState,
                 }
                 override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
                     val url = request.url.toString()
+                    if (verificationStopped && (Site.official(url) || Site.bridge(url)))
+                        return WebResourceResponse("text/plain", "UTF-8", 409, "Verification stopped", emptyMap(), java.io.ByteArrayInputStream(ByteArray(0)))
                     val generation = epoch
                     if (documentActive && (request.isForMainFrame || Site.wrapper(url)) && request.method == "GET" &&
                         !budget.record(url, SystemClock.elapsedRealtime())) {
@@ -155,6 +165,9 @@ internal class WebSession(context: Context, val state: SessionState,
             web = this
             attachBehind(this)
             state.note("Utworzono wspólną przeglądarkę katalogu i odtwarzacza")
+            if (android.os.Build.VERSION.SDK_INT >= 26) runCatching {
+                WebView.getCurrentWebViewPackage()?.versionName?.let { state.note("Wersja WebView: $it") }
+            }
         }
     }
 
@@ -166,6 +179,13 @@ internal class WebSession(context: Context, val state: SessionState,
             return false
         }
         override fun onJsAlert(view: WebView, url: String, message: String, result: JsResult): Boolean {
+            if (manual && Site.wrapper(url) && message.trim() in setOf("Wystąpił błąd! Spróbuj ponownie.", "Wystąpił błąd.")) {
+                // The site's verify.php error callback otherwise immediately reloads the challenge.
+                stop(if (message.contains('!')) "Ekino odrzuciło potwierdzenie CAPTCHA; weryfikacja nie została przyjęta przez serwer"
+                    else "Nie udało się wysłać potwierdzenia CAPTCHA do Ekino", true)
+                result.cancel()
+                return true
+            }
             if (manual) return false // WebView displays the site's actual alert in the visible dialog.
             result.cancel()
             stop("Strona odtwarzacza zgłosiła błąd", persistent = false)
@@ -236,6 +256,7 @@ internal class WebSession(context: Context, val state: SessionState,
     }
 
     private fun stop(message: String, player: Boolean = false, persistent: Boolean = true) {
+        verificationStopped = manual
         failure = message
         if (persistent) state.pause(message, player) else state.temporaryFailure(message)
         info?.text = "$message. Automatyczne ładowanie zatrzymano."
@@ -244,6 +265,7 @@ internal class WebSession(context: Context, val state: SessionState,
     }
 
     private fun closeBrowser(renderGone: Boolean = false) {
+        pendingVerification = null
         epoch++
         documentActive = false; activePlayer = null
         if (renderGone) web?.let { (it.parent as? ViewGroup)?.removeView(it); it.destroy(); web = null }
@@ -269,7 +291,7 @@ internal class WebSession(context: Context, val state: SessionState,
             ?: return null
         require(encoded.length <= 8_000_000)
         val json = mapper.readTree(encoded)
-        fun read(node: com.fasterxml.jackson.databind.JsonNode) = WebPage(node.path("url").asText(), node.path("html").asText())
+        fun read(node: com.fasterxml.jackson.databind.JsonNode) = WebPage(node.path("url").asText(), node.path("html").asText(), node.path("active").asBoolean(true))
         return BrowserSnapshot(read(json), json.path("frames").take(12).map(::read),
             json.path("readyState").asText(), json.path("documentId").asDouble(), json.path("hasShowPlayer").asBoolean())
     }
@@ -277,6 +299,7 @@ internal class WebSession(context: Context, val state: SessionState,
     private fun begin(url: String, bridge: Boolean = false) {
         check(Site.official(url) || Site.bridge(url))
         val browser = ensure()
+        verificationStopped = false
         failure = null; external = null; bridgeNavigation = bridge; activePlayer = null
         target = DocumentTarget(url, currentDocument?.documentId)
         documentActive = true
@@ -323,6 +346,9 @@ internal class WebSession(context: Context, val state: SessionState,
     private fun checkSnapshot(value: BrowserSnapshot) {
         checkFailure()
         value.gate()?.let { gate ->
+            (listOf(value.page) + value.frames).firstOrNull { it.active && Site.wrapper(it.url) }?.let {
+                pendingVerification = state.lastMaterial to it.url
+            }
             val player = (listOf(value.page) + value.frames).any { Site.wrapper(it.url) }
             stop(gate, player)
             throw SiteProblem("Ekino TV: $gate. W ustawieniach dodatku wybierz „${SettingsUi.VERIFY}”, a następnie odtwarzacz na stronie.")
@@ -384,7 +410,7 @@ internal class WebSession(context: Context, val state: SessionState,
             delay(200)
         }
         activePlayer = player
-        val click = evaluate("""(function(){if(typeof window.ShowPlayer!=='function')return false;window.ShowPlayer($h,$id);return true;})()""")
+        val click = evaluate("""(function(){if(typeof window.ShowPlayer!=='function')return false;var href='#'+$id+'-'+$h;var tab=Array.from(document.querySelectorAll('.players a[href]')).find(function(a){return a.getAttribute('href')===href;});if(tab)tab.click();window.ShowPlayer($h,$id);return true;})()""")
         checkFailure()
         if (click != "true") throw SiteProblem("Ekino TV: strona zmieniła sposób uruchamiania odtwarzacza.")
         state.note("Wybrano zwykły odtwarzacz: ${player.host}")
@@ -396,7 +422,7 @@ internal class WebSession(context: Context, val state: SessionState,
             val value = snapshot()
             if (value == null || Site.publicPage(value.page.url) != Site.publicPage(material)) { delay(250); continue }
             checkSnapshot(value)
-            val wrapper = value.frames.firstOrNull { Site.wrapper(it.url) && Site.path(it.url).endsWith("/${player.identity}") }
+            val wrapper = value.frames.firstOrNull { it.active && Site.wrapper(it.url) && Site.path(it.url).endsWith("/${player.identity}") }
             if (wrapper != null && Catalogue.embeds(wrapper).isNotEmpty()) return@automatic wrapper
             if (wrapper != null) {
                 val now = SystemClock.elapsedRealtime()
@@ -439,9 +465,10 @@ internal class WebSession(context: Context, val state: SessionState,
         activity.runOnUiThread {
             SettingsUi.show(activity,
                 status = if (state.paused) "Wstrzymano: ${state.reason}" else "Katalog i weryfikacja korzystają z tej samej przeglądarki.",
-                hint = if (state.lastMaterial != null) "Weryfikacja otworzy ostatni materiał. Wybierz odtwarzacz na stronie, wykonaj weryfikację i naciśnij „Sprawdź i zamknij”."
+                hint = if (pendingVerification?.first == state.lastMaterial && pendingVerification != null) "Weryfikacja otworzy bezpośrednio zatrzymany odtwarzacz. Wykonaj weryfikację i naciśnij „Sprawdź i zamknij”. Przycisk „Wczytaj film” pozwala wybrać inny hosting."
+                    else if (state.lastMaterial != null) "Weryfikacja otworzy ostatni materiał. Wybierz odtwarzacz na stronie, wykonaj weryfikację i naciśnij „Sprawdź i zamknij”."
                     else "Weryfikacja otworzy stronę Ekino. Wybierz film i odtwarzacz, wykonaj weryfikację i naciśnij „Sprawdź i zamknij”.",
-                onVerify = { openWindow(activity, state.lastMaterial ?: "${Site.ENTRY}/") },
+                onVerify = { openWindow(activity, pendingVerification?.takeIf { it.first == state.lastMaterial }?.second ?: state.lastMaterial ?: "${Site.ENTRY}/") },
                 onSite = { openWindow(activity, "${Site.ENTRY}/") },
                 onReport = {
                     (activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)
@@ -477,12 +504,12 @@ internal class WebSession(context: Context, val state: SessionState,
                 window?.clearFlags(WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM)
             }
             var watchdog: Job? = null
-            button("Wczytaj ponownie") { begin(url) }
+            button(if (Site.wrapper(url)) "Wczytaj film" else "Wczytaj ponownie") { begin(if (Site.wrapper(url)) state.lastMaterial ?: url else url) }
             button("Sprawdź i zamknij") {
                 scope.launch {
                     try {
                         val value = snapshot()
-                        if (value != null && target?.ready(value) == true && state.accept(value)) window.dismiss()
+                        if (value != null && target?.ready(value) == true && state.accept(value)) { pendingVerification = null; window.dismiss() }
                         else info?.text = "Weryfikacja nie jest zakończona. Otwórz zwykły odtwarzacz i poczekaj na jego link. Zielony znacznik CAPTCHA nie potwierdza jeszcze dostępu."
                     } catch (_: Exception) { info?.text = "Nie można odczytać strony. Sprawdź połączenie i działanie WebView." }
                 }
@@ -517,6 +544,6 @@ internal class WebSession(context: Context, val state: SessionState,
 
     companion object {
         /** Read-only DOM access. No JS bridge, token interception, fetch replacement or browser API patches. */
-        internal val SNAPSHOT = """(function(){var out={url:location.href,html:document.documentElement?document.documentElement.outerHTML:'',readyState:document.readyState,documentId:performance.timeOrigin||(performance.timing&&performance.timing.navigationStart)||0,hasShowPlayer:typeof window.ShowPlayer==='function',frames:[]};function visit(w,depth){if(depth>3||out.frames.length>=12)return;for(var i=0;i<w.frames.length;i++){try{var f=w.frames[i],u=new URL(f.location.href);if(u.protocol==='https:'&&['ekino.ws','ekino-tv.pl','play.ekino.link'].indexOf(u.hostname)>=0&&f.document.readyState!=='loading'&&f.document.documentElement){out.frames.push({url:u.href,html:f.document.documentElement.outerHTML});visit(f,depth+1);}}catch(e){}}}visit(window,0);return JSON.stringify(out);})()"""
+        internal val SNAPSHOT = """(function(){var out={url:location.href,html:document.documentElement?document.documentElement.outerHTML:'',readyState:document.readyState,documentId:performance.timeOrigin||(performance.timing&&performance.timing.navigationStart)||0,hasShowPlayer:typeof window.ShowPlayer==='function',frames:[]};function visit(w,depth,parentActive){if(depth>3||out.frames.length>=12)return;for(var i=0;i<w.frames.length;i++){try{var f=w.frames[i],u=new URL(f.location.href);if(u.protocol==='https:'&&['ekino.ws','ekino-tv.pl','play.ekino.link'].indexOf(u.hostname)>=0&&f.document.readyState!=='loading'&&f.document.documentElement){var e=f.frameElement;out.frames.push({url:u.href,html:f.document.documentElement.outerHTML,active:parentActive&&!!e&&e.getClientRects().length>0&&w.getComputedStyle(e).visibility!=='hidden'});visit(f,depth+1,parentActive&&!!e&&e.getClientRects().length>0&&w.getComputedStyle(e).visibility!=='hidden');}}catch(e){}}}visit(window,0,true);return JSON.stringify(out);})()"""
     }
 }

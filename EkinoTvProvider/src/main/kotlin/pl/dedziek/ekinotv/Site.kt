@@ -43,7 +43,7 @@ internal object Site {
 
 internal class SiteProblem(message: String) : Exception(message)
 
-internal data class WebPage(val url: String, val html: String) {
+internal data class WebPage(val url: String, val html: String, val active: Boolean = true) {
     val doc: Document by lazy { Jsoup.parse(html, url) }
 }
 
@@ -51,7 +51,7 @@ internal data class BrowserSnapshot(val page: WebPage, val frames: List<WebPage>
                                     val readyState: String = "complete", val documentId: Double = 0.0,
                                     val hasShowPlayer: Boolean = false) {
     val parsed get() = readyState in setOf("interactive", "complete") && page.html.isNotBlank()
-    fun gate(): String? = (listOf(page) + frames).firstNotNullOfOrNull { p ->
+    fun gate(): String? = (listOf(page) + frames.filter { it.active }).firstNotNullOfOrNull { p ->
         val d = p.doc
         when {
             d.title().contains("Just a moment", true) || d.title().contains("Attention Required", true) ||
@@ -65,7 +65,7 @@ internal data class BrowserSnapshot(val page: WebPage, val frames: List<WebPage>
 
     fun verified(playerRequired: Boolean): Boolean {
         if (!parsed || gate() != null) return false
-        val pages = listOf(page) + frames
+        val pages = listOf(page) + frames.filter { it.active }
         return if (playerRequired) pages.any { p ->
             (Site.wrapper(p.url) || Site.bridge(p.url)) && Catalogue.embeds(p).isNotEmpty()
         } else Site.official(page.url) && page.doc.selectFirst(
