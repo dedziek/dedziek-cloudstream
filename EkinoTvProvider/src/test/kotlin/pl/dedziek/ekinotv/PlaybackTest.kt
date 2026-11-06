@@ -38,6 +38,20 @@ class PlaybackTest {
         assertEquals(browser.visits, emitted)
     }
 
+    @Test fun missingLanguageDoesNotCauseAllOtherUnknownMirrorsToLoadAfterSuccess() = runBlocking {
+        val browser = Browser()
+        Playback(browser, { url, referer -> HostResult(listOf(Media("$url/master.m3u8", referer, true))) }, {})
+            .links(material("", " ", "")) { _, _ -> }
+        assertEquals(listOf("host0"), browser.visits)
+    }
+
+    @Test fun equivalentPolishLabelsDoNotTriggerAnotherMirrorButSubtitlesStaySelectable() = runBlocking {
+        val browser = Browser()
+        Playback(browser, { url, referer -> HostResult(listOf(Media("$url/master.m3u8", referer, true))) }, {})
+            .links(material("Lektor", "Lektor PL", "Lektor polski", "Napisy PL")) { _, _ -> }
+        assertEquals(listOf("host0", "host3"), browser.visits)
+    }
+
     @Test fun firstCaptchaPreventsAllHostingAndFurtherMirrorRequests() = runBlocking {
         val browser = Browser().apply { gateOn = "host0" }
         try {

@@ -7,6 +7,7 @@ import java.util.ArrayDeque
 internal class SessionState(context: Context, private val clock: () -> Long = { SystemClock.elapsedRealtime() }) {
     private val preferences = context.getSharedPreferences("dedziek_ekino_tv_v1", Context.MODE_PRIVATE)
     private val events = ArrayDeque<String>()
+    private val requests = linkedMapOf("strony" to 0, "ramki" to 0, "weryfikacja" to 0, "zatrzymane" to 0)
     @Volatile var paused: Boolean = preferences.getBoolean("paused", false); private set
     @Volatile var playerRequired: Boolean = preferences.getBoolean("playerRequired", false); private set
     @Volatile var lastMaterial: String? = preferences.getString("material", null)?.takeIf(Site::material); private set
@@ -27,6 +28,9 @@ internal class SessionState(context: Context, private val clock: () -> Long = { 
         if (events.size >= 40) events.removeFirst()
         events.addLast(message.take(240))
     }
+
+    /** Aggregate counts only; never retain URLs, cookies, form data or challenge tokens. */
+    @Synchronized fun request(kind: String) { requests[kind]?.let { requests[kind] = it + 1 } }
 
     fun remember(url: String) {
         val public = Site.publicPage(url)?.takeIf(Site::material) ?: return
@@ -64,7 +68,9 @@ internal class SessionState(context: Context, private val clock: () -> Long = { 
     }
 
     @Synchronized fun report(): String = buildString {
-        append("Ekino TV v5 · raport\nSilnik: Android System WebView\n")
+        append("Ekino TV v6 · raport\nSilnik: Android System WebView\n")
+        append("Dokumenty/POST WebView od uruchomienia; zatrzymane = wszystkie żądania odrzucone lokalnie: ")
+        append(requests.entries.joinToString(", ") { "${it.key}=${it.value}" }); append('\n')
         val cooldown = (retryAt - clock()).coerceAtLeast(0)
         append("Automatyczne operacje: ${when {
             paused -> "wstrzymane"

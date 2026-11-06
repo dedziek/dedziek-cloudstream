@@ -1,12 +1,28 @@
 # Ekino TV
 
-Dodatek **EkinoTvProvider v5**, źródło **Ekino TV**. Napisany od nowa dla `https://ekino-tv.pl`; przeglądarka obsługuje oficjalne przekierowanie do `https://ekino.ws`. To osobna paczka i klasa dodatku. Kod starego EkinoProvider v1–v13 został usunięty z aktualnej gałęzi, a historia zmian pozostaje dostępna w Git.
+Dodatek **EkinoTvProvider v6**, źródło **Ekino TV**. Napisany od nowa dla `https://ekino-tv.pl`; przeglądarka obsługuje oficjalne przekierowanie do `https://ekino.ws`. To osobna paczka i klasa dodatku. Kod starego EkinoProvider v1–v13 został usunięty z aktualnej gałęzi, a historia zmian pozostaje dostępna w Git.
 
 ## Instalacja
 
 1. Usuń **EkinoProvider / Ekino** w rozszerzeniach CloudStream. Zainstalowanej kopii na telefonie nie usuwa wycofanie paczki z GitHuba.
 2. Odśwież repozytorium **Dedziek CloudStream** i zainstaluj **EkinoTvProvider**. Możesz też pobrać [nową paczkę](https://raw.githubusercontent.com/dedziek/dedziek-cloudstream/builds/EkinoTvProvider.cs3).
 3. Wybierz źródło **Ekino TV**. Wymagany jest Android 6+ z działającym Android System WebView oraz aktualny CloudStream Beta. Zgodność z konkretnym Android TV nie została sprawdzona.
+
+## V6 — wygaszanie ruchu i aktualne kontrolki odtwarzaczy
+
+Po odczycie danych przeglądarka kończy bezczynny dokument po dwóch sekundach; nowa operacja anuluje ten licznik. Przejście aplikacji w tło, anulowanie, błąd oraz zamknięcie ręcznego okna również kończą dokument. Po zamknięciu dokumentu WebView odrzuca spóźnione żądania przed siecią, także POST do weryfikacji. V5 stosowała taką blokadę tylko po zatrzymaniu ręcznej weryfikacji, a po samym odczycie katalogu pozostawiała dokument działający.
+
+W rzeczywistym DOM skrypt podpowiedzi przenosi opis języka z `title` do `original-title`. V6 odczytuje oba warianty oraz `data-original-title`, rozpoznaje równoważne polskie opisy i po sukcesie pomija kolejne hostingi tego samego języka. Gdy opisu w ogóle nie ma, znalezienie wideo również kończy sprawdzanie kolejnych odtwarzaczy bez opisu. Odrębne, jawnie opisane języki pozostają dostępne. Poprzednia wersja mogła bez potrzeby otwierać kolejne ramki po znalezieniu wideo.
+
+Identyfikatory kontrolek odtwarzaczy należą do konkretnego wczytania materiału. Po ponownym otwarciu filmu V6 wybiera aktualną kontrolkę tego samego hostingu i języka; przy niejednoznacznym wyniku kończy operację. Nie uruchamia funkcji strony ze starym identyfikatorem z pamięci metadanych. Zachowuje odliczanie witryny i nie dodaje automatycznych ponowień. Wyszukiwanie używa formularza POST w tym samym WebView; znając domenę sesji, nie otwiera dodatkowo strony głównej tylko po to, by utworzyć formularz.
+
+Walidacja: **60 testów, 0 błędów** i zbudowana paczka. Finalny v6 przeszedł rzeczywisty **Test dostawcy** CloudStream: „W moim stylu”, jedno źródło `player · Lektor PL`, `Success Ekino TV`. Raport odnotował jedną ramkę odtwarzacza, cztery dokumenty główne i brak żądań weryfikacji. To wynik tego testu, bez gwarancji dla każdej sieci i filmu.
+
+Aktualizacja zachowuje rzeczywiste wcześniejsze wstrzymanie. Jeśli po zmianie sieci lub restarcie routera strona znów działa, otwórz **Otwórz weryfikację**, uruchom odtwarzacz na stronie i wybierz **Sprawdź i zamknij** przy gotowym źródle. Sam restart routera nie usuwa zapisanego stanu dodatku.
+
+**Kopiuj raport** podaje zbiorcze liczniki od uruchomienia: dopuszczone dokumenty główne, ramki odtwarzacza, żądania trasy weryfikacji oraz żądania zatrzymane lokalnie. Są to zdarzenia zaobserwowane przez WebView, nie pełny pomiar sieci ani liczba odpowiedzi serwera. Adresów IP, cookies i tokenów nie zapisuje.
+
+Po restarcie routera użytkownik zgłosił ustąpienie CAPTCHA, ale nie uruchamiał jeszcze v5 ponownie. Nie ustalono, czy zmienił się publiczny adres IP. W połączeniu z wcześniejszym powodzeniem na danych komórkowych wskazuje to na zależność od sieci; nie dowodzi konkretnej reguły Cloudflare ani tego, że v5 ponownie spowodowała blokadę. Dokładną regułę odmowy może potwierdzić właściciel strony w logach serwera. V6 usuwa odtworzone błędy po stronie klienta; nie obiecuje, że serwer nigdy nie wyświetli weryfikacji.
 
 ## V5 — aktywna ramka i zatrzymanie odmowy weryfikacji
 
@@ -64,7 +80,7 @@ Link pomocy Cloudflare można otworzyć przez świadome kliknięcie w widocznej 
 
 **Kopiuj raport** pokazuje etapy nawigacji, faktycznie otrzymane błędy HTTP/WebView, wysłanie żądania do trasy weryfikacji, numeryczne kody klienta Turnstile oraz wynik odczytu hostingu. Raport nie zapisuje cookies, tokenów CAPTCHA, treści formularzy ani pełnych adresów wideo. Nie podaje wymyślonego HTTP 200 dla nawigacji WebView, której statusu Android nie ujawnił.
 
-Walidacja v5: **50 testów, 0 błędów**, zbudowana paczka i rzeczywisty test dostawcy w emulatorze. Test aplikacji przeszedł katalog i wyszukiwanie, ale zatrzymał się na CAPTCHA; nie uzyskano wideo.
+Walidacja historyczna v5: **50 testów, 0 błędów**; ówczesny test aplikacji zatrzymał się na CAPTCHA. V6 sprawdzono osobno — szczegóły w analizie zgłoszenia.
 
 Testy lokalne obejmują parser katalogu i seriali, zwykłe odtwarzacze, CAPTCHA w ramce przy HTTP 200, warunki wznowienia sesji, utrwalanie pauzy, limit ponownej nawigacji, zachowanie znalezionego źródła, protokół Byse i uwierzytelnienie jego odpowiedzi. Nie zastępują odtwarzania filmu na fizycznym telefonie.
 

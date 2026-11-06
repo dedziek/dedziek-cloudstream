@@ -79,7 +79,12 @@ internal data class Material(val title: String, val poster: String?, val plot: S
                              val tags: List<String>, val episodes: List<Episode>)
 internal data class Player(val host: String, val id: String, val language: String) {
     val identity get() = "$host/$id"
-    val languageKey get() = language.trim().lowercase(Locale.ROOT).replace(Regex("\\s+"), " ")
+    val languageKey get() = when (val key = language.trim().lowercase(Locale.ROOT).replace(Regex("\\s+"), " ")) {
+        "lektor", "lektor polski" -> "lektor pl"
+        "napisy", "napisy polskie" -> "napisy pl"
+        "dubbing", "dubbing polski" -> "dubbing pl"
+        else -> key
+    }
 }
 
 /** Metadata and publicly advertised free-player controls; scripts execute only in WebView. */
@@ -141,7 +146,10 @@ internal object Catalogue {
         val host = match.groupValues[1]; val id = match.groupValues[2]
         if (host.lowercase(Locale.ROOT) in setOf("premium", "pr", "pro")) return@mapNotNull null
         val tab = page.doc.select(".players a[href]").firstOrNull { it.attr("href") == "#$id-$host" }
-        Player(host, id, tab?.selectFirst("i[title]")?.attr("title").orEmpty())
+        val icon = tab?.selectFirst("i[title], i[original-title], i[data-original-title]")
+        val language = sequenceOf("title", "original-title", "data-original-title")
+            .map { icon?.attr(it).orEmpty() }.firstOrNull(String::isNotBlank).orEmpty()
+        Player(host, id, language)
     }.distinctBy { it.identity }
 
     fun embeds(page: WebPage): List<String> = page.doc.select(
