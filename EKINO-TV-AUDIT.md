@@ -56,3 +56,12 @@ V2 sprawdza gotowość i identyfikator DOM niezależnie od `onPageFinished`, odr
 Nowe testy obejmują trzy kolejne materiały i ich ramki bez `onPageFinished`, stary callback i DOM poprzedniego filmu, wyszukiwanie po zakończeniu odtwarzania i po poprzednim wyszukiwaniu, własny i nadrzędny timeout, migrację stanu v1 oraz zachowanie rzeczywistej bramki. Osobny test Node wykonuje faktyczny skrypt odczytu DOM, w tym jego identyfikator nawigacji i pomijanie niedostępnych ramek. To kontrolowana próba kodu, bez wysyłania kolejnych żądań do Ekino.
 
 Walidacja lokalna v2: kompilacja paczki i **38 testów Ekino TV — 0 błędów, 0 pominięć**; trzy nowe testy Node skryptu DOM również przeszły. Metadane i manifest paczki potwierdzają wersję 2. Akceptacja strony na telefonie użytkownika po tej aktualizacji wymaga jego próby.
+
+
+## Ekino TV v3 — stary błąd podczas ładowania nowego filmu
+
+Dalsza kontrola v2 ujawniła lukę w obsłudze zdarzeń: test v2 obejmował błąd starej strony po jej zamknięciu, ale przed rozpoczęciem nowej nawigacji. Nie obejmował tego samego błędu już w czasie ładowania następnego filmu, gdy `WebView.getUrl()` nadal zwracał stary adres. Jest to dopuszczone zachowanie opisane w [dokumentacji Android WebView](https://developer.android.com/reference/android/webkit/WebView#getUrl()).
+
+Nowy test w tym stanie otrzymał na v2 trwałe wstrzymanie po HTTP 403 poprzedniego materiału, mimo rozpoczętej nawigacji do innego filmu. V3 ocenia zgodność z żądaną stroną, zamiast uznawać stary `getUrl()` za potwierdzenie bieżącego żądania. Doprecyzowano również przypisywanie błędu certyfikatu do aktualnej strony lub ramki. Każdy wadliwy certyfikat jest odrzucany; błąd poprzedniego filmu nie przerywa kolejnego.
+
+Walidacja v3: kompilacja i **40 testów Ekino TV — 0 błędów i pominięć**. Nowe przypadki sprawdzają zarówno ignorowanie starego HTTP/TLS, jak i zatrzymanie przy rzeczywistym błędzie nowego materiału. Test HTTP najpierw wykazał usterkę na v2, a po poprawce przeszedł. Są to kontrolowane zdarzenia przeglądarki; nie ustalono, czy ten dodatkowy scenariusz występował na telefonie użytkownika. Nie ponawiano żądań do Ekino.

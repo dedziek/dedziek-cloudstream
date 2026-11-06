@@ -4,6 +4,8 @@ import android.app.Activity
 import android.app.Dialog
 import android.content.Context
 import android.net.Uri
+import android.net.http.SslError
+import android.net.http.SslCertificate
 import android.os.Looper
 import android.view.View
 import android.view.ViewGroup
@@ -12,6 +14,7 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
+import android.webkit.SslErrorHandler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancelAndJoin
@@ -32,6 +35,7 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowAlertDialog
 import org.robolectric.shadows.ShadowDialog
+import org.robolectric.util.ReflectionHelpers
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -242,6 +246,48 @@ class WebSessionTest {
         val result = async(dispatcher) { session.page(next) }
         reply(web, next, 2.0)
         assertEquals(next, result.await().url)
+    }
+
+    @Test fun anOldHttpErrorDuringTheNextNavigationCannotUseWebViewsStaleCurrentUrl() = runTest {
+        val dispatcher = UnconfinedTestDispatcher(testScheduler)
+        val first = "https://ekino.ws/movie/show/first/1"
+        val initial = async(dispatcher) { session.page(first) }; val web = browser()
+        reply(web, first, 1.0); initial.await(); session.finishPlayback()
+        val next = "https://ekino.ws/movie/show/second/2"
+        val loading = async(dispatcher) { session.page(next) }
+        // Android documents that getUrl() may still expose A after navigation to B has begun.
+        ReflectionHelpers.setField(shadowOf(web), "originalUrl", first)
+        assertEquals(first, web.url)
+        web.webViewClient.onReceivedHttpError(web, request(first, true),
+            WebResourceResponse("text/plain", "UTF-8", 403, "Forbidden", emptyMap(), "old denial".byteInputStream()))
+        assertFalse(state.paused); assertNull(state.rejection())
+        reply(web, next, 2.0)
+        assertEquals(next, loading.await().url)
+        // A denial for B must still be respected, even while getUrl() remains stale.
+        web.webViewClient.onReceivedHttpError(web, request(next, true),
+            WebResourceResponse("text/plain", "UTF-8", 403, "Forbidden", emptyMap(), "new denial".byteInputStream()))
+        assertTrue(state.paused)
+    }
+
+    @Test fun anOldCertificateErrorCannotInterruptTheNextMovieButItsCertificateIsRejected() = runTest {
+        val dispatcher = UnconfinedTestDispatcher(testScheduler)
+        val first = "https://ekino.ws/movie/show/first/1"
+        val initial = async(dispatcher) { session.page(first) }; val web = browser()
+        reply(web, first, 1.0); initial.await(); session.finishPlayback()
+        val next = "https://ekino.ws/movie/show/second/2"
+        val loading = async(dispatcher) { session.page(next) }
+        val handler = ReflectionHelpers.callConstructor(SslErrorHandler::class.java)
+        val certificate = org.robolectric.shadow.api.Shadow.newInstanceOf(SslCertificate::class.java)
+        web.webViewClient.onReceivedSslError(web, handler, SslError(SslError.SSL_DATE_INVALID, certificate, first))
+        assertTrue(shadowOf(handler).wasCancelCalled())
+        assertFalse(shadowOf(handler).wasProceedCalled())
+        assertFalse(state.paused); assertNull(state.rejection())
+        reply(web, next, 2.0)
+        assertEquals(next, loading.await().url)
+        val current = ReflectionHelpers.callConstructor(SslErrorHandler::class.java)
+        web.webViewClient.onReceivedSslError(web, current, SslError(SslError.SSL_DATE_INVALID, certificate, next))
+        assertTrue(shadowOf(current).wasCancelCalled())
+        assertFalse(state.paused); assertNotNull(state.rejection())
     }
 
     @Test fun searchAfterPlaybackBootstrapsARealPageAndNeverReturnsThePreviousSearchDocument() = runTest {
