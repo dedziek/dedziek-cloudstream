@@ -1,4 +1,4 @@
-version = 12
+version = 13
 dependencies {
     add("compileOnly", "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.1")
     add("testImplementation", "org.robolectric:robolectric:4.16.1")
@@ -6,7 +6,8 @@ dependencies {
     add("testImplementation", "com.squareup.okhttp3:mockwebserver:5.0.0-alpha.12")
 }
 cloudstream {
-    description = "AnimeGate: katalog anime, odcinki i odtwarzanie z wersjami językowymi. Logowanie przez Discord."
+    description = "Anime i odcinki z wyborem wersji językowej. Wymaga logowania przez Discord."
+    iconUrl = "https://raw.githubusercontent.com/dedziek/dedziek-cloudstream/main/assets/icons/animegate.png"
     authors = listOf("Dedziek CloudStream contributors")
     language = "pl"
     status = 3

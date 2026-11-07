@@ -1,4 +1,6 @@
-# AnimeWatch dla CloudStream — wersja testowa 5
+# AnimeWatch dla CloudStream — wersja testowa 6
+
+Wersja 6 dodaje ikonę i prostszy opis w katalogu dodatków. Sposób odtwarzania pozostaje taki sam.
 
 Dodatek **AnimeWatchProvider** korzysta z publicznych stron `https://animewatch.pl`. Udostępnia katalog, wyszukiwanie, opisy, plakaty, gatunki, filmy anime i listy odcinków. Materiał na stronie jest opisywany jako polski lektor IVO; w CloudStream odcinki znajdują się pod wariantem „Dubbing”. Logowanie nie jest wymagane.
 
