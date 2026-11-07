@@ -1,6 +1,6 @@
-# AnimeGateProvider v13
+# AnimeGateProvider v14
 
-Wersja 13 dodaje ikonę i prostszy opis w katalogu dodatków. Zawiera mechanizm rozpoznawania kontenera z v12.
+Wersja 14 używa oryginalnej ikony AnimeGate w katalogu dodatków. Zachowuje krótki opis z v13 i mechanizm rozpoznawania kontenera z v12.
 
 Dodatek udostępnia katalog anime, wyszukiwanie, opisy, odcinki i odtwarzanie przez Playmogo. Użytkownik potwierdził działanie odtwarzania w v10; v11 upraszcza ustawienia i usuwa narzędzia diagnostyczne prototypu.
 
