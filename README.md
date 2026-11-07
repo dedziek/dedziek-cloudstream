@@ -10,7 +10,7 @@ Repozytorium dodatków do **CloudStream na Androidzie i Android TV / Google TV**
 | **AnimeWatchProvider** | **AnimeWatch** | Aktualny CloudStream Beta, Android 6.0 lub nowszy; WebView do pobierania źródeł w tle |
 | **EkinoTvProvider v7** | **Ekino TV** | Filmy, seriale i odcinki; wspólna sesja Android System WebView |
 | **ObejrzyjTo** | Dodatek do `obejrzyj.to` autorstwa **Phisher98** | Oryginalna paczka z Phisher Repo; aktualizacje zgodne z wersjami autora |
-| **AnimeGateProvider v11** | **Katalog, odcinki i odtwarzanie; proste logowanie** | Odtwarzanie potwierdzone przez użytkownika; podgląd katalogu do 8 wyników |
+| **AnimeGateProvider v12** | **Katalog, odcinki i odtwarzanie; proste logowanie** | Rozpoznawanie formatu HLS/DASH i odpowiedzi hostingu; podgląd katalogu do 8 wyników |
 
 Filman obsługuje katalog filmów i seriali, wyszukiwanie, listę odcinków oraz zwykłe zewnętrzne odtwarzacze przez ekstraktory CloudStream. Dodatek ma status wersji testowej. Dostępność odtwarzania zależy również od wybranego hostingu i aktualnego działania strony.
 
