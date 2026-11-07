@@ -1,4 +1,4 @@
-version = 7
+version = 8
 
 dependencies {
     add("compileOnly", "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.1")
@@ -9,7 +9,8 @@ dependencies {
 }
 
 cloudstream {
-    description = "Ekino TV: nowy dodatek do ekino-tv.pl. Filmy, seriale, wspólna sesja przeglądarki i ręczna weryfikacja. Wersja testowa."
+    description = "Filmy i seriale z Ekino TV. Odliczanie odtwarzacza i ręczna weryfikacja w ustawieniach."
+    iconUrl = "https://raw.githubusercontent.com/dedziek/dedziek-cloudstream/main/assets/icons/ekino-tv.png"
     authors = listOf("Dedziek CloudStream contributors")
     language = "pl"
     status = 3

@@ -1,132 +1,82 @@
-# Dedziek CloudStream
+<p align="center">
+  <img src="assets/banner.svg" alt="Dedziek CloudStream — filmy, seriale i anime" width="100%">
+</p>
 
-Repozytorium dodatków do **CloudStream na Androidzie i Android TV / Google TV**. Do korzystania z opublikowanego dodatku potrzebny jest aktualny [CloudStream pre-release (Beta)](https://github.com/recloudstream/cloudstream/releases/tag/pre-release).
+<p align="center">
+  <a href="https://github.com/dedziek/dedziek-cloudstream/actions/workflows/build.yml"><img src="https://github.com/dedziek/dedziek-cloudstream/actions/workflows/build.yml/badge.svg" alt="Kompilacja i testy"></a>
+  &nbsp; <a href="#instalacja">Instalacja</a> · <a href="#dostępne-dodatki">Dodatki</a> · <a href="#pierwsze-uruchomienie">Konfiguracja</a> · <a href="#pomoc">Pomoc</a>
+</p>
+
+Polskie źródła do **CloudStream na Androidzie i Android TV / Google TV**. Cztery własne dodatki oraz ObejrzyjTo autorstwa **Phisher98**.
+
+## Instalacja
+
+1. Zainstaluj aktualny [CloudStream Beta](https://github.com/recloudstream/cloudstream/releases/tag/pre-release).
+2. Otwórz **Ustawienia → Rozszerzenia → Dodaj repozytorium**. Wpisz nazwę **Dedziek CloudStream** i wklej adres:
+
+   ```text
+   https://raw.githubusercontent.com/dedziek/dedziek-cloudstream/main/repo.json
+   ```
+
+3. Otwórz repozytorium, zainstaluj wybrane dodatki i wybierz źródło na ekranie głównym lub w wyszukiwaniu.
+
+Masz już repozytorium? Odśwież listę dodatków i zainstaluj aktualizacje. Po aktualizacji uruchom ponownie CloudStream.
 
 ## Dostępne dodatki
 
-| Dodatek | Źródło w CloudStream | Wymagania |
-|---|---|---|
-| **FilmanProvider** | **Filman — konto darmowe (test)** | Darmowe konto Filman, Android 6.0 lub nowszy i działający Android System WebView do logowania |
-| **AnimeWatchProvider** | **AnimeWatch** | Aktualny CloudStream Beta, Android 6.0 lub nowszy; WebView do pobierania źródeł w tle |
-| **EkinoTvProvider v7** | **Ekino TV** | Filmy, seriale i odcinki; wspólna sesja Android System WebView |
-| **ObejrzyjTo** | Dodatek do `obejrzyj.to` autorstwa **Phisher98** | Oryginalna paczka z Phisher Repo; aktualizacje zgodne z wersjami autora |
-| **AnimeGateProvider v12** | **Katalog, odcinki i odtwarzanie; proste logowanie** | Rozpoznawanie formatu HLS/DASH i odpowiedzi hostingu; podgląd katalogu do 8 wyników |
+| | Źródło | Co znajdziesz | Konto | Szczegóły |
+| :---: | --- | --- | --- | --- |
+| <img src="assets/icons/filman.png" width="48" height="48" alt=""> | **Filman**<br><sub>FilmanProvider</sub> | Filmy i seriale. Wersje językowe i jakość przy źródłach. | Darmowe konto Filman | [Instrukcja](#pierwsze-uruchomienie) |
+| <img src="assets/icons/animewatch.png" width="48" height="48" alt=""> | **AnimeWatch**<br><sub>AnimeWatchProvider</sub> | Anime, filmy i odcinki z polskim lektorem. | Bez konta | [Instrukcja](ANIMEWATCH.md) |
+| <img src="assets/icons/animegate.png" width="48" height="48" alt=""> | **AnimeGate**<br><sub>AnimeGateProvider</sub> | Katalog anime i odcinki z wyborem wersji językowej. | Logowanie przez Discord | [Instrukcja](ANIMEGATE.md) |
+| <img src="assets/icons/ekino-tv.png" width="48" height="48" alt=""> | **Ekino TV**<br><sub>EkinoTvProvider</sub> | Filmy i seriale. Widoczne odliczanie bezpłatnego odtwarzacza. | Zwykłe źródła bez konta | [Instrukcja](EKINO-TV.md) |
+| <img src="https://www.obejrzyj.to/favicon/icon-512x512.png" width="48" height="48" alt=""> | **ObejrzyjTo**<br><sub>Autor: Phisher98</sub> | Filmy i seriale z obejrzyj.to. | Według wymagań serwisu | [Oryginalne repozytorium](https://github.com/phisher98/cloudstream-extensions-phisher) |
 
-Filman obsługuje katalog filmów i seriali, wyszukiwanie, listę odcinków oraz zwykłe zewnętrzne odtwarzacze przez ekstraktory CloudStream. Dodatek ma status wersji testowej. Dostępność odtwarzania zależy również od wybranego hostingu i aktualnego działania strony.
+Własne dodatki są rozwijane i mają status testowy. Dostępność odcinka oraz działanie hostingu mogą zmieniać się niezależnie od dodatku. AnimeGate udostępnia obecnie podgląd katalogu do ośmiu wyników; pełna paginacja pozostaje do wdrożenia.
 
-Od wersji **FilmanProvider 2** nazwy źródeł w odtwarzaczu zawierają wersję językową i jakość ze strony, np. **Voe · Lektor_AI · 720p** lub **Streamtape · Napisy · 1080p**. Oznaczenia takie jak `ENG`, `Lektor`, `Lektor_AI`, `Napisy` i `Napisy_Tansl` są zachowywane zgodnie z opisem Filmana. Jeśli strona nie podaje wersji, dodatek jej nie zgaduje.
+## Pierwsze uruchomienie
 
-**AnimeWatchProvider** udostępnia katalog anime, wyszukiwanie, filmy i listy odcinków z animewatch.pl bez logowania. Wersja 5 pobiera źródło w tle, a gdy Byse wymaga weryfikacji, otwiera jej stronę bezpośrednio podczas wybierania odcinka. Po wykonaniu weryfikacji wynik wraca do CloudStream — bez szukania ustawień i ponownego wybierania odcinka. Awaryjne otwarcie z ustawień pozostaje dostępne. Pełne odtwarzanie wymaga jeszcze próby na urządzeniu. [Szczegóły i ograniczenia](ANIMEWATCH.md).
+**Filman** — otwórz zębatkę dodatku, wybierz **Otwórz logowanie**, zaloguj się na darmowe konto i naciśnij **Zapisz sesję**. Źródło w aplikacji nazywa się **Filman — konto darmowe (test)**.
 
-**EkinoTvProvider v7** to nowy dodatek do ekino-tv.pl (oficjalne przekierowanie do ekino.ws). Katalog, wyszukiwanie i odtwarzacz używają jednej sesji WebView, bez kopiowania cookies do klienta HTTP. V7 pokazuje w aplikacji odliczanie wymagane przez stronę przy uruchamianiu bezpłatnego odtwarzacza, odczytując jego bieżącą wartość bez dodatkowego czekania. Komunikat znika po załadowaniu ramki, błędzie lub anulowaniu. Zachowuje poprawki v6: odczytuje język także z podpowiedzi `original-title` i pomija równoważne hostingi po znalezieniu wideo. Zamyka bezczynne dokumenty, blokuje spóźnione żądania po zakończeniu operacji lub przejściu aplikacji w tło i dobiera odtwarzacz z bieżącego DOM po ponownym wczytaniu filmu. Wyszukiwanie wysyła formularz przez WebView bez dodatkowego otwierania strony głównej, gdy znana jest już domena sesji. Raport zawiera zbiorcze liczniki dokumentów, ramek, weryfikacji i żądań zatrzymanych przed siecią. Zachowuje widoczne ustawienia i poprawki v2–v5. Nie gwarantuje akceptacji CAPTCHA ani usunięcia blokady sieci przez witrynę. Usuń zainstalowany stary **EkinoProvider**, odśwież repozytorium i zainstaluj **EkinoTvProvider** jako nowy dodatek. [Instrukcja](EKINO-TV.md), [analiza historii i zgłoszeń](EKINO-TV-AUDIT.md).
+**AnimeWatch** — wybierz anime i odcinek. Gdy hosting wymaga ręcznej weryfikacji, dodatek otworzy jej okno podczas ładowania. Awaryjna weryfikacja jest dostępna także w ustawieniach dodatku.
 
-## Instalacja repozytorium
+**AnimeGate** — otwórz zębatkę dodatku, zaloguj się przez Discord i wybierz **Zapisz**. Serwis może wymagać członkostwa na swoim serwerze Discord. Gdy sesja wygaśnie, odnowisz ją w tych samych ustawieniach.
 
-1. W CloudStream otwórz **Ustawienia → Rozszerzenia → Dodaj repozytorium**. Nazwy opcji mogą się nieznacznie różnić zależnie od wersji i układu aplikacji.
-2. W polu adresu wklej cały poniższy link. Jeśli aplikacja pyta o nazwę, wpisz **Dedziek CloudStream**.
+**Ekino TV** — wybierz film lub odcinek. Komunikat pokazuje odliczanie wymagane przez stronę. Gdy pojawi się CAPTCHA, wybierz w ustawieniach **Otwórz weryfikację**, uruchom odtwarzacz na stronie, a przy gotowym źródle naciśnij **Sprawdź i zamknij**.
 
-   ```text
-   https://github.com/dedziek/dedziek-cloudstream/raw/refs/heads/main/repo.json
-   ```
-
-3. Otwórz dodane repozytorium i zainstaluj wybrany dodatek: **FilmanProvider**, **AnimeWatchProvider**, **EkinoTvProvider**, **ObejrzyjTo** lub prototyp **AnimeGateProvider**.
-4. Dla Filmana skonfiguruj logowanie według instrukcji poniżej i wybierz źródło **Filman — konto darmowe (test)**. Dla AnimeWatch wybierz źródło **AnimeWatch** — konfiguracja konta nie jest wymagana.
-
-Jeśli repozytorium jest już dodane i działa, wystarczy odświeżyć jego listę dodatków. Ponowne dodawanie repozytorium nie jest potrzebne. Aktualizacje dodatków są publikowane pod tym samym adresem.
-
-## ObejrzyjTo od Phishera i automatyczne aktualizacje
-
-**ObejrzyjTo** to polski dodatek do `obejrzyj.to` z [oryginalnego Phisher Repo](https://github.com/phisher98/cloudstream-extensions-phisher). Repozytorium Dedziek udostępnia jego wpis, z zachowaniem nazwy, autora, opisu, statusu i numeru wersji. Paczka `.cs3` jest pobierana bezpośrednio z konkretnego commita repozytorium Phishera. Nie jest modyfikowana ani przechowywana ponownie tutaj.
-
-CloudStream korzysta ze standardowego mechanizmu aktualizacji zainstalowanych dodatków przy uruchamianiu aplikacji. W **Ustawienia → Aktualizacje i kopie zapasowe** pozostaw włączone **Automatyczne aktualizacje rozszerzeń**; nazwy mogą się różnić zależnie od wersji. Numery wersji i stała nazwa wewnętrzna ObejrzyjTo pozwalają aplikacji aktualizować go tak samo jak pozostałe dodatki. Ustawienia na telefonie nie są zmieniane przez repozytorium.
-
-Zadanie [Update ObejrzyjTo from Phisher](.github/workflows/sync-phisher.yml) odświeża wpis po stronie repozytorium **co godzinę**, a także po ręcznym uruchomieniu. To harmonogram synchronizacji zewnętrznego katalogu; CloudStream sam obsługuje aktualizacje na urządzeniu. Własne dodatki są publikowane po zmianach kodu, zgodnie z oficjalnym szablonem repozytorium. GitHub może opóźnić zaplanowane wykonanie.
-
-Przed publikacją sprawdzane są źródło, autor, API, rozmiar, SHA-256 oraz nazwa i wersja w manifeście paczki. Adres jest przypięty do commita, aby odpowiadał sumie kontrolnej i wersji również po następnej publikacji Phishera. Błąd pobierania lub niezgodna paczka nie zastępują ostatniej opublikowanej listy. Synchronizacja nie instaluje dodatku na urządzeniu i nie potwierdza odtwarzania.
-
-Jeżeli masz już ObejrzyjTo zainstalowany z Phisher Repo, korzystaj z jednej instalacji tego źródła; CloudStream rozróżnia instalacje po repozytorium.
-
-## Logowanie do Filmana
-
-Dla AnimeGate dostępna jest osobna [instrukcja logowania i odtwarzania](ANIMEGATE.md).
-
-1. Otwórz ustawienia **FilmanProvider** — ikonę zębatki przy rozszerzeniu.
-2. Wybierz **Otwórz logowanie**.
-3. Zaloguj się na swoje darmowe konto w formularzu strony i wykonaj wymagane przez stronę potwierdzenia.
-4. Po zakończeniu logowania naciśnij **Zapisz sesję**.
-5. Sprawdź wyszukiwanie i odtwarzanie. Jeśli dodatek ponownie prosi o logowanie, wróć do jego ustawień i zapisz nową sesję po zalogowaniu.
-
-Komunikat zapisu potwierdza zapis ciasteczek; poprawność logowania sprawdzisz, korzystając ze źródła. Dodatek korzysta ze zwykłych źródeł dla darmowego konta. Nie obsługuje API Premium ani czasowych podglądów „free premium”.
-
-Wersja 3 Filmana obsługuje ciasteczka osadzonej weryfikacji Cloudflare i zachowuje identyfikator przeglądarki przez całą sesję. Okno pokazuje błędy połączenia oraz odpowiedzi HTTP i udostępnia przycisk **Odśwież** do ręcznego ponowienia ładowania.
-
-Wersja 4 naprawia niewidoczny obszar strony w oknie logowania. Formularz zajmuje dostępną część okna, a przyciski pozostają pod nim. Okno dostosowuje się do miejsca pozostałego po otwarciu klawiatury.
+**ObejrzyjTo** — instalujesz oryginalną paczkę Phisher98. Jej wersja, autor, ikona i opis pochodzą z repozytorium autora; katalog jest synchronizowany co godzinę. CloudStream obsługuje aktualizacje na urządzeniu.
 
 ## Telefon i telewizor
 
-Na Android TV / Google TV dodaj ten sam link repozytorium. Do logowania potrzebny jest działający **Android System WebView** i możliwość wpisania danych konta; część urządzeń TV nie udostępnia odpowiedniego WebView. Zgodność z konkretnymi modelami telewizorów nie została przetestowana.
+Własne dodatki wymagają **Androida 6.0+**, aktualnego CloudStream Beta i działającego **Android System WebView**. Na telewizorze użyj tego samego adresu repozytorium. Do logowania potrzebna jest możliwość wpisywania tekstu; zgodność z każdym modelem TV nie została sprawdzona.
 
-Sesję Filmana trzeba utworzyć osobno na każdym urządzeniu. Kopia ustawień CloudStream nie przenosi zapisanej sesji.
+Sesję tworzysz osobno na każdym urządzeniu. Hasła wpisujesz na stronie serwisu, a dane sesji pozostają lokalnie na urządzeniu.
 
-## Najczęstsze problemy
+## Pomoc
 
-### „Nie znaleziono tego repozytorium”, „Niepoprawny URL” lub „404: Not Found”
+| Problem | Co zrobić |
+| --- | --- |
+| Repozytorium nie jest widoczne | Sprawdź pełny adres `repo.json` z instrukcji i odśwież rozszerzenia. |
+| Pojawia się prośba o logowanie | Otwórz zębatkę właściwego dodatku i ponownie zapisz sesję. |
+| Weryfikacja się zapętla | Sprawdź ten sam materiał w przeglądarce w tej samej sieci. Jeśli tam również nie działa, przerwij kolejne próby. |
+| Brak wideo lub błąd źródła | Sprawdź inną dostępną wersję odcinka i działanie materiału na stronie. |
+| Po aktualizacji widać starą wersję | Odśwież repozytorium i uruchom aplikację ponownie. Sprawdź, czy nie pozostała druga, ręcznie zainstalowana kopia `.cs3`. |
 
-- Skopiuj cały adres z sekcji instalacji i wklej go do pola adresu repozytorium.
-- Otwórz ten sam link w przeglądarce na telefonie. Powinien wyświetlić tekst JSON z polami `name`, `manifestVersion` i `pluginLists`.
-- Po wcześniejszej nieudanej próbie aplikacja może nadal korzystać z zapamiętanej odpowiedzi. W ustawieniach Androida wybierz **Aplikacje → CloudStream Beta → Pamięć → Wyczyść pamięć podręczną**, uruchom CloudStream ponownie i spróbuj dodać link jeszcze raz. Do tego kroku służy opcja czyszczenia pamięci podręcznej; zachowaj dane aplikacji.
+[Zgłoś problem w Issues](https://github.com/dedziek/dedziek-cloudstream/issues) — podaj nazwę i wersję dodatku, wersję CloudStream, tytuł, numer odcinka oraz komunikat błędu. Nie dołączaj haseł, cookies ani biletów odtwarzania.
 
-### Katalog działa, ale wyszukiwanie lub odtwarzanie prosi o logowanie
+## Dokumentacja i rozwój
 
-Otwórz zębatkę **FilmanProvider**, zaloguj się ponownie i wybierz **Zapisz sesję**. Sesja może wygasnąć po stronie serwisu.
+- [AnimeWatch — odtwarzanie i weryfikacja](ANIMEWATCH.md)
+- [AnimeGate — konfiguracja](ANIMEGATE.md) · [kontrakt API](ANIMEGATE-API.md)
+- [Ekino TV — konfiguracja](EKINO-TV.md) · [analiza zmian](EKINO-TV-AUDIT.md)
+- [Filman — informacje o kompilacji](BUILD-INFO.md)
 
-### Okno logowania jest puste lub zatrzymuje się na Cloudflare
+Kod jest na gałęzi **main**, a paczki i katalog aktualizacji na **builds**. GitHub Actions kompiluje dodatki, uruchamia testy i sprawdza zgodność manifestów oraz sum SHA-256 przed publikacją.
 
-Jeśli strona pokazuje interaktywną weryfikację, wykonaj ją samodzielnie w oknie dodatku. Wersja 3 dopuszcza wymagane ramki Cloudflare także w starszym interfejsie WebView. Nie zmienia to domeny, do której mogą trafiać zapisane ciasteczka Filmana: pozostaje nią wyłącznie `https://filman.cc`.
-
-Komunikat **Sorry, you have been blocked** lub utrzymujący się HTTP 403 może oznaczać odmowę dostępu przez serwis. Sprawdź ten sam adres w zwykłej przeglądarce na tym samym urządzeniu. Jeżeli również tam pojawia się blokada, sama zmiana dodatku nie przywróci dostępu. Logowanie w zewnętrznej przeglądarce nie przenosi automatycznie sesji do CloudStream.
-
-### Nie działa wybrany odtwarzacz
-
-Wybierz inne dostępne źródło. Działanie poszczególnych hostingów zależy od ekstraktorów CloudStream i może zmieniać się niezależnie od dodatku. Sprawdź też, czy ten sam materiał jest dostępny bezpośrednio na stronie.
-
-### Zainstalowano wcześniej lokalny plik `.cs3`
-
-Przy przejściu na instalację z repozytorium usuń wcześniejszą lokalną kopię dodatku z `Cloudstream3/plugins/` i uruchom aplikację ponownie, aby uniknąć ładowania dwóch kopii. Zapisana sesja jest przechowywana osobno.
-
-## Prywatność sesji Filmana
-
-Hasło wpisujesz w formularzu strony. Dodatek nie odczytuje go z formularza. Ciasteczka sesji i identyfikator WebView są zapisywane lokalnie w zaszyfrowanym pliku z kluczem Android Keystore, poza kopią zapasową aplikacji.
-
-Żądania z ciasteczkami są ograniczone do `https://filman.cc`; ciasteczka nie są przekazywane zewnętrznym odtwarzaczom ani publikowane w repozytorium. Przycisk **Usuń zapisaną sesję** usuwa lokalny zapis i ciasteczka Filmana dostępne dla okna logowania.
-
-## Zgłaszanie problemów
-
-W [Issues](https://github.com/dedziek/dedziek-cloudstream/issues) podaj wersję CloudStream, model urządzenia, nazwę dodatku, etap wystąpienia problemu i dokładny komunikat błędu. Pomocny będzie zrzut ekranu bez danych logowania. Nie publikuj hasła ani ciasteczek sesji.
-
-## Kod, kompilacja i publikacja
-
-- Gałąź **`main`** zawiera kod źródłowy, instrukcję i manifest repozytorium.
-- Gałąź **`builds`** zawiera własne pliki `.cs3`, `plugins.json`, `phisher-plugins.json`, `repo.json` i sumy kontrolne własnych paczek.
-- [GitHub Actions](https://github.com/dedziek/dedziek-cloudstream/actions) kompiluje dodatki, uruchamia testy i publikuje pliki instalacyjne.
-- Parametry kompilacji i wyniki testów Filmana opisuje [BUILD-INFO.md](BUILD-INFO.md).
-
-Do lokalnej kompilacji przygotuj JDK 21 i Android SDK z platformą 35. Wskaż SDK przez `ANDROID_HOME` lub lokalny plik `local.properties`. Zależności są pobierane z Google Maven, Maven Central, JitPack i oficjalnego wydania CloudStream.
-
-Windows:
-
-```powershell
-.\gradlew.bat :FilmanProvider:make :AnimeWatchProvider:make testDebugUnitTest makePluginsJson --no-daemon
-```
-
-Linux / macOS:
+Do kompilacji lokalnej potrzebne są **JDK 21** i **Android SDK 35**:
 
 ```sh
-sh gradlew :FilmanProvider:make :FilmanProvider:testDebugUnitTest makePluginsJson --no-daemon
+sh gradlew :FilmanProvider:make :AnimeWatchProvider:make :AnimeGateProvider:make :EkinoTvProvider:make testDebugUnitTest --no-daemon
 ```
 
-Wynik kompilacji Filmana: `FilmanProvider/build/FilmanProvider.cs3`. Raport testów: `FilmanProvider/build/reports/tests/testDebugUnitTest/index.html`.
-
-Workflow **Build and publish CloudStream repository** uruchamia się po zmianach kodu na `main` / `master` albo ręcznie przez **Actions → Run workflow**. Zmiany wyłącznie w plikach Markdown nie uruchamiają kompilacji.
-
-Przed publikacją zmienionego dodatku zwiększ całkowitą liczbę `version` w jego `build.gradle.kts`, aby CloudStream rozpoznał aktualizację. Do publikacji automat używa standardowego `GITHUB_TOKEN` z uprawnieniem `contents: write`; dane konta Filman nie są potrzebne.
+Ikony czterech własnych dodatków są autorskimi oznaczeniami tego repozytorium. Nazwy źródeł odnoszą się do obsługiwanych serwisów. ObejrzyjTo zachowuje oznaczenia swojego autora.

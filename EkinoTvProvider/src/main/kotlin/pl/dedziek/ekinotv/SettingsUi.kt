@@ -47,7 +47,7 @@ internal object SettingsUi {
         action(VERIFY, true, onVerify)
         action(SITE, true, onSite)
         action(REPORT, false, onReport)
-        menu = AlertDialog.Builder(activity).setTitle("Ekino TV v7")
+        menu = AlertDialog.Builder(activity).setTitle("Ekino TV v8")
             .setView(scroll).setNegativeButton("Zamknij", null).create()
         menu.show()
     }
