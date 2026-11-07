@@ -1,12 +1,20 @@
 # Ekino TV
 
-Dodatek **EkinoTvProvider v6**, źródło **Ekino TV**. Napisany od nowa dla `https://ekino-tv.pl`; przeglądarka obsługuje oficjalne przekierowanie do `https://ekino.ws`. To osobna paczka i klasa dodatku. Kod starego EkinoProvider v1–v13 został usunięty z aktualnej gałęzi, a historia zmian pozostaje dostępna w Git.
+Dodatek **EkinoTvProvider v7**, źródło **Ekino TV**. Napisany od nowa dla `https://ekino-tv.pl`; przeglądarka obsługuje oficjalne przekierowanie do `https://ekino.ws`. To osobna paczka i klasa dodatku. Kod starego EkinoProvider v1–v13 został usunięty z aktualnej gałęzi, a historia zmian pozostaje dostępna w Git.
 
 ## Instalacja
 
 1. Usuń **EkinoProvider / Ekino** w rozszerzeniach CloudStream. Zainstalowanej kopii na telefonie nie usuwa wycofanie paczki z GitHuba.
 2. Odśwież repozytorium **Dedziek CloudStream** i zainstaluj **EkinoTvProvider**. Możesz też pobrać [nową paczkę](https://raw.githubusercontent.com/dedziek/dedziek-cloudstream/builds/EkinoTvProvider.cs3).
 3. Wybierz źródło **Ekino TV**. Wymagany jest Android 6+ z działającym Android System WebView oraz aktualny CloudStream Beta. Zgodność z konkretnym Android TV nie została sprawdzona.
+
+## V7 — widoczne odliczanie odtwarzacza
+
+Podczas ładowania bezpłatnego odtwarzacza komunikat w CloudStream pokazuje „Oczekiwanie na odtwarzacz: … s”. Wartość pochodzi z widocznego licznika Ekino, więc komunikat pojawia się tylko wtedy, gdy strona faktycznie każe czekać. Odtwarzacze bez licznika uruchamiają się tak jak dotychczas; dodatek nie ustala stanu zalogowania na podstawie samych cookies.
+
+W obserwowanym skrypcie strony licznik zaczyna od `time = 10` i od razu pokazuje 9 sekund. Dlatego oczekiwanie trwa około 10 sekund, a pierwszy widoczny komunikat może wskazywać 9 s. Dodatek nie dokłada własnego odliczania. Po nim pozostaje czas na pobranie ramki i źródła z hostingu. Komunikat nie przechwytuje dotyku ani klawisza Wstecz/pilota; znika po uzyskaniu ramki, błędzie, anulowaniu lub przejściu aplikacji w tło.
+
+Walidacja v7: **63 testy Androida i 5 testów skryptu DOM — wszystkie przeszły**, kompilacja oraz rzeczywisty test dostawcy CloudStream zakończony `Success Ekino TV`. W aplikacji sprawdzono widoczny licznik (8 s → 1 s), a następnie jego zniknięcie i jedno źródło wideo.
 
 ## V6 — wygaszanie ruchu i aktualne kontrolki odtwarzaczy
 

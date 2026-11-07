@@ -59,6 +59,7 @@ internal class WebSession(context: Context, val state: SessionState,
     private var activeJob: Job? = null
     private var idleJob: Job? = null
     private var pendingVerification: Pair<String?, String>? = null
+    private val countdown = PlaybackCountdown { owner }
 
     init {
         (context.applicationContext as? Application)?.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
@@ -267,6 +268,7 @@ internal class WebSession(context: Context, val state: SessionState,
 
     /** about:blank terminates page timers as well as network loads; stopLoading alone does not. */
     private fun blank() {
+        countdown.dismiss()
         idleJob?.cancel(); idleJob = null
         epoch++
         documentActive = false; activePlayer = null; external = null; bridgeNavigation = false
@@ -282,6 +284,7 @@ internal class WebSession(context: Context, val state: SessionState,
     }
 
     private fun closeBrowser(renderGone: Boolean = false) {
+        countdown.dismiss()
         idleJob?.cancel(); idleJob = null
         pendingVerification = null
         epoch++
@@ -311,7 +314,8 @@ internal class WebSession(context: Context, val state: SessionState,
         val json = mapper.readTree(encoded)
         fun read(node: com.fasterxml.jackson.databind.JsonNode) = WebPage(node.path("url").asText(), node.path("html").asText(), node.path("active").asBoolean(true))
         return BrowserSnapshot(read(json), json.path("frames").take(12).map(::read),
-            json.path("readyState").asText(), json.path("documentId").asDouble(), json.path("hasShowPlayer").asBoolean())
+            json.path("readyState").asText(), json.path("documentId").asDouble(), json.path("hasShowPlayer").asBoolean(),
+            json.path("playerCountdown").takeIf { it.isIntegralNumber }?.asInt()?.takeIf { it in 1..120 })
     }
 
     private fun begin(url: String, bridge: Boolean = false) {
@@ -458,20 +462,23 @@ internal class WebSession(context: Context, val state: SessionState,
         stage("odtwarzacz: ramka")
         var emptySince: Long? = null
         // The site's own ShowPlayer runs its advertised countdown; no synthesized wrapper request.
-        while (true) {
-            checkFailure()
-            val value = snapshot()
-            if (value == null || Site.publicPage(value.page.url) != Site.publicPage(material)) { delay(250); continue }
-            checkSnapshot(value)
-            val wrapper = value.frames.firstOrNull { it.active && Site.wrapper(it.url) && Site.path(it.url).endsWith("/${currentPlayer.identity}") }
-            if (wrapper != null && Catalogue.embeds(wrapper).isNotEmpty()) return@automatic wrapper
-            if (wrapper != null) {
-                val now = SystemClock.elapsedRealtime()
-                if (emptySince == null) emptySince = now
-                if (now - emptySince >= 1000 && wrapper.doc.body().text().isNotBlank()) return@automatic wrapper
-            } else emptySince = null
-            delay(250)
-        }
+        try {
+            while (true) {
+                checkFailure()
+                val value = snapshot()
+                if (value == null || Site.publicPage(value.page.url) != Site.publicPage(material)) { delay(250); continue }
+                checkSnapshot(value)
+                val wrapper = value.frames.firstOrNull { it.active && Site.wrapper(it.url) && Site.path(it.url).endsWith("/${currentPlayer.identity}") }
+                countdown.update(if (wrapper == null) value.playerCountdown else null)
+                if (wrapper != null && Catalogue.embeds(wrapper).isNotEmpty()) return@automatic wrapper
+                if (wrapper != null) {
+                    val now = SystemClock.elapsedRealtime()
+                    if (emptySince == null) emptySince = now
+                    if (now - emptySince >= 1000 && wrapper.doc.body().text().isNotBlank()) return@automatic wrapper
+                } else emptySince = null
+                delay(250)
+            }
+        } finally { countdown.dismiss() }
         @Suppress("UNREACHABLE_CODE") error("unreachable")
     }
 
@@ -585,6 +592,6 @@ internal class WebSession(context: Context, val state: SessionState,
 
     companion object {
         /** Read-only DOM access. No JS bridge, token interception, fetch replacement or browser API patches. */
-        internal val SNAPSHOT = """(function(){var out={url:location.href,html:document.documentElement?document.documentElement.outerHTML:'',readyState:document.readyState,documentId:performance.timeOrigin||(performance.timing&&performance.timing.navigationStart)||0,hasShowPlayer:typeof window.ShowPlayer==='function',frames:[]};function visit(w,depth,parentActive){if(depth>3||out.frames.length>=12)return;for(var i=0;i<w.frames.length;i++){try{var f=w.frames[i],u=new URL(f.location.href);if(u.protocol==='https:'&&['ekino.ws','ekino-tv.pl','play.ekino.link'].indexOf(u.hostname)>=0&&f.document.readyState!=='loading'&&f.document.documentElement){var e=f.frameElement;out.frames.push({url:u.href,html:f.document.documentElement.outerHTML,active:parentActive&&!!e&&e.getClientRects().length>0&&w.getComputedStyle(e).visibility!=='hidden'});visit(f,depth+1,parentActive&&!!e&&e.getClientRects().length>0&&w.getComputedStyle(e).visibility!=='hidden');}}catch(e){}}}visit(window,0,true);return JSON.stringify(out);})()"""
+        internal val SNAPSHOT = """(function(){var out={url:location.href,html:document.documentElement?document.documentElement.outerHTML:'',readyState:document.readyState,documentId:performance.timeOrigin||(performance.timing&&performance.timing.navigationStart)||0,hasShowPlayer:typeof window.ShowPlayer==='function',frames:[]};var overlay=document.querySelector('#over-player'),counter=overlay&&overlay.querySelector('#time span'),digits=counter&&counter.textContent.match(/\d+/);out.playerCountdown=overlay&&digits&&overlay.getClientRects().length>0&&window.getComputedStyle(overlay).visibility!=='hidden'?Number(digits[0]):null;function visit(w,depth,parentActive){if(depth>3||out.frames.length>=12)return;for(var i=0;i<w.frames.length;i++){try{var f=w.frames[i],u=new URL(f.location.href);if(u.protocol==='https:'&&['ekino.ws','ekino-tv.pl','play.ekino.link'].indexOf(u.hostname)>=0&&f.document.readyState!=='loading'&&f.document.documentElement){var e=f.frameElement;out.frames.push({url:u.href,html:f.document.documentElement.outerHTML,active:parentActive&&!!e&&e.getClientRects().length>0&&w.getComputedStyle(e).visibility!=='hidden'});visit(f,depth+1,parentActive&&!!e&&e.getClientRects().length>0&&w.getComputedStyle(e).visibility!=='hidden');}}catch(e){}}}visit(window,0,true);return JSON.stringify(out);})()"""
     }
 }
