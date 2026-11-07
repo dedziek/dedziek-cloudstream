@@ -1,4 +1,4 @@
-version = 8
+version = 9
 
 dependencies {
     add("compileOnly", "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.1")
@@ -10,7 +10,7 @@ dependencies {
 
 cloudstream {
     description = "Filmy i seriale z Ekino TV. Odliczanie odtwarzacza i ręczna weryfikacja w ustawieniach."
-    iconUrl = "https://raw.githubusercontent.com/dedziek/dedziek-cloudstream/main/assets/icons/ekino-tv.png"
+    iconUrl = "https://raw.githubusercontent.com/dedziek/dedziek-cloudstream/main/assets/icons/ekino-tv-site.png"
     authors = listOf("Dedziek CloudStream contributors")
     language = "pl"
     status = 3

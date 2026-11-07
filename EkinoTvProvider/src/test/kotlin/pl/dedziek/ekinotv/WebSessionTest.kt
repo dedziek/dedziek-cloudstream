@@ -262,7 +262,7 @@ class WebSessionTest {
         assertTrue(shownAction(options, "Kopiuj raport").performClick())
         val clipboard = activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val report = clipboard.primaryClip!!.getItemAt(0).text.toString()
-        assertTrue(report.contains("Ekino TV v8"))
+        assertTrue(report.contains("Ekino TV v9"))
         assertTrue(report.contains("CAPTCHA odtwarzacza"))
         assertTrue(restored.paused)
         assertTrue(views(activity.findViewById(android.R.id.content)).none { it is WebView })

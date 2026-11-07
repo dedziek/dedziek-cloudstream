@@ -1,8 +1,8 @@
 # Ekino TV
 
-Dodatek **EkinoTvProvider v8**, źródło **Ekino TV**. Napisany od nowa dla `https://ekino-tv.pl`; przeglądarka obsługuje oficjalne przekierowanie do `https://ekino.ws`. To osobna paczka i klasa dodatku. Kod starego EkinoProvider v1–v13 został usunięty z aktualnej gałęzi, a historia zmian pozostaje dostępna w Git.
+Dodatek **EkinoTvProvider v9**, źródło **Ekino TV**. Napisany od nowa dla `https://ekino-tv.pl`; przeglądarka obsługuje oficjalne przekierowanie do `https://ekino.ws`. To osobna paczka i klasa dodatku. Kod starego EkinoProvider v1–v13 został usunięty z aktualnej gałęzi, a historia zmian pozostaje dostępna w Git.
 
-Wersja 8 dodaje ikonę i prostszy opis w katalogu dodatków. Zachowuje odliczanie i obsługę weryfikacji z v7.
+Wersja 9 używa oryginalnej ikony Ekino TV w katalogu dodatków. Zachowuje krótki opis z v8 oraz odliczanie i obsługę weryfikacji z v7.
 
 ## Instalacja
 

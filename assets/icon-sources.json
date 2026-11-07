@@ -1,0 +1,41 @@
+{
+  "retrieved": "2026-11-07",
+  "icons": {
+    "filman": {
+      "page": "https://filman.cc/",
+      "source": "https://filman.cc/public/dist/images/favicon.png",
+      "file": "assets/icons/filman-site.png",
+      "sourceSha256": "21751f728fb3200f0f8e8f60a27fceb5f210ee0cb1f55b1f934929c50f46bced",
+      "width": 128,
+      "height": 128,
+      "conversion": "oryginalny PNG bez zmian"
+    },
+    "animewatch": {
+      "page": "https://animewatch.pl/",
+      "source": "https://animewatch.pl/wp-content/uploads/2025/11/cropped-IKONA-192x192.png",
+      "file": "assets/icons/animewatch-site.png",
+      "sourceSha256": "5b2894d97c34ad057f1a29466ee58a4dc490761c89f7f0dcc0d099752b30b2ec",
+      "width": 192,
+      "height": 192,
+      "conversion": "oryginalny PNG bez zmian"
+    },
+    "animegate": {
+      "page": "https://animegate.pl/",
+      "source": "https://animegate.pl/favicon.ico?favicon.2m3wqda9mskab.ico",
+      "file": "assets/icons/animegate-site.png",
+      "sourceSha256": "c55e604204f33409e939045990d6a6fac03ea24d03a6c65ce2e9d4750fbbb12f",
+      "width": 32,
+      "height": 32,
+      "conversion": "oryginalny PNG bez zmian"
+    },
+    "ekino-tv": {
+      "page": "https://ekino-tv.pl/",
+      "source": "https://ekino.ws/views/img/shortcut.png",
+      "file": "assets/icons/ekino-tv-site.png",
+      "sourceSha256": "c42570553831957b2251e61cff6f893be2e4b69b5f7b6e841fbe6168a1001544",
+      "width": 20,
+      "height": 20,
+      "conversion": "oryginalny PNG bez zmian"
+    }
+  }
+}
