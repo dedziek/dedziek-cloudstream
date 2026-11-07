@@ -3,6 +3,7 @@ package pl.animegatecloudstream
 import android.webkit.CookieManager
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.ExtractorLink
+import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.loadExtractor
 import com.lagradost.cloudstream3.utils.newExtractorLink
 import kotlinx.coroutines.CancellationException
@@ -23,6 +24,10 @@ class AnimeGateProvider(private val session: AnimeGateSession) : MainAPI() {
     override val mainPage = mainPageOf("preview" to "Najwyżej oceniane — podgląd")
     private val catalog = AnimeGateCatalogApi(::get)
     private val playback = AnimeGatePlaybackApi(post = { url, body -> request(url, body) })
+    private val media by lazy {
+        AnimeGateMediaProbe(AnimeGateMediaHttp(app.baseClient)::read,
+            app.defaultHeaders.entries.firstOrNull { it.key.equals("User-Agent", true) }?.value.orEmpty())
+    }
 
     private fun get(url: String): String = request(url)
 
@@ -111,6 +116,7 @@ class AnimeGateProvider(private val session: AnimeGateSession) : MainAPI() {
         return withContext(Dispatchers.IO) {
             val episode = catalog.watchEpisode(data)
             var found = false
+            val failures = linkedSetOf<String>()
             for (version in episode.links.take(8)) {
                 try {
                     val iframe = playback.resolve(episode.id, version.id)
@@ -118,8 +124,15 @@ class AnimeGateProvider(private val session: AnimeGateSession) : MainAPI() {
                     val extracted = mutableListOf<ExtractorLink>()
                     loadExtractor(iframe, "$mainUrl/", subtitleCallback) { extracted.add(it) }
                     for (link in extracted) {
+                        val format = try { media.inspect(link.url, link.referer, link.headers) }
+                        catch (error: AnimeGateMediaException) { failures.add(error.message.orEmpty()); continue }
+                        val type = when (format) {
+                            AnimeGateMediaProbe.Format.HLS -> ExtractorLinkType.M3U8
+                            AnimeGateMediaProbe.Format.DASH -> ExtractorLinkType.DASH
+                            AnimeGateMediaProbe.Format.VIDEO -> ExtractorLinkType.VIDEO
+                        }
                         found = true
-                        callback(newExtractorLink("AnimeGate", "${version.label} — ${link.name}", link.url, link.type) {
+                        callback(newExtractorLink("AnimeGate", "${version.label} — ${link.name}", link.url, type) {
                             referer = link.referer; headers = link.headers; quality = link.quality
                             extractorData = link.extractorData
                         })
@@ -128,7 +141,9 @@ class AnimeGateProvider(private val session: AnimeGateSession) : MainAPI() {
                 catch (error: ErrorLoadingException) { throw error }
                 catch (_: Exception) { /* Try remaining language versions, without logging response data. */ }
             }
-            if (!found) throw ErrorLoadingException("AnimeGate: nie uzyskano wideo z dostępnych wersji odcinka. Sprawdź sesję w ustawieniach lub spróbuj później.")
+            if (!found) throw ErrorLoadingException("AnimeGate: nie uzyskano wideo z dostępnych wersji odcinka. " +
+                if (failures.isEmpty()) "Hosting nie udostępnił źródła. Sprawdź odtwarzacz na stronie."
+                else failures.take(3).joinToString("; ") + ". Wybierz inną wersję odcinka lub sprawdź odtwarzacz na stronie.")
             true
         }
     }
