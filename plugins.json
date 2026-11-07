@@ -1,9 +1,9 @@
 [
   {
-    "fileHash": "sha256-bd2f5bf45b15d24ad36bd5ba5fe6bdcbf5dbdf300fd6df712cae520590f82462",
+    "fileHash": "sha256-c558fc3812bf5575a03427cbd020f832dc334a395694696a9251d3db75eb0aeb",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/dedziek/dedziek-cloudstream",
-    "fileSize": 62651,
+    "fileSize": 73111,
     "status": 3,
     "language": "pl",
     "authors": [
@@ -12,7 +12,7 @@
     "tvTypes": [
       "Anime"
     ],
-    "version": 11,
+    "version": 12,
     "internalName": "AnimeGateProvider",
     "description": "AnimeGate: katalog anime, odcinki i odtwarzanie z wersjami językowymi. Logowanie przez Discord.",
     "url": "https://raw.githubusercontent.com/dedziek/dedziek-cloudstream/builds/AnimeGateProvider.cs3",
