@@ -149,6 +149,23 @@ class WebSessionTest {
         "<ul class=players><li><a href='#$id-player'><i title='Lektor PL'></i></a></li></ul>" +
         "<a onclick=\"ShowPlayer('player','$id')\">Oglądaj</a></div>"
 
+    @Test fun cancellingPlayerLoadingRemovesItsVisibleCountdownWithoutPausingTheSession() = runTest {
+        val dispatcher = UnconfinedTestDispatcher(testScheduler)
+        val url = "https://ekino.ws/movie/show/test/1"
+        val page = async(dispatcher) { session.page(url) }; val web = browser()
+        reply(web, url, 1.0, html = controls("id")); page.await()
+        val frame = launch(dispatcher) { session.player(url, Player("player", "id", "Lektor PL")) }
+        reply(web, url, 1.0, html = controls("id"))
+        shadowOf(web).lastEvaluatedJavascriptCallback.onReceiveValue("true")
+        reply(web, url, 1.0, html = controls("id"), countdown = 9)
+        val notice = ShadowDialog.getLatestDialog()
+        assertTrue(notice.isShowing)
+        frame.cancelAndJoin()
+        assertFalse(notice.isShowing)
+        assertEquals("about:blank", shadowOf(web).lastLoadedUrl)
+        assertFalse(state.paused)
+    }
+
     @Test fun reloadedMaterialResolvesItsCurrentPlayerInsteadOfUsingCachedControlIds() = runTest {
         val dispatcher = UnconfinedTestDispatcher(testScheduler)
         val url = "https://ekino.ws/movie/show/test/1"
@@ -198,10 +215,10 @@ class WebSessionTest {
 
     private fun reply(browser: WebView, url: String, id: Double, ready: String = "interactive",
                       html: String = "<h1 class=title>Film</h1><div class=playerContainer></div>",
-                      frames: List<WebPage> = emptyList()) {
+                      frames: List<WebPage> = emptyList(), countdown: Int? = null) {
         assertEquals(WebSession.SNAPSHOT, shadowOf(browser).lastEvaluatedJavascript)
         val json = mapper.writeValueAsString(mapOf("url" to url, "html" to html, "readyState" to ready,
-            "documentId" to id, "hasShowPlayer" to true,
+            "documentId" to id, "hasShowPlayer" to true, "playerCountdown" to countdown,
             "frames" to frames.map { mapOf("url" to it.url, "html" to it.html) }))
         shadowOf(browser).lastEvaluatedJavascriptCallback.onReceiveValue(mapper.writeValueAsString(json))
     }
@@ -245,7 +262,7 @@ class WebSessionTest {
         assertTrue(shownAction(options, "Kopiuj raport").performClick())
         val clipboard = activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val report = clipboard.primaryClip!!.getItemAt(0).text.toString()
-        assertTrue(report.contains("Ekino TV v6"))
+        assertTrue(report.contains("Ekino TV v7"))
         assertTrue(report.contains("CAPTCHA odtwarzacza"))
         assertTrue(restored.paused)
         assertTrue(views(activity.findViewById(android.R.id.content)).none { it is WebView })

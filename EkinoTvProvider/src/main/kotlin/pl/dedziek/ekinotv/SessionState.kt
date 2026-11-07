@@ -68,7 +68,7 @@ internal class SessionState(context: Context, private val clock: () -> Long = { 
     }
 
     @Synchronized fun report(): String = buildString {
-        append("Ekino TV v6 · raport\nSilnik: Android System WebView\n")
+        append("Ekino TV v7 · raport\nSilnik: Android System WebView\n")
         append("Dokumenty/POST WebView od uruchomienia; zatrzymane = wszystkie żądania odrzucone lokalnie: ")
         append(requests.entries.joinToString(", ") { "${it.key}=${it.value}" }); append('\n')
         val cooldown = (retryAt - clock()).coerceAtLeast(0)

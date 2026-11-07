@@ -49,7 +49,7 @@ internal data class WebPage(val url: String, val html: String, val active: Boole
 
 internal data class BrowserSnapshot(val page: WebPage, val frames: List<WebPage> = emptyList(),
                                     val readyState: String = "complete", val documentId: Double = 0.0,
-                                    val hasShowPlayer: Boolean = false) {
+                                    val hasShowPlayer: Boolean = false, val playerCountdown: Int? = null) {
     val parsed get() = readyState in setOf("interactive", "complete") && page.html.isNotBlank()
     fun gate(): String? = (listOf(page) + frames.filter { it.active }).firstNotNullOfOrNull { p ->
         val d = p.doc
