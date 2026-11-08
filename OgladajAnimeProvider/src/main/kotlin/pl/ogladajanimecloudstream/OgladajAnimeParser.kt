@@ -173,11 +173,15 @@ object OgladajAnimeParser {
             episodes.add(Episode(title = title, url = epUrl, episode = epNum, epId = epId))
         }
 
+        // If numbered regular episodes exist, exclude unplayable "Zapowiedź" / trailer placeholders (epNum == 0 or null)
+        val regularEpisodes = episodes.filter { (it.episode ?: 0.0) > 0.0 }
+        val finalEpisodes = if (regularEpisodes.isNotEmpty()) regularEpisodes else episodes
+
         // If the site had episodes in descending or reverse order, maintain proper playback order
-        return if (episodes.size > 1 && (episodes.first().episode ?: 0.0) > (episodes.last().episode ?: 0.0)) {
-            episodes.reversed()
+        return if (finalEpisodes.size > 1 && (finalEpisodes.first().episode ?: 0.0) > (finalEpisodes.last().episode ?: 0.0)) {
+            finalEpisodes.reversed()
         } else {
-            episodes
+            finalEpisodes
         }
     }
 }

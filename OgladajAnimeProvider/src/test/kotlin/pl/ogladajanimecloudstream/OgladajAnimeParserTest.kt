@@ -119,19 +119,15 @@ class OgladajAnimeParserTest {
         assertEquals("TV", detail.type)
         assertEquals(listOf("Akcja", "Przygoda"), detail.genres)
 
-        assertEquals(3, detail.episodes.size)
-        assertEquals("Zapowiedź", detail.episodes[0].title)
-        assertEquals(0.0, detail.episodes[0].episode)
-        assertEquals("223794", detail.episodes[0].epId)
-        assertEquals("$base/anime/naruto-shippuuden?watchepisode=223794&subaction=player", detail.episodes[0].url)
+        assertEquals(2, detail.episodes.size)
+        assertEquals("Powrót do wioski", detail.episodes[0].title)
+        assertEquals(1.0, detail.episodes[0].episode)
+        assertEquals("62788", detail.episodes[0].epId)
+        assertEquals("$base/anime/naruto-shippuuden?watchepisode=62788&subaction=player", detail.episodes[0].url)
 
-        assertEquals("Powrót do wioski", detail.episodes[1].title)
-        assertEquals(1.0, detail.episodes[1].episode)
-        assertEquals("62788", detail.episodes[1].epId)
-
-        assertEquals("Akatsuki wkracza do akcji", detail.episodes[2].title)
-        assertEquals(2.0, detail.episodes[2].episode)
-        assertEquals("62787", detail.episodes[2].epId)
+        assertEquals("Akatsuki wkracza do akcji", detail.episodes[1].title)
+        assertEquals(2.0, detail.episodes[1].episode)
+        assertEquals("62787", detail.episodes[1].epId)
     }
 
     @Test
