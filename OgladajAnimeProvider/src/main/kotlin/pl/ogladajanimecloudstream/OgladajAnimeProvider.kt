@@ -42,16 +42,40 @@ class OgladajAnimeProvider : MainAPI() {
         @param:JsonProperty("players") val players: List<PlayerItem>? = null
     )
 
-    private val ajaxHeaders: Map<String, String>
-        get() = mapOf(
+    @Volatile
+    private var sessionCookie: String? = null
+
+    private suspend fun ensureSession(): String {
+        sessionCookie?.let { return it }
+        val res = app.get(mainUrl, headers = mapOf("Accept-Language" to "pl,en;q=0.7"))
+        val cookie = res.headers["set-cookie"]?.split(";")?.firstOrNull()?.trim()
+            ?: res.okhttpResponse.headers("Set-Cookie").firstOrNull()?.split(";")?.firstOrNull()?.trim()
+        if (!cookie.isNullOrEmpty()) {
+            sessionCookie = cookie
+            return cookie
+        }
+        return ""
+    }
+
+    private suspend fun ajaxHeaders(): Map<String, String> {
+        val cookie = ensureSession()
+        val headers = mutableMapOf(
             "Referer" to "$mainUrl/",
             "X-Requested-With" to "XMLHttpRequest",
             "Accept-Language" to "pl,en;q=0.7"
         )
+        if (cookie.isNotEmpty()) {
+            headers["Cookie"] = cookie
+        }
+        return headers
+    }
 
     private suspend fun sitePage(url: String): Document {
         if (!OgladajAnimeParser.isSiteUrl(url)) throw ErrorLoadingException("OglądajAnime: nieprawidłowy adres strony.")
-        val response = app.get(url, headers = mapOf("Accept-Language" to "pl,en;q=0.7"))
+        val cookie = ensureSession()
+        val headers = mutableMapOf("Accept-Language" to "pl,en;q=0.7")
+        if (cookie.isNotEmpty()) headers["Cookie"] = cookie
+        val response = app.get(url, headers = headers)
         if (response.code == 403 || response.code == 429) {
             throw ErrorLoadingException("OglądajAnime: strona odrzuciła połączenie (HTTP ${response.code}). Sprawdź dostęp w przeglądarce.")
         }
@@ -97,7 +121,7 @@ class OgladajAnimeProvider : MainAPI() {
             "search_type" to searchType,
             "search" to sortTerm
         )
-        val res = app.post("$mainUrl/manager.php?action=get_search", data = postData, headers = ajaxHeaders)
+        val res = app.post("$mainUrl/manager.php?action=get_search", data = postData, headers = ajaxHeaders())
         if (res.code !in 200..299) throw ErrorLoadingException("OglądajAnime: błąd podczas pobierania katalogu (HTTP ${res.code}).")
 
         val json = tryParseJson<AjaxResponse>(res.text)
@@ -112,7 +136,7 @@ class OgladajAnimeProvider : MainAPI() {
             "search_type" to "name",
             "search" to query.trim()
         )
-        val res = app.post("$mainUrl/manager.php?action=get_search", data = postData, headers = ajaxHeaders)
+        val res = app.post("$mainUrl/manager.php?action=get_search", data = postData, headers = ajaxHeaders())
         if (res.code !in 200..299) return emptyList<SearchResponse>().toNewSearchResponseList(false)
 
         val json = tryParseJson<AjaxResponse>(res.text)
@@ -172,7 +196,7 @@ class OgladajAnimeProvider : MainAPI() {
             "error" to "300030",
             "token" to ""
         )
-        val listRes = app.post("$mainUrl/manager.php?action=get_player_list", data = listPost, headers = ajaxHeaders)
+        val listRes = app.post("$mainUrl/manager.php?action=get_player_list", data = listPost, headers = ajaxHeaders())
         if (listRes.code !in 200..299) throw ErrorLoadingException("OglądajAnime: błąd serwera (HTTP ${listRes.code}).")
 
         val outerJson = tryParseJson<AjaxResponse>(listRes.text)
@@ -203,7 +227,7 @@ class OgladajAnimeProvider : MainAPI() {
                 "token" to ""
             )
             try {
-                val mirrorRes = app.post("$mainUrl/manager.php?action=change_player_url", data = mirrorPost, headers = ajaxHeaders)
+                val mirrorRes = app.post("$mainUrl/manager.php?action=change_player_url", data = mirrorPost, headers = ajaxHeaders())
                 if (mirrorRes.code in 200..299) {
                     val mirrorJson = tryParseJson<AjaxResponse>(mirrorRes.text)
                     val embedUrl = mirrorJson?.data?.trim()
