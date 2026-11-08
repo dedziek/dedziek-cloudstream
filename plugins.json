@@ -85,10 +85,10 @@
   },
   {
     "iconUrl": "https://raw.githubusercontent.com/dedziek/dedziek-cloudstream/main/assets/icons/ogladajanime-site.png",
-    "fileHash": "sha256-32cb2ff4b8c2f75ea5672f354b2f8c997f4123b1d251c3892074d4c1c52041ed",
+    "fileHash": "sha256-30da3d09327506f6616976594e7a5c256405b25d42a2f306af7965a4dc90b655",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/dedziek/dedziek-cloudstream",
-    "fileSize": 35662,
+    "fileSize": 35834,
     "status": 3,
     "language": "pl",
     "authors": [
@@ -99,7 +99,7 @@
       "AnimeMovie",
       "OVA"
     ],
-    "version": 2,
+    "version": 3,
     "internalName": "OgladajAnimeProvider",
     "description": "Polski serwis z anime online - odcinki z napisami i lektorem z ogladajanime.pl.",
     "url": "https://raw.githubusercontent.com/dedziek/dedziek-cloudstream/builds/OgladajAnimeProvider.cs3",
