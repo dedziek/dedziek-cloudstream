@@ -1,4 +1,4 @@
-version = 6
+version = 7
 
 dependencies {
     add("testImplementation", "org.robolectric:robolectric:4.16.1")

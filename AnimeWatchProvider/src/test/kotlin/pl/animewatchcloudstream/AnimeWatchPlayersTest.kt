@@ -35,4 +35,9 @@ class AnimeWatchPlayersTest {
         val html = "<div id='pembed'><iframe data-src='https://bysedikamoum.com.evil.example/e/code/title'></iframe></div>"
         assertEquals(listOf("https://bysedikamoum.com.evil.example/e/code/title"), AnimeWatchPlayers.targets(Jsoup.parse(html), base))
     }
+
+    @Test fun extractsLazyFrameFromEmbedHolder() {
+        val html = "<div id='embed_holder'><div class='player-embed'><iframe data-src='https://video.example/e/holder123'></iframe></div></div>"
+        assertEquals(listOf("https://video.example/e/holder123"), AnimeWatchPlayers.targets(Jsoup.parse(html), base))
+    }
 }

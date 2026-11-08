@@ -58,7 +58,6 @@ internal class EkinoTvProvider(private val browser: WebSession) : MainAPI() {
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse = operation {
         if (request.data !in setOf("/movie/cat/", "/serie/") || page !in 1..1000)
             throw ErrorLoadingException("Ekino TV: nieznana kategoria.")
-        if (page > 1 && request.data == "/serie/") return@operation newHomePageResponse(request.name, emptyList(), false)
         val target = "$mainUrl${request.data}" + if (page > 1) "strona%5B$page%5D+" else ""
         val result = browser.page(target)
         mainUrl = Site.origin(result.url)
@@ -85,9 +84,19 @@ internal class EkinoTvProvider(private val browser: WebSession) : MainAPI() {
             if (info.episodes.isEmpty()) throw ErrorLoadingException("Ekino TV: serial nie udostępnia odcinków.")
             newTvSeriesLoadResponse(info.title, page.url, TvType.TvSeries, info.episodes.map { ep ->
                 newEpisode(ep.url) { name = ep.name; season = ep.season; episode = ep.number }
-            }) { posterUrl = info.poster; plot = info.plot; year = info.year; tags = info.tags }
+            }) {
+                posterUrl = info.poster
+                backgroundPosterUrl = info.poster
+                plot = info.plot
+                year = info.year
+                tags = info.tags
+            }
         } else newMovieLoadResponse(info.title, page.url, TvType.Movie, page.url) {
-            posterUrl = info.poster; plot = info.plot; year = info.year; tags = info.tags
+            posterUrl = info.poster
+            backgroundPosterUrl = info.poster
+            plot = info.plot
+            year = info.year
+            tags = info.tags
         }
     }
 

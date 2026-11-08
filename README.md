@@ -26,7 +26,7 @@ Masz już repozytorium? Odśwież listę dodatków i zainstaluj aktualizacje. Po
 
 | | Źródło | Co znajdziesz | Konto | Szczegóły |
 | :---: | --- | --- | --- | --- |
-| <img src="assets/icons/filman-site.png" width="48" height="48" alt=""> | **Filman**<br><sub>FilmanProvider</sub> | Filmy i seriale. Wersje językowe i jakość przy źródłach. | Darmowe konto Filman | [Instrukcja](#pierwsze-uruchomienie) |
+| <img src="assets/icons/filman-site.png" width="48" height="48" alt=""> | **Filman**<br><sub>FilmanProvider</sub> | Filmy i seriale (w tym sekcje popularne). Wersje językowe i jakość przy źródłach. | Darmowe konto Filman | [Instrukcja](#pierwsze-uruchomienie) |
 | <img src="assets/icons/animewatch-site.png" width="48" height="48" alt=""> | **AnimeWatch**<br><sub>AnimeWatchProvider</sub> | Anime, filmy i odcinki z polskim lektorem. | Bez konta | [Instrukcja](ANIMEWATCH.md) |
 | <img src="assets/icons/animegate-site.png" width="48" height="48" alt=""> | **AnimeGate**<br><sub>AnimeGateProvider</sub> | Katalog anime i odcinki z wyborem wersji językowej. | Logowanie przez Discord | [Instrukcja](ANIMEGATE.md) |
 | <img src="assets/icons/ekino-tv-site.png" width="48" height="48" alt=""> | **Ekino TV**<br><sub>EkinoTvProvider</sub> | Filmy i seriale. Widoczne odliczanie bezpłatnego odtwarzacza. | Zwykłe źródła bez konta | [Instrukcja](EKINO-TV.md) |
@@ -36,7 +36,7 @@ Własne dodatki są rozwijane i mają status testowy. Dostępność odcinka oraz
 
 ## Pierwsze uruchomienie
 
-**Filman** — otwórz zębatkę dodatku, wybierz **Otwórz logowanie**, zaloguj się na darmowe konto i naciśnij **Zapisz sesję**. Źródło w aplikacji nazywa się **Filman — konto darmowe (test)**.
+**Filman** — otwórz zębatkę dodatku, wybierz **Otwórz logowanie**, zaloguj się na darmowe konto i naciśnij **Zapisz sesję**. Źródło w aplikacji nazywa się **Filman — konto darmowe**.
 
 **AnimeWatch** — wybierz anime i odcinek. Gdy hosting wymaga ręcznej weryfikacji, dodatek otworzy jej okno podczas ładowania. Awaryjna weryfikacja jest dostępna także w ustawieniach dodatku.
 

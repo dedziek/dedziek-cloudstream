@@ -12,7 +12,7 @@ object AnimeWatchPlayers {
     fun isByse(url: String): Boolean = runCatching { URI(url).host?.lowercase() in byseHosts }.getOrDefault(false)
 
     fun targets(doc: Document, base: String): List<String> = buildList {
-        doc.select("#pembed iframe[src], #pembed iframe[data-src], #embed_holder .player-embed iframe[src]").forEach { iframe ->
+        doc.select("#pembed iframe, #embed_holder .player-embed iframe").forEach { iframe ->
             sequenceOf(iframe.attr("src"), iframe.attr("data-src")).mapNotNull { target(base, it) }.forEach(::add)
         }
         doc.select("select.mirror option[value]").forEach { option ->

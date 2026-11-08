@@ -10,7 +10,15 @@ object FilmanParser {
     const val BASE = "https://filman.cc"
     data class Card(val title: String, val url: String, val poster: String?, val year: Int?, val series: Boolean)
     data class EpisodeData(val title: String, val url: String, val season: Int?, val episode: Int?)
-    data class Details(val title: String, val poster: String?, val plot: String?, val year: Int?, val episodes: List<EpisodeData>)
+    data class Details(
+        val title: String,
+        val poster: String?,
+        val plot: String?,
+        val year: Int?,
+        val episodes: List<EpisodeData>,
+        val tags: List<String> = emptyList(),
+        val backdrop: String? = null
+    )
     data class Player(val url: String, val label: String, val version: String = "", val quality: String = "") {
         fun displayName(extractorName: String): String = listOf(
             extractorName.ifBlank { label.substringBefore(" · ") }, version, quality
@@ -73,7 +81,15 @@ object FilmanParser {
             doc.selectFirst("#single-poster img")?.attr("src"),
             doc.selectFirst("meta[property=og:image]")?.attr("content")
         ).firstOrNull { !it.isNullOrBlank() }?.let { absolute(url, it) }
+        val backdrop = sequenceOf(
+            doc.selectFirst("#item-headline, .item-headline, #backdrop, .backdrop")?.attr("style")?.let { style ->
+                Regex("""url\(['"]?(.*?)['"]?\)""").find(style)?.groupValues?.get(1)
+            },
+            doc.selectFirst("meta[property=og:image]")?.attr("content")
+        ).firstOrNull { !it.isNullOrBlank() }?.let { absolute(url, it) }
         val yearText = doc.select("#single-info .flm-meta-value, .info li, [itemprop=datePublished]").text()
+        val tags = doc.select("[itemprop=genre], .genres a, .genre a, a[href^='/gatunek/']").map { it.text().trim() }
+            .filter { it.isNotBlank() }.distinct()
         val episodes = doc.select("#episode-list a[href], a[href]").mapNotNull { anchor ->
             val match = episodePattern.find(anchor.text()) ?: return@mapNotNull null
             val epUrl = absolute(url, anchor.attr("href"))?.takeIf(::isSiteUrl) ?: return@mapNotNull null
@@ -81,7 +97,7 @@ object FilmanParser {
                 match.groupValues[1].toIntOrNull(), match.groupValues[2].toIntOrNull())
         }.distinctBy { it.url }.sortedWith(compareBy({ it.season ?: 0 }, { it.episode ?: 0 }))
         return Details(title, poster, doc.selectFirst(".description, [itemprop=description]")?.text(),
-            Regex("(?:19|20)\\d{2}").find(yearText)?.value?.toIntOrNull(), episodes)
+            Regex("(?:19|20)\\d{2}").find(yearText)?.value?.toIntOrNull(), episodes, tags, backdrop)
     }
 
     fun nextPage(doc: Document, current: String): String? =

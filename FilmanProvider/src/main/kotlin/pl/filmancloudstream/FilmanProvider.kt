@@ -11,11 +11,16 @@ import java.net.URLEncoder
 
 class FilmanProvider(private val session: FilmanSession) : MainAPI() {
     override var mainUrl = FilmanParser.BASE
-    override var name = "Filman — konto darmowe (test)"
+    override var name = "Filman — konto darmowe"
     override var lang = "pl"
     override val supportedTypes = setOf(TvType.Movie, TvType.TvSeries)
     override val hasMainPage = true
-    override val mainPage = mainPageOf("/filmy/" to "Filmy", "/seriale/" to "Seriale")
+    override val mainPage = mainPageOf(
+        "/filmy/popularne" to "Popularne filmy",
+        "/seriale/popularne" to "Popularne seriale",
+        "/filmy/" to "Filmy",
+        "/seriale/" to "Seriale"
+    )
 
     private data class Page(val url: String, val text: String, val location: String?)
     private data class TokenResponse(@param:JsonProperty("ok") val ok: Boolean = false,
@@ -69,7 +74,8 @@ class FilmanProvider(private val session: FilmanSession) : MainAPI() {
     }
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        val target = "$mainUrl${request.data}?page=$page"
+        val separator = if (request.data.contains('?')) "&" else "?"
+        val target = "$mainUrl${request.data}${separator}page=$page"
         val result = sitePage(target)
         val doc = FilmanParser.document(result.text, result.url)
         val root = doc.selectFirst("#item-list, #series-list") ?: doc
@@ -100,10 +106,20 @@ class FilmanProvider(private val session: FilmanSession) : MainAPI() {
             if (details.episodes.isEmpty()) throw ErrorLoadingException("Filman: nie znaleziono listy odcinków. Sprawdź sesję lub stronę serialu.")
             newTvSeriesLoadResponse(details.title, url, TvType.TvSeries, details.episodes.map { ep ->
                 newEpisode(ep.url) { name = ep.title; season = ep.season; episode = ep.episode }
-            }) { posterUrl = details.poster; plot = details.plot; year = details.year }
+            }) {
+                posterUrl = details.poster
+                backgroundPosterUrl = details.backdrop ?: details.poster
+                plot = details.plot
+                year = details.year
+                tags = details.tags
+            }
         } else {
             newMovieLoadResponse(details.title, url, TvType.Movie, url) {
-                posterUrl = details.poster; plot = details.plot; year = details.year
+                posterUrl = details.poster
+                backgroundPosterUrl = details.backdrop ?: details.poster
+                plot = details.plot
+                year = details.year
+                tags = details.tags
             }
         }
     }

@@ -94,7 +94,9 @@ class AnimeGateProvider(private val session: AnimeGateSession) : MainAPI() {
         val details = catalog.details(url)
         val episodes = catalog.episodes(details.anime.id)
         newAnimeLoadResponse(details.anime.title, url, TvType.Anime) {
-            posterUrl = details.anime.coverImage; year = details.anime.year
+            posterUrl = details.anime.coverImage
+            backgroundPosterUrl = details.bannerImage ?: details.anime.coverImage
+            year = details.anime.year
             plot = details.synopsis
             tags = details.anime.genres
             showStatus = when (details.anime.status) {

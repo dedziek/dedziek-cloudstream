@@ -1,4 +1,4 @@
-version = 7
+version = 8
 dependencies {
     add("compileOnly", "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.1")
     add("testImplementation", "org.robolectric:robolectric:4.16.1")

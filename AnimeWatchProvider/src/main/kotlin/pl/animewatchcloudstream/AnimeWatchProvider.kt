@@ -72,12 +72,12 @@ class AnimeWatchProvider(private val verification: AnimeWatchPlaybackSession = A
         val type = contentType(details.type)
         return if (type == TvType.AnimeMovie) {
             newMovieLoadResponse(details.title, url, type, details.episodes.first().url) {
-                posterUrl = details.poster; plot = details.plot; year = details.year
+                posterUrl = details.poster; backgroundPosterUrl = details.poster; plot = details.plot; year = details.year
                 tags = details.genres; recommendations = details.recommendations.map { it.toResult() }
             }
         } else {
             newAnimeLoadResponse(details.title, url, type) {
-                posterUrl = details.poster; plot = details.plot; year = details.year
+                posterUrl = details.poster; backgroundPosterUrl = details.poster; plot = details.plot; year = details.year
                 tags = details.genres; recommendations = details.recommendations.map { it.toResult() }
                 showStatus = when {
                     details.status?.contains("Zakończone", ignoreCase = true) == true -> ShowStatus.Completed

@@ -103,6 +103,7 @@ class FilmanParserTest {
         assertEquals(2025, detail.year)
         assertEquals("Opis & szczegóły serialu próbnego.", detail.plot)
         assertEquals("$base/public/static/poster/big/series-fixture.jpg", detail.poster)
+        assertEquals(listOf("Dramat"), detail.tags)
     }
 
     @Test fun episodesSortNumericallyBeyond99AndDropDuplicatesAndForeignLinks() {
