@@ -117,7 +117,9 @@ object OgladajAnimeParser {
         val year = Regex("""Start emisji:\s*(\d{4})""").find(bodyText)?.groupValues?.get(1)?.toIntOrNull()
             ?: Regex("""\b(19\d{2}|20\d{2})\b""").find(bodyText)?.groupValues?.get(1)?.toIntOrNull()
 
-        val status = Regex("""Status:\s*([^<\n]+)""").find(bodyText)?.groupValues?.get(1)?.trim()
+        val status = doc.selectFirst("p:has(b:matchesOwn(^Status))")?.ownText()?.trim()?.ifEmpty { null }
+            ?: Regex("""Status:\s*([A-Za-zĄĆĘŁŃÓŚŹŻąćęłńóśźż\s-]+?)(?=\s+[A-ZĄĆĘŁŃÓŚŹŻ]|\s*${'$'})""").find(bodyText)?.groupValues?.get(1)?.trim()
+            ?: Regex("""Status:\s*([A-Za-zĄĆĘŁŃÓŚŹŻąćęłńóśźż-]+)""").find(bodyText)?.groupValues?.get(1)?.trim()
 
         val type = doc.selectFirst(".outlines span.btn, .badge")?.text()?.trim()
 
