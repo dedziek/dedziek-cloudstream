@@ -82,5 +82,27 @@
     "description": "Filmy i seriale z Filman. Wymaga darmowego konta i zapisania sesji w ustawieniach.",
     "url": "https://raw.githubusercontent.com/dedziek/dedziek-cloudstream/builds/FilmanProvider.cs3",
     "name": "FilmanProvider"
+  },
+  {
+    "iconUrl": "https://raw.githubusercontent.com/dedziek/dedziek-cloudstream/main/assets/icons/ogladajanime-site.png",
+    "fileHash": "sha256-87219e7558e521673698bb6efcb12af44e8cf6cd3d60e16f23639322284c36f6",
+    "apiVersion": 1,
+    "repositoryUrl": "https://github.com/dedziek/dedziek-cloudstream",
+    "fileSize": 33270,
+    "status": 3,
+    "language": "pl",
+    "authors": [
+      "Dedziek CloudStream contributors"
+    ],
+    "tvTypes": [
+      "Anime",
+      "AnimeMovie",
+      "OVA"
+    ],
+    "version": 1,
+    "internalName": "OgladajAnimeProvider",
+    "description": "Polski serwis z anime online - odcinki z napisami i lektorem z ogladajanime.pl.",
+    "url": "https://raw.githubusercontent.com/dedziek/dedziek-cloudstream/builds/OgladajAnimeProvider.cs3",
+    "name": "OgladajAnimeProvider"
   }
 ]
