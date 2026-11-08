@@ -1,10 +1,10 @@
 [
   {
     "iconUrl": "https://raw.githubusercontent.com/dedziek/dedziek-cloudstream/main/assets/icons/animegate-site.png",
-    "fileHash": "sha256-ff54290379e4d625303dd62bc8e35831d2268e3a3402fef8d5b7af0b2378e1f4",
+    "fileHash": "sha256-32e55cd6451ad426f2a7e7044389f9340a861cb61e2034afc517cdd7f5c9634a",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/dedziek/dedziek-cloudstream",
-    "fileSize": 73112,
+    "fileSize": 73184,
     "status": 3,
     "language": "pl",
     "authors": [
@@ -13,7 +13,7 @@
     "tvTypes": [
       "Anime"
     ],
-    "version": 14,
+    "version": 15,
     "internalName": "AnimeGateProvider",
     "description": "Anime i odcinki z wyborem wersji językowej. Wymaga logowania przez Discord.",
     "url": "https://raw.githubusercontent.com/dedziek/dedziek-cloudstream/builds/AnimeGateProvider.cs3",
@@ -21,10 +21,10 @@
   },
   {
     "iconUrl": "https://raw.githubusercontent.com/dedziek/dedziek-cloudstream/main/assets/icons/animewatch-site.png",
-    "fileHash": "sha256-817b56754fc4f29aa2429f3b82eec8c2138dc42ee3ab67e0ab83280189b7b37c",
+    "fileHash": "sha256-123c8ef112879f9cde0d5ded6db3757ed1476f0567e0f20e9ede8e477814f1f3",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/dedziek/dedziek-cloudstream",
-    "fileSize": 63771,
+    "fileSize": 63797,
     "status": 3,
     "language": "pl",
     "authors": [
@@ -35,7 +35,7 @@
       "AnimeMovie",
       "OVA"
     ],
-    "version": 7,
+    "version": 8,
     "internalName": "AnimeWatchProvider",
     "description": "Anime, filmy i odcinki z polskim lektorem. Bez konta; możliwa weryfikacja hostingu.",
     "url": "https://raw.githubusercontent.com/dedziek/dedziek-cloudstream/builds/AnimeWatchProvider.cs3",
@@ -43,10 +43,10 @@
   },
   {
     "iconUrl": "https://raw.githubusercontent.com/dedziek/dedziek-cloudstream/main/assets/icons/ekino-tv-site.png",
-    "fileHash": "sha256-fe2ff9f8349ed3ea303aa2a77cbe898ff3faf8b0991174559fe2a2cc9ccfbde5",
+    "fileHash": "sha256-0ab52426b26edf3205309dadddb8b38647354189afe367b5d3daff21877c0f69",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/dedziek/dedziek-cloudstream",
-    "fileSize": 99088,
+    "fileSize": 99077,
     "status": 3,
     "language": "pl",
     "authors": [
@@ -56,7 +56,7 @@
       "Movie",
       "TvSeries"
     ],
-    "version": 9,
+    "version": 10,
     "internalName": "EkinoTvProvider",
     "description": "Filmy i seriale z Ekino TV. Odliczanie odtwarzacza i ręczna weryfikacja w ustawieniach.",
     "url": "https://raw.githubusercontent.com/dedziek/dedziek-cloudstream/builds/EkinoTvProvider.cs3",
@@ -64,10 +64,10 @@
   },
   {
     "iconUrl": "https://raw.githubusercontent.com/dedziek/dedziek-cloudstream/main/assets/icons/filman-site.png",
-    "fileHash": "sha256-92a7eb1d50f57db1f181d9018cfccaa81de28a3b658ccf52ac00fe0f71062364",
+    "fileHash": "sha256-e50198b6633b8f60b0cef8e3d029847a6bc6e21b287dbf45e56fda5f433761f9",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/dedziek/dedziek-cloudstream",
-    "fileSize": 53565,
+    "fileSize": 54950,
     "status": 3,
     "language": "pl",
     "authors": [
@@ -77,7 +77,7 @@
       "Movie",
       "TvSeries"
     ],
-    "version": 6,
+    "version": 7,
     "internalName": "FilmanProvider",
     "description": "Filmy i seriale z Filman. Wymaga darmowego konta i zapisania sesji w ustawieniach.",
     "url": "https://raw.githubusercontent.com/dedziek/dedziek-cloudstream/builds/FilmanProvider.cs3",
