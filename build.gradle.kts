@@ -30,6 +30,7 @@ subprojects {
             "AnimeWatchProvider" -> "pl.animewatchcloudstream"
             "AnimeGateProvider" -> "pl.animegatecloudstream"
             "EkinoTvProvider" -> "pl.dedziek.ekinotv"
+            "OgladajAnimeProvider" -> "pl.ogladajanimecloudstream"
             else -> "pl.filmancloudstream"
         }
         compileSdkVersion(35)

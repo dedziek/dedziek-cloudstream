@@ -3,6 +3,7 @@ export const ownPlugins = new Map([
   ['AnimeWatchProvider', 'pl.animewatchcloudstream.AnimeWatchPlugin'],
   ['AnimeGateProvider', 'pl.animegatecloudstream.AnimeGatePlugin'],
   ['EkinoTvProvider', 'pl.dedziek.ekinotv.EkinoTvPlugin'],
+  ['OgladajAnimeProvider', 'pl.ogladajanimecloudstream.OgladajAnimePlugin'],
 ]);
 
 export const retiredPlugins = ['EkinoProvider'];

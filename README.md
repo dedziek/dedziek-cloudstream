@@ -7,7 +7,7 @@
   &nbsp; <a href="#instalacja">Instalacja</a> · <a href="#dostępne-dodatki">Dodatki</a> · <a href="#pierwsze-uruchomienie">Konfiguracja</a> · <a href="#pomoc">Pomoc</a>
 </p>
 
-Polskie źródła do **CloudStream na Androidzie i Android TV / Google TV**. Cztery własne dodatki oraz ObejrzyjTo autorstwa **Phisher98**.
+Polskie źródła do **CloudStream na Androidzie i Android TV / Google TV**. Pięć własnych dodatków oraz ObejrzyjTo autorstwa **Phisher98**.
 
 ## Instalacja
 
@@ -29,6 +29,7 @@ Masz już repozytorium? Odśwież listę dodatków i zainstaluj aktualizacje. Po
 | <img src="assets/icons/filman-site.png" width="48" height="48" alt=""> | **Filman**<br><sub>FilmanProvider</sub> | Filmy i seriale (w tym sekcje popularne). Wersje językowe i jakość przy źródłach. | Darmowe konto Filman | [Instrukcja](#pierwsze-uruchomienie) |
 | <img src="assets/icons/animewatch-site.png" width="48" height="48" alt=""> | **AnimeWatch**<br><sub>AnimeWatchProvider</sub> | Anime, filmy i odcinki z polskim lektorem. | Bez konta | [Instrukcja](ANIMEWATCH.md) |
 | <img src="assets/icons/animegate-site.png" width="48" height="48" alt=""> | **AnimeGate**<br><sub>AnimeGateProvider</sub> | Katalog anime i odcinki z wyborem wersji językowej. | Logowanie przez Discord | [Instrukcja](ANIMEGATE.md) |
+| <img src="assets/icons/ogladajanime-site.png" width="48" height="48" alt=""> | **OglądajAnime**<br><sub>OgladajAnimeProvider</sub> | Serwis z anime online (odcinki z polskimi napisami i lektorem). | Bez konta | [Instrukcja](#pierwsze-uruchomienie) |
 | <img src="assets/icons/ekino-tv-site.png" width="48" height="48" alt=""> | **Ekino TV**<br><sub>EkinoTvProvider</sub> | Filmy i seriale. Widoczne odliczanie bezpłatnego odtwarzacza. | Zwykłe źródła bez konta | [Instrukcja](EKINO-TV.md) |
 | <img src="https://www.obejrzyj.to/favicon/icon-512x512.png" width="48" height="48" alt=""> | **ObejrzyjTo**<br><sub>Autor: Phisher98</sub> | Filmy i seriale z obejrzyj.to. | Według wymagań serwisu | [Oryginalne repozytorium](https://github.com/phisher98/cloudstream-extensions-phisher) |
 
@@ -76,7 +77,7 @@ Kod jest na gałęzi **main**, a paczki i katalog aktualizacji na **builds**. Gi
 Do kompilacji lokalnej potrzebne są **JDK 21** i **Android SDK 35**:
 
 ```sh
-sh gradlew :FilmanProvider:make :AnimeWatchProvider:make :AnimeGateProvider:make :EkinoTvProvider:make testDebugUnitTest --no-daemon
+sh gradlew :FilmanProvider:make :AnimeWatchProvider:make :AnimeGateProvider:make :EkinoTvProvider:make :OgladajAnimeProvider:make testDebugUnitTest --no-daemon
 ```
 
 Ikony dodatków pochodzą z obsługiwanych serwisów. [Źródła grafik](assets/README.md) są zapisane w repozytorium. Nazwy i znaki graficzne należą do ich właścicieli. Baner oraz znak repozytorium są własne; ObejrzyjTo zachowuje oznaczenia swojego autora.
