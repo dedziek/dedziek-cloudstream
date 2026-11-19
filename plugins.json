@@ -1,10 +1,10 @@
 [
   {
     "iconUrl": "https://raw.githubusercontent.com/dedziek/dedziek-cloudstream/main/assets/icons/animegate-site.png",
-    "fileHash": "sha256-32e55cd6451ad426f2a7e7044389f9340a861cb61e2034afc517cdd7f5c9634a",
+    "fileHash": "sha256-de58dac092c2416a0aabbd7db2cd1ef90a67a27469f2ad2d8d295e131108285e",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/dedziek/dedziek-cloudstream",
-    "fileSize": 73184,
+    "fileSize": 73369,
     "status": 3,
     "language": "pl",
     "authors": [
@@ -13,7 +13,7 @@
     "tvTypes": [
       "Anime"
     ],
-    "version": 15,
+    "version": 16,
     "internalName": "AnimeGateProvider",
     "description": "Anime i odcinki z wyborem wersji językowej. Wymaga logowania przez Discord.",
     "url": "https://raw.githubusercontent.com/dedziek/dedziek-cloudstream/builds/AnimeGateProvider.cs3",
@@ -43,10 +43,10 @@
   },
   {
     "iconUrl": "https://raw.githubusercontent.com/dedziek/dedziek-cloudstream/main/assets/icons/ekino-tv-site.png",
-    "fileHash": "sha256-0ab52426b26edf3205309dadddb8b38647354189afe367b5d3daff21877c0f69",
+    "fileHash": "sha256-3aaa7ff251bf2cef86b6b58cd7af02a6d6e7bacb7964964fe326d97f42d9bb76",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/dedziek/dedziek-cloudstream",
-    "fileSize": 99077,
+    "fileSize": 100993,
     "status": 3,
     "language": "pl",
     "authors": [
@@ -56,7 +56,7 @@
       "Movie",
       "TvSeries"
     ],
-    "version": 10,
+    "version": 11,
     "internalName": "EkinoTvProvider",
     "description": "Filmy i seriale z Ekino TV. Odliczanie odtwarzacza i ręczna weryfikacja w ustawieniach.",
     "url": "https://raw.githubusercontent.com/dedziek/dedziek-cloudstream/builds/EkinoTvProvider.cs3",
@@ -85,10 +85,10 @@
   },
   {
     "iconUrl": "https://raw.githubusercontent.com/dedziek/dedziek-cloudstream/main/assets/icons/ogladajanime-site.png",
-    "fileHash": "sha256-30da3d09327506f6616976594e7a5c256405b25d42a2f306af7965a4dc90b655",
+    "fileHash": "sha256-931a826364633a84318cfe0bef173d03236e41e3f8381804f2b4471051d8d5a9",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/dedziek/dedziek-cloudstream",
-    "fileSize": 35834,
+    "fileSize": 40843,
     "status": 3,
     "language": "pl",
     "authors": [
@@ -99,7 +99,7 @@
       "AnimeMovie",
       "OVA"
     ],
-    "version": 3,
+    "version": 4,
     "internalName": "OgladajAnimeProvider",
     "description": "Polski serwis z anime online - odcinki z napisami i lektorem z ogladajanime.pl.",
     "url": "https://raw.githubusercontent.com/dedziek/dedziek-cloudstream/builds/OgladajAnimeProvider.cs3",
