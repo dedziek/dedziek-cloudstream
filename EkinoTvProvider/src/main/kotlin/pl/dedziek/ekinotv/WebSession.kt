@@ -48,7 +48,7 @@ internal class WebSession(context: Context, val state: SessionState,
     private var target: DocumentTarget? = null
     private var activePlayer: Player? = null
     private var phase = "strona"
-    private var failure: String? = null
+    private var failure: Exception? = null
     private var external: String? = null
     private var bridgeNavigation = false
     private var manual = false
@@ -134,13 +134,20 @@ internal class WebSession(context: Context, val state: SessionState,
                             state.pause("Serwer wymaga weryfikacji (HTTP ${response.statusCode})", Site.wrapper(request.url.toString()))
                             return
                         }
-                        if (response.statusCode >= 400) stop("Serwer zwrócił HTTP ${response.statusCode}",
-                            Site.wrapper(request.url.toString()), persistent = response.statusCode in setOf(401, 403, 429))
+                        val url = request.url.toString()
+                        val message = "Serwer zwrócił HTTP ${response.statusCode}"
+                        if (mirrorRequest(url) && response.statusCode in setOf(404, 410, 500, 502, 504)) stopMirror(message)
+                        else if (response.statusCode >= 400) stop(message, Site.wrapper(url),
+                            persistent = response.statusCode in setOf(401, 403, 429))
                     }
                 }
                 override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
-                    if (currentRequest(view, request))
-                        stop("Błąd WebView ${error.errorCode} · $phase", persistent = false)
+                    if (currentRequest(view, request)) {
+                        val message = "Błąd WebView ${error.errorCode} · $phase"
+                        if (mirrorRequest(request.url.toString()) && error.errorCode in setOf(ERROR_CONNECT, ERROR_HOST_LOOKUP, ERROR_TIMEOUT))
+                            stopMirror(message)
+                        else stop(message, persistent = false)
+                    }
                 }
                 override fun onReceivedSslError(view: WebView, handler: SslErrorHandler, error: SslError) {
                     handler.cancel()
@@ -148,8 +155,9 @@ internal class WebSession(context: Context, val state: SessionState,
                         stop("Błąd certyfikatu HTTPS · $phase", persistent = false)
                 }
                 override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
-                    failure = "Proces Android System WebView został zamknięty"
-                    state.temporaryFailure(failure!!)
+                    val message = "Proces Android System WebView został zamknięty"
+                    failure = SiteProblem(message)
+                    state.temporaryFailure(message)
                     closeBrowser(renderGone = true)
                     return true
                 }
@@ -275,8 +283,15 @@ internal class WebSession(context: Context, val state: SessionState,
         web?.stopLoading(); web?.loadUrl("about:blank")
     }
 
+    private fun mirrorRequest(url: String) = !manual && (currentPlayerUrl(url) || (bridgeNavigation && Site.bridge(url)))
+
+    private fun stopMirror(message: String) {
+        failure = MirrorProblem(message)
+        blank()
+    }
+
     private fun stop(message: String, player: Boolean = false, persistent: Boolean = true) {
-        failure = message
+        failure = SiteProblem("Ekino TV: $message.")
         if (persistent) state.pause(message, player) else state.temporaryFailure(message)
         info?.text = "$message. Automatyczne ładowanie zatrzymano."
         blank()
@@ -348,7 +363,13 @@ internal class WebSession(context: Context, val state: SessionState,
             // Null identifies only this deadline. A timeout from CloudStream must propagate as cancellation.
             val result = withTimeoutOrNull(timeout) { Completed(block()) }
             if (result == null) {
-                stop("Przekroczono czas oczekiwania · $phase", persistent = false)
+                checkFailure()
+                val message = "Przekroczono czas oczekiwania · $phase"
+                if (activePlayer != null || bridgeNavigation) {
+                    stopMirror(message)
+                    throw MirrorProblem(message)
+                }
+                stop(message, persistent = false)
                 throw SiteProblem(state.rejection().orEmpty())
             }
             result.value
@@ -375,7 +396,8 @@ internal class WebSession(context: Context, val state: SessionState,
     }
 
     private fun checkFailure() {
-        failure?.let { throw SiteProblem(state.rejection() ?: "Ekino TV: $it.") }
+        state.rejection()?.let { throw SiteProblem(it) }
+        failure?.let { throw it }
     }
 
     private fun checkSnapshot(value: BrowserSnapshot) {
@@ -445,7 +467,7 @@ internal class WebSession(context: Context, val state: SessionState,
                     val controls = Catalogue.players(value.page)
                     selected = controls.firstOrNull { it.identity == player.identity }
                         ?: controls.filter { it.host == player.host && it.languageKey == player.languageKey }.singleOrNull()
-                        ?: throw SiteProblem("Ekino TV: wybrany odtwarzacz zmienił się lub nie jest już dostępny na stronie.")
+                        ?: throw MirrorProblem("wybrany odtwarzacz zmienił się lub nie jest już dostępny na stronie")
                     if (selected.identity != player.identity) state.note("Odświeżono kontrolkę odtwarzacza po ponownym wczytaniu materiału")
                     break
                 }

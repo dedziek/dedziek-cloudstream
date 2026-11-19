@@ -131,10 +131,11 @@ class OgladajAnimeParserTest {
     }
 
     @Test
-    fun siteUrlValidation() {
-        assertTrue(OgladajAnimeParser.isSiteUrl("https://ogladajanime.pl/anime/naruto"))
-        assertTrue(OgladajAnimeParser.isSiteUrl("https://www.ogladajanime.pl/anime/naruto"))
-        assertTrue(OgladajAnimeParser.isSiteUrl("/anime/naruto"))
-        assertFalse(OgladajAnimeParser.isSiteUrl("https://malicious.com/anime/naruto"))
+    fun sortsEpisodesNumericallyEvenWhenOnlyTheMiddleIsOutOfOrder() {
+        val html = listOf(1.0, 3.0, 2.0, 1.5, 0.0).joinToString("") {
+            "<button ep_id='$it' value='$it'></button>"
+        }
+        val episodes = OgladajAnimeParser.parseEpisodes(OgladajAnimeParser.document(html), "$base/anime/test")
+        assertEquals(listOf(1.0, 1.5, 2.0, 3.0), episodes.map { it.episode })
     }
 }

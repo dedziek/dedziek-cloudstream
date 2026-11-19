@@ -1,0 +1,3 @@
+[submodule "dedziek"]
+	path = dedziek
+	url = https://github.com/dedziek/dedziek.git

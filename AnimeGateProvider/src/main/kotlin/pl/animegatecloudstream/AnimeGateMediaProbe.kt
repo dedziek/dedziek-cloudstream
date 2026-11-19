@@ -1,5 +1,6 @@
 package pl.animegatecloudstream
 
+import java.io.IOException
 import java.net.URI
 
 internal class AnimeGateMediaException(message: String) : Exception(message)
@@ -23,7 +24,8 @@ internal class AnimeGateMediaProbe(
         repeat(5) {
             if (!external(target)) throw AnimeGateMediaException("Playmogo zwróciło nieprawidłowy adres wideo")
             if (!visited.add(target)) throw AnimeGateMediaException("Hosting zapętla przekierowanie wideo")
-            val response = fetch(target, requestHeaders)
+            val response = try { fetch(target, requestHeaders) }
+            catch (_: IOException) { throw AnimeGateMediaException("Nie udało się połączyć z hostingiem wideo") }
             if (response.status == 416 && !retriedWithoutRange) {
                 // Some valid streams do not accept Range. The fallback is still a bounded read.
                 retriedWithoutRange = true

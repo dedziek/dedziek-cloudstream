@@ -17,12 +17,14 @@ internal class Playback(
         try {
             for (player in players) {
                 if (player.languageKey in languages) continue
-                val wrapper = browser.player(material.url, player)
+                val wrapper = try { browser.player(material.url, player) }
+                catch (error: MirrorProblem) { note("${player.host}: ${error.message}"); continue }
                 val links = Catalogue.embeds(wrapper).take(4)
                 note("${player.host}: odnośniki=${links.size}")
                 var playerFound = false
                 for (link in links) {
-                    val external = if (Site.bridge(link)) browser.bridge(link) else listOf(link)
+                    val external = try { if (Site.bridge(link)) browser.bridge(link) else listOf(link) }
+                    catch (error: MirrorProblem) { note("${player.host}: ${error.message}"); continue }
                     for (embed in external.take(3)) {
                         val result = try { resolve(embed, wrapper.url) }
                         catch (error: CancellationException) { throw error }

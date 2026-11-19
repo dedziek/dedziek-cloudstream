@@ -17,6 +17,16 @@ class AnimeGateMediaProbeTest {
         assertEquals(AnimeGateMediaProbe.Format.HLS, AnimeGateMediaProbe.format(response("\uFEFF \n$hls")))
     }
 
+    @Test fun networkFailureUsesThePerLinkErrorWithoutExposingTheUrl() = runBlocking {
+        val probe = AnimeGateMediaProbe({ _, _ -> throw java.net.SocketTimeoutException(media) })
+        try {
+            probe.inspect(media, iframe, emptyMap())
+            fail("A timeout must reject the link")
+        } catch (error: AnimeGateMediaException) {
+            assertFalse(error.message.orEmpty().contains(media))
+        }
+    }
+
     @Test fun dashAndMp4UseTheirActualContainerInsteadOfAnExtension() {
         assertEquals(AnimeGateMediaProbe.Format.DASH, AnimeGateMediaProbe.format(response("<?xml version='1.0'?>\n<MPD xmlns='urn:mpeg:dash:schema:mpd:2011'></MPD>")))
         val mp4 = byteArrayOf(0, 0, 0, 24) + "ftypisom".toByteArray()

@@ -1,5 +1,6 @@
 package pl.ogladajanimecloudstream
 
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
@@ -36,12 +37,14 @@ object OgladajAnimeParser {
 
     fun document(html: String, baseUri: String = BASE): Document = Jsoup.parse(html, baseUri)
 
-    fun isSiteUrl(url: String): Boolean = try {
-        val host = URI(url).host?.lowercase() ?: ""
-        host == "ogladajanime.pl" || host == "www.ogladajanime.pl" || url.startsWith("/")
-    } catch (_: Exception) {
-        false
-    }
+    internal fun siteUrl(url: String): String? = runCatching {
+        val uri = URI(url)
+        val target = if (url.startsWith("/") && !url.startsWith("//")) URI(BASE).resolve(uri) else uri
+        target.takeIf {
+            it.scheme.equals("https", ignoreCase = true) && it.host?.lowercase() in setOf("ogladajanime.pl", "www.ogladajanime.pl") &&
+                it.userInfo == null && it.port in setOf(-1, 443)
+        }?.toASCIIString()?.toHttpUrl()?.newBuilder()?.fragment(null)?.build()?.toString()
+    }.getOrNull()
 
     private fun cleanUrl(raw: String, baseUri: String = BASE): String = when {
         raw.startsWith("http://") || raw.startsWith("https://") -> raw
@@ -177,11 +180,6 @@ object OgladajAnimeParser {
         val regularEpisodes = episodes.filter { (it.episode ?: 0.0) > 0.0 }
         val finalEpisodes = if (regularEpisodes.isNotEmpty()) regularEpisodes else episodes
 
-        // If the site had episodes in descending or reverse order, maintain proper playback order
-        return if (finalEpisodes.size > 1 && (finalEpisodes.first().episode ?: 0.0) > (finalEpisodes.last().episode ?: 0.0)) {
-            finalEpisodes.reversed()
-        } else {
-            finalEpisodes
-        }
+        return finalEpisodes.sortedBy { it.episode ?: 0.0 }
     }
 }

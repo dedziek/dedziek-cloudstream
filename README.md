@@ -45,7 +45,7 @@ Własne dodatki są rozwijane i mają status testowy. Dostępność odcinka oraz
 
 **Ekino TV** — wybierz film lub odcinek. Komunikat pokazuje odliczanie wymagane przez stronę. Gdy pojawi się CAPTCHA, wybierz w ustawieniach **Otwórz weryfikację**, uruchom odtwarzacz na stronie, a przy gotowym źródle naciśnij **Sprawdź i zamknij**.
 
-**ObejrzyjTo** — instalujesz oryginalną paczkę Phisher98. Jej wersja, autor, ikona i opis pochodzą z repozytorium autora; katalog jest synchronizowany co godzinę. CloudStream obsługuje aktualizacje na urządzeniu.
+**ObejrzyjTo** — autorem i wydawcą dodatku jest **[Phisher98](https://github.com/phisher98)**. [Oryginalne repozytorium](https://github.com/phisher98/cloudstream-extensions-phisher) wskazuje [GNU GPLv3](https://www.gnu.org/licenses/gpl-3.0.html). CloudStream pobiera niezmienioną paczkę bezpośrednio z repozytorium autora. Publikujemy tylko wpis katalogowy, zachowując oryginalną listę autorów, opis, ikonę i wersję. Oddzielny proces sprawdza aktualizacje co godzinę; jeśli weryfikacja się nie powiedzie, zachowuje ostatni sprawdzony wpis.
 
 ## Telefon i telewizor
 

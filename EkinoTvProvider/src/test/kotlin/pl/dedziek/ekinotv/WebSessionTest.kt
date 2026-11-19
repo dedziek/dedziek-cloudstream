@@ -166,6 +166,20 @@ class WebSessionTest {
         assertFalse(state.paused)
     }
 
+    @Test fun aPlayerFrameTimeoutStopsLoadingWithoutApplyingASiteCooldown() = runTest {
+        val dispatcher = UnconfinedTestDispatcher(testScheduler)
+        val url = "https://ekino.ws/movie/show/test/1"
+        val page = async(dispatcher) { session.page(url) }; val web = browser()
+        reply(web, url, 1.0, html = controls("id")); page.await()
+        val frame = async(dispatcher) { runCatching { session.player(url, Player("player", "id", "Lektor PL")) } }
+        reply(web, url, 1.0, html = controls("id"))
+        shadowOf(web).lastEvaluatedJavascriptCallback.onReceiveValue("true")
+        advanceTimeBy(30_001); runCurrent()
+        assertTrue(frame.await().exceptionOrNull() is MirrorProblem)
+        assertNull(state.rejection())
+        assertEquals("about:blank", shadowOf(web).lastLoadedUrl)
+    }
+
     @Test fun reloadedMaterialResolvesItsCurrentPlayerInsteadOfUsingCachedControlIds() = runTest {
         val dispatcher = UnconfinedTestDispatcher(testScheduler)
         val url = "https://ekino.ws/movie/show/test/1"

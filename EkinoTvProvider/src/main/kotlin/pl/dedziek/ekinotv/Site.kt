@@ -42,6 +42,7 @@ internal object Site {
 }
 
 internal class SiteProblem(message: String) : Exception(message)
+internal class MirrorProblem(message: String) : Exception(message)
 
 internal data class WebPage(val url: String, val html: String, val active: Boolean = true) {
     val doc: Document by lazy { Jsoup.parse(html, url) }

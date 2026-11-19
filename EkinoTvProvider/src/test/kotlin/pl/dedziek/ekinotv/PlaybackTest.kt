@@ -17,12 +17,14 @@ class PlaybackTest {
     private class Browser : SiteBrowser {
         val visits = mutableListOf<String>()
         var gateOn: String? = null
+        var timeoutOn: String? = null
         var bridgeLink = false
         override suspend fun page(url: String): WebPage = error("Playback must use the existing metadata")
         override suspend fun search(query: String): WebPage = error("No search during playback")
         override suspend fun userAgent() = "browser"
         override suspend fun player(material: String, player: Player): WebPage {
             visits.add(player.host)
+            if (player.host == timeoutOn) throw MirrorProblem("przekroczono czas oczekiwania")
             if (player.host == gateOn) throw SiteProblem("CAPTCHA")
             val host = if (bridgeLink) "play.ekino.link" else "host.example"
             return WebPage("https://ekino.ws/watch/f/${player.identity}", "<a target=_blank href='https://$host/e/${player.id}'>wideo</a>")
@@ -50,6 +52,15 @@ class PlaybackTest {
         Playback(browser, { url, referer -> HostResult(listOf(Media("$url/master.m3u8", referer, true))) }, {})
             .links(material("Lektor", "Lektor PL", "Lektor polski", "Napisy PL")) { _, _ -> }
         assertEquals(listOf("host0", "host3"), browser.visits)
+    }
+
+    @Test fun aTimedOutMirrorDoesNotHideTheNextMirrorInTheSameLanguage() = runBlocking {
+        val browser = Browser().apply { timeoutOn = "host0" }
+        val emitted = mutableListOf<String>()
+        assertTrue(Playback(browser, { url, referer -> HostResult(listOf(Media("$url/video.mp4", referer, false))) }, {})
+            .links(material("PL", "PL")) { _, player -> emitted.add(player.host) })
+        assertEquals(listOf("host0", "host1"), browser.visits)
+        assertEquals(listOf("host1"), emitted)
     }
 
     @Test fun firstCaptchaPreventsAllHostingAndFurtherMirrorRequests() = runBlocking {
